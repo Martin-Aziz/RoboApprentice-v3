@@ -1,0 +1,59 @@
+# ──────────────────────────────────────
+# FORGE MIND — .gitignore
+# ──────────────────────────────────────
+
+# ─── Environment ──────────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── Rust ─────────────────────────────
+/target/
+apps/api/target/
+**/*.rs.bk
+Cargo.lock
+
+# ─── Node.js ─────────────────────────
+node_modules/
+.pnpm-store/
+
+# ─── Next.js ─────────────────────────
+apps/web/.next/
+apps/web/out/
+
+# ─── Python ──────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+apps/ml-service/.venv/
+*.egg-info/
+dist/
+.mypy_cache/
+.ruff_cache/
+
+# ─── Keys & Secrets ──────────────────
+keys/
+*.pem
+*.key
+
+# ─── IDE ─────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ─── Docker ──────────────────────────
+docker-data/
+
+# ─── Testing ─────────────────────────
+coverage/
+htmlcov/
+.coverage
+*.lcov
+
+# ─── Build artifacts ─────────────────
+*.log
+tmp/

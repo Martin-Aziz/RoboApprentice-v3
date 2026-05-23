@@ -1,0 +1,4 @@
+{
+  "locale": "en-GB",
+  "note": "Runtime strings are currently served through src/lib/i18n.tsx for the demo shell."
+}

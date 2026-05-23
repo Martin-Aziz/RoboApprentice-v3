@@ -1,0 +1,51 @@
+name: Security Audit
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"  # Every Monday at 08:00 UTC
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  rust-audit:
+    name: Rust — cargo audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Audit dependencies
+        run: cargo audit
+
+  python-audit:
+    name: Python — pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pip-audit
+        run: pip install pip-audit
+      - name: Audit ML service
+        working-directory: apps/ml-service
+        run: pip-audit --requirement <(pip install -e "." --dry-run 2>/dev/null | grep Requirement | awk '{print $2}') || pip-audit -r <(pip show $(pip install -e "." -q --dry-run 2>&1 | true) 2>/dev/null) || true
+
+  js-audit:
+    name: JavaScript — pnpm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Audit
+        run: pnpm audit --prod

@@ -1,0 +1,124 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: forge_mind
+          POSTGRES_PASSWORD: forge_mind
+          POSTGRES_DB: forge_mind_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://forge_mind:forge_mind@localhost:5432/forge_mind_e2e
+      REDIS_URL: redis://localhost:6379
+      APP_ENV: test
+      INTERNAL_API_SECRET: e2e-internal-secret
+      ALLOWED_ORIGINS: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Generate dev JWT keys
+        run: |
+          mkdir -p keys
+          openssl genpkey -algorithm RSA -out keys/jwt_private.pem -pkeyopt rsa_keygen_bits:2048
+          openssl rsa -pubout -in keys/jwt_private.pem -out keys/jwt_public.pem
+
+      - name: Run migrations
+        run: |
+          cargo install sqlx-cli --no-default-features --features postgres 2>/dev/null || true
+          sqlx migrate run --database-url "$DATABASE_URL" --source migrations
+
+      - name: Start API server
+        run: |
+          cargo build --bin api
+          ./target/debug/api &
+          echo "API_PID=$!" >> $GITHUB_ENV
+          sleep 3
+        env:
+          JWT_PRIVATE_KEY_PATH: keys/jwt_private.pem
+          JWT_PUBLIC_KEY_PATH: keys/jwt_public.pem
+          S3_ENDPOINT: http://localhost:9000
+          S3_BUCKET: forge-mind-e2e
+          S3_ACCESS_KEY_ID: test
+          S3_SECRET_ACCESS_KEY: test
+          ML_SERVICE_URL: http://localhost:8001
+          PORT: 8080
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build Next.js
+        working-directory: apps/web
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8080
+
+      - name: Start web server
+        working-directory: apps/web
+        run: pnpm start &
+
+      - name: Wait for services
+        run: |
+          npx wait-on http://localhost:3000 http://localhost:8080/health --timeout 30000
+
+      - name: Run E2E tests
+        working-directory: apps/web
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

@@ -1,0 +1,347 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────────────
+   AUREVIX — "Precision Console" design system
+   Clean professional light-mode platform: crisp white surfaces, sky-blue
+   accents, precision grid details, HUD corner frames, serif display, mono.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@theme inline {
+  --color-background: rgb(var(--ink));
+  --color-foreground: rgb(var(--bone));
+  --color-card: rgb(var(--ink-2));
+  --color-card-foreground: rgb(var(--bone));
+  --color-popover: rgb(var(--ink-3));
+  --color-popover-foreground: rgb(var(--bone));
+  --color-primary: rgb(var(--signal-cyan));
+  --color-primary-foreground: rgb(255 255 255);
+  --color-secondary: rgb(var(--ink-3));
+  --color-secondary-foreground: rgb(var(--bone));
+  --color-muted: rgb(var(--ink-2));
+  --color-muted-foreground: rgb(var(--bone-2));
+  --color-accent: rgb(var(--signal-amber));
+  --color-accent-foreground: rgb(255 255 255);
+  --color-destructive: rgb(var(--signal-red));
+  --color-destructive-foreground: rgb(255 255 255);
+  --color-border: rgb(var(--steel));
+  --color-input: rgb(var(--ink-3));
+  --color-ring: rgb(var(--signal-cyan));
+  --radius: 6px;
+
+  --font-sans: var(--font-sans), system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+  --font-serif: var(--font-serif), Georgia, serif;
+}
+
+@layer base {
+  :root {
+    /* Surface (light palette) */
+    --ink:           248 250 252;   /* page bg — slate-50 */
+    --ink-2:         255 255 255;   /* card bg — white */
+    --ink-3:         241 245 249;   /* raised / input — slate-100 */
+    --ink-4:         226 232 240;   /* hover — slate-200 */
+
+    /* Steel (borders / dividers) */
+    --steel:         203 213 225;   /* slate-300 */
+    --steel-2:       148 163 184;   /* slate-400 */
+
+    /* Bone (text) */
+    --bone:           15  23  42;   /* primary text — slate-900 */
+    --bone-2:         71  85 105;   /* secondary — slate-600 */
+    --bone-3:        148 163 184;   /* tertiary — slate-400 */
+
+    /* Signal (semantic + brand) — adjusted for light backgrounds */
+    --signal-cyan:    2 132 199;    /* sky-600 — primary brand */
+    --signal-amber:  217 119   6;   /* amber-600 */
+    --signal-green:    5 150 105;   /* emerald-600 */
+    --signal-red:    220  38  38;   /* red-600 */
+    --signal-iris:   109  40 217;   /* violet-600 */
+    --signal-rose:   219  39 119;   /* pink-600 */
+
+    /* Backwards-compat shadcn aliases */
+    --background: 248 250 252;
+    --foreground: 15 23 42;
+    --card: 255 255 255;
+    --card-foreground: 15 23 42;
+    --popover: 241 245 249;
+    --popover-foreground: 15 23 42;
+    --primary: 2 132 199;
+    --primary-foreground: 255 255 255;
+    --secondary: 241 245 249;
+    --secondary-foreground: 15 23 42;
+    --muted: 241 245 249;
+    --muted-foreground: 71 85 105;
+    --accent: 217 119 6;
+    --accent-foreground: 255 255 255;
+    --destructive: 220 38 38;
+    --destructive-foreground: 255 255 255;
+    --border: 203 213 225;
+    --input: 241 245 249;
+    --ring: 2 132 199;
+  }
+
+  :root[data-theme="dark"] {
+    --ink: 15 23 42;
+    --ink-2: 30 41 59;
+    --ink-3: 51 65 85;
+    --ink-4: 71 85 105;
+    --steel: 71 85 105;
+    --steel-2: 100 116 139;
+    --bone: 248 250 252;
+    --bone-2: 203 213 225;
+    --bone-3: 148 163 184;
+    --background: 15 23 42;
+    --foreground: 248 250 252;
+    --card: 30 41 59;
+    --card-foreground: 248 250 252;
+    --popover: 30 41 59;
+    --popover-foreground: 248 250 252;
+    --secondary: 51 65 85;
+    --secondary-foreground: 248 250 252;
+    --muted: 51 65 85;
+    --muted-foreground: 203 213 225;
+    --border: 71 85 105;
+    --input: 51 65 85;
+  }
+}
+
+@layer base {
+  * {
+    border-color: rgb(var(--steel) / 0.7);
+  }
+  html, body {
+    background: rgb(var(--ink));
+    color: rgb(var(--bone));
+    font-feature-settings: "ss01" 1, "cv01" 1, "cv02" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    /* Precision dot grid + soft brand glow at top */
+    background-image:
+      radial-gradient(70rem 45rem at 75% -15%, rgb(var(--signal-cyan) / 0.06), transparent 60%),
+      radial-gradient(circle at 1px 1px, rgb(var(--steel) / 0.6) 1px, transparent 0);
+    background-size: auto, 28px 28px;
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: rgb(var(--signal-cyan) / 0.18);
+    color: rgb(var(--bone));
+  }
+
+  /* Display/serif heading utility */
+  .font-display {
+    font-family: var(--font-serif), Georgia, serif;
+    font-feature-settings: "liga" 1, "ss01" 1;
+    letter-spacing: -0.02em;
+  }
+  .font-mono, code, kbd, samp, pre {
+    font-family: var(--font-mono), ui-monospace, monospace;
+  }
+
+  /* Tabular numerals everywhere a stat is shown */
+  .tabular { font-variant-numeric: tabular-nums; }
+}
+
+/* ─── HUD corner brackets ─────────────────────────────────────────────── */
+.hud {
+  position: relative;
+  background: rgb(var(--ink-2));
+  border: 1px solid rgb(var(--steel));
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.06),
+    0 4px 16px rgb(0 0 0 / 0.04),
+    inset 0 1px 0 rgb(255 255 255 / 0.8);
+}
+.hud::before, .hud::after,
+.hud > .hud-corner-tl,
+.hud > .hud-corner-tr,
+.hud > .hud-corner-bl,
+.hud > .hud-corner-br {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: rgb(var(--signal-cyan));
+  pointer-events: none;
+}
+.hud::before { /* top-left */
+  top: -1px; left: -1px;
+  border-top: 1.5px solid; border-left: 1.5px solid;
+}
+.hud::after { /* bottom-right */
+  bottom: -1px; right: -1px;
+  border-bottom: 1.5px solid; border-right: 1.5px solid;
+}
+/* Optional extra spans for the other two corners */
+.hud-corner-tr {
+  position: absolute; top: -1px; right: -1px;
+  width: 12px; height: 12px;
+  border-top: 1.5px solid rgb(var(--signal-cyan));
+  border-right: 1.5px solid rgb(var(--signal-cyan));
+}
+.hud-corner-bl {
+  position: absolute; bottom: -1px; left: -1px;
+  width: 12px; height: 12px;
+  border-bottom: 1.5px solid rgb(var(--signal-cyan));
+  border-left: 1.5px solid rgb(var(--signal-cyan));
+}
+
+/* Variant: amber HUD frame for accent/active panels */
+.hud-amber::before, .hud-amber::after,
+.hud-amber > .hud-corner-tr,
+.hud-amber > .hud-corner-bl {
+  border-color: rgb(var(--signal-amber)) !important;
+}
+.hud-amber > .hud-corner-tr { border-top-color: rgb(var(--signal-amber)) !important; border-right-color: rgb(var(--signal-amber)) !important; }
+.hud-amber > .hud-corner-bl { border-bottom-color: rgb(var(--signal-amber)) !important; border-left-color: rgb(var(--signal-amber)) !important; }
+
+/* ─── Tick row (small horizontal markers) ─────────────────────────────── */
+.tick-row {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgb(var(--steel) / 0.8) 0 1px, transparent 1px 8px
+  );
+  height: 6px;
+}
+
+/* ─── Scanline overlay (sparingly, for the hero / robot preview) ──────── */
+.scanlines {
+  position: relative;
+}
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgb(var(--bone) / 0.015) 0 1px,
+    transparent 1px 3px
+  );
+  mix-blend-mode: multiply;
+}
+
+/* ─── Animated pulse dot ──────────────────────────────────────────────── */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.6); opacity: 0.9; }
+  80%  { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.pulse-ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ─── Marquee data strip ──────────────────────────────────────────────── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 40s linear infinite;
+}
+
+/* ─── Skeleton shimmer ────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--ink-3)) 25%,
+    rgb(var(--ink-4)) 50%,
+    rgb(var(--ink-3)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ─── Stream-in entrance ──────────────────────────────────────────────── */
+@keyframes stream-in {
+  from { transform: translateY(8px); opacity: 0; clip-path: inset(0 100% 0 0); }
+  to   { transform: translateY(0);    opacity: 1; clip-path: inset(0 0 0 0); }
+}
+.stream-in { animation: stream-in 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+/* ─── Animated gradient border (upload drop zones, active states) ─────── */
+@keyframes gradient-spin {
+  0%   { --gradient-angle: 0deg; }
+  100% { --gradient-angle: 360deg; }
+}
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.upload-active-border {
+  border: 2px solid transparent;
+  background-image:
+    linear-gradient(rgb(var(--ink-2)), rgb(var(--ink-2))),
+    linear-gradient(var(--gradient-angle, 135deg), rgb(var(--signal-cyan)), rgb(var(--signal-iris)), rgb(var(--signal-cyan)));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: gradient-spin 3s linear infinite;
+}
+
+/* ─── Soft glow ring on focus ─────────────────────────────────────────── */
+:where(button, a, input, textarea, [role="button"]):focus-visible {
+  outline: 2px solid rgb(var(--signal-cyan));
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgb(var(--signal-cyan) / 0.12);
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgb(var(--ink-3)); }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--steel-2) / 0.8);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--signal-cyan) / 0.5); }
+
+/* ─── Blueprint grid backdrop (used as full-page hero accent) ─────────── */
+.bp-grid {
+  background-image:
+    linear-gradient(rgb(var(--steel) / 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--steel) / 0.3) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.bp-grid-fine {
+  background-image:
+    linear-gradient(rgb(var(--steel) / 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--steel) / 0.2) 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+
+/* ─── Diagonal stripe helper (for warning bands) ──────────────────────── */
+.stripe-warn {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(var(--signal-amber) / 0.12) 0 8px,
+    transparent 8px 16px
+  );
+}
+
+/* ─── Step card entry animation ───────────────────────────────────────── */
+@keyframes slide-up-fade {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.slide-up-fade {
+  animation: slide-up-fade 0.35s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* ─── Floating icon animation ─────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+.float-anim { animation: float 3s ease-in-out infinite; }
