@@ -12,7 +12,7 @@ export default function LibraryPage() {
       <div>
         <p className="font-mono text-xs uppercase tracking-[0.22em] text-[rgb(var(--signal-cyan))]">Proven templates</p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight">Skill Library</h1>
-        <p className="mt-2 text-[rgb(var(--bone-2))]">Ready skills seeded for the demo plant.</p>
+        <p className="mt-2 text-[rgb(var(--bone-2))]">Ready skills available for immediate validation and deployment.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {ready.map((skill, index) => (
@@ -31,4 +31,3 @@ export default function LibraryPage() {
     </div>
   );
 }
-

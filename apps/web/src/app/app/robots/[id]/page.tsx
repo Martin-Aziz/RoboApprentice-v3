@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDemoData } from "@/lib/use-demo-data";
 import { formatDate, formatDuration } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
+import { RobotViewport } from "@/components/robot-viewport";
+import { FALLBACK_POLICY } from "@/lib/demo-seed";
 
 export default function RobotDetailPage() {
   const params = useParams<{ id: string }>();
@@ -34,6 +36,7 @@ export default function RobotDetailPage() {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="visualization">Visualization</TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="executions">Executions</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -42,6 +45,9 @@ export default function RobotDetailPage() {
           <Metric label="Uptime 24h" value={`${robot.metrics?.uptime_24h.toFixed(1)}%`} />
           <Metric label="Cycles today" value={`${robot.metrics?.cycles_today}`} />
           <Metric label="Mean cycle" value={formatDuration(robot.metrics?.mean_cycle_ms ?? 0, locale)} />
+        </TabsContent>
+        <TabsContent value="visualization" className="mt-4">
+          <RobotViewport robotType={robot.model.includes("KUKA") ? "kuka_kr6" : robot.model.includes("TM") ? "techman_tm12" : "ur5e"} policy={FALLBACK_POLICY} playbackState={robot.status === "running" ? "playing" : "paused"} />
         </TabsContent>
         <TabsContent value="skills" className="mt-4 rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))]">
           {deployed.map((skill) => <Row key={skill.id} left={skill.name} mid={`${Math.round(skill.confidence * 100)}% confidence`} right={skill.status} />)}
@@ -53,7 +59,7 @@ export default function RobotDetailPage() {
           })}
         </TabsContent>
         <TabsContent value="settings" className="mt-4 rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
-          <div className="flex items-center gap-3"><Settings className="h-4 w-4" /><span>URDF profile: standard six-axis collaborative arm. IP address and name editing are disabled in demo mode.</span></div>
+          <div className="flex items-center gap-3"><Settings className="h-4 w-4" /><span>URDF profile: standard six-axis collaborative arm. Network settings are managed from workcell setup.</span></div>
         </TabsContent>
       </Tabs>
     </div>

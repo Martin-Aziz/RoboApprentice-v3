@@ -4,14 +4,18 @@ const currencyByLocale: Record<DemoLocale, string> = {
   "en-US": "USD",
   "en-GB": "GBP",
   "de-DE": "EUR",
+  "es-ES": "EUR",
   "zh-CN": "CNY",
+  "ja-JP": "JPY",
 };
 
 export const operatorRateByLocale: Record<DemoLocale, number> = {
   "en-US": 32,
   "en-GB": 18,
   "de-DE": 28,
+  "es-ES": 22,
   "zh-CN": 85,
+  "ja-JP": 3400,
 };
 
 export function formatCurrency(amount: number, locale: DemoLocale) {
@@ -44,4 +48,3 @@ export function formatTemperature(celsius: number, locale: DemoLocale) {
   if (locale === "en-US") return `${Math.round((celsius * 9) / 5 + 32)} °F`;
   return `${Math.round(celsius)} °C`;
 }
-

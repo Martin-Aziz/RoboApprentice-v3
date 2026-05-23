@@ -33,6 +33,7 @@ export default function RobotsPage() {
               <Link
                 key={robot.id}
                 href={`/app/robots/${robot.id}`}
+                data-testid="robot-card"
                 className={`rounded-lg border bg-[rgb(var(--ink-2))] p-4 transition hover:border-[rgb(var(--signal-cyan))] ${
                   highlightedRobotId === robot.id ? "border-[rgb(var(--signal-green))] shadow-lg" : "border-[rgb(var(--steel))]"
                 }`}
@@ -71,7 +72,7 @@ export default function RobotsPage() {
         </div>
         <div className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-4">
           <h2 className="font-semibold">Live signal</h2>
-          <p className="mt-2 flex items-center gap-2 text-sm text-[rgb(var(--bone-2))]"><Clock className="h-4 w-4" /> Simulated execution updates every few seconds.</p>
+          <p className="mt-2 flex items-center gap-2 text-sm text-[rgb(var(--bone-2))]"><Clock className="h-4 w-4" /> Execution updates are persisted to the local workspace every few seconds.</p>
         </div>
       </aside>
     </div>
@@ -97,4 +98,3 @@ function Spark({ values }: { values: number[] }) {
   const points = values.map((v, i) => `${(i / (values.length - 1)) * 100},${36 - ((v - min) / (max - min || 1)) * 30}`).join(" ");
   return <svg viewBox="0 0 100 40" className="mt-4 h-12 w-full"><polyline fill="none" stroke="rgb(var(--signal-cyan))" strokeWidth="2" points={points} /></svg>;
 }
-

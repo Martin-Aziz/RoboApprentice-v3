@@ -16,7 +16,7 @@ export default function DashboardPage() {
     <div className="mx-auto max-w-7xl space-y-8 p-5 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[rgb(var(--signal-cyan))]">Walldorf Assembly Plant</p>
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[rgb(var(--signal-cyan))]">Production Facility</p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight">Live automation overview</h1>
           <p className="mt-2 text-[rgb(var(--bone-2))]">{t("regional.secondary")}</p>
         </div>
@@ -45,7 +45,7 @@ export default function DashboardPage() {
           <Header title="Robots" href="/app/robots" />
           <div className="grid gap-3 p-4 md:grid-cols-3">
             {robots.map((robot) => (
-              <Link key={robot.id} href={`/app/robots/${robot.id}`} className="rounded-md border border-[rgb(var(--steel))] p-4 transition hover:border-[rgb(var(--signal-cyan))]">
+              <Link key={robot.id} href={`/app/robots/${robot.id}`} data-testid="robot-card" className="rounded-md border border-[rgb(var(--steel))] p-4 transition hover:border-[rgb(var(--signal-cyan))]">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium">{robot.name}</p>
@@ -82,11 +82,11 @@ export default function DashboardPage() {
       <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Demo of demos</h2>
-            <p className="mt-1 text-sm text-[rgb(var(--bone-2))]">Start with the seeded precision-gripper video, then export code and ROI in the same flow.</p>
+            <h2 className="text-xl font-semibold">Teach from demonstration</h2>
+            <p className="mt-1 text-sm text-[rgb(var(--bone-2))]">Start with the precision-gripper video, then export code and ROI in the same flow.</p>
           </div>
           <Button asChild variant="outline" className="gap-2">
-            <Link href="/app/teach"><GraduationCap className="h-4 w-4" /> Run the 30-second demo</Link>
+            <Link href="/app/teach"><GraduationCap className="h-4 w-4" /> Run the 30-second workflow</Link>
           </Button>
         </div>
       </section>

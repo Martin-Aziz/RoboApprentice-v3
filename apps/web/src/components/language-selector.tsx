@@ -7,13 +7,15 @@ const labels: Record<DemoLocale, string> = {
   "en-US": "US",
   "en-GB": "UK",
   "de-DE": "DE",
+  "es-ES": "ES",
   "zh-CN": "CN",
+  "ja-JP": "JP",
 };
 
 export function LanguageSelector() {
   const { locale, setLocale } = useLocale();
   return (
-    <div className="flex rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-1">
+    <div data-testid="locale-switcher" className="flex rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-1">
       {LOCALES.map((item) => (
         <button
           key={item}
@@ -31,4 +33,3 @@ export function LanguageSelector() {
     </div>
   );
 }
-

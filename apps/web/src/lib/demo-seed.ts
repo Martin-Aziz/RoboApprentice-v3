@@ -1,19 +1,19 @@
-import type { Facility, Robot, Skill, SkillExecution, TaskPolicy, TaskStep } from "@/lib/types";
+import type { Facility, LocaleCode, Robot, Skill, SkillExecution, TaskPolicy, TaskStep } from "@/lib/types";
 
-export type DemoLocale = "en-US" | "en-GB" | "de-DE" | "zh-CN";
+export type DemoLocale = LocaleCode;
 
 export const DEMO_USER = {
   id: "demo-user-0000-0000-0000-000000000000",
-  email: "demo@aurevix.local",
-  name: "Demo User",
+  email: "",
+  name: "Local Session",
   role: "admin",
   created_at: new Date().toISOString(),
 };
 
 export const DEMO_FACILITIES: Facility[] = [
   {
-    id: "fac-walldorf-001",
-    name: "Walldorf Assembly Plant",
+    id: "fac-production-001",
+    name: "Production Facility",
     owner_id: DEMO_USER.id,
     created_at: "2025-09-14T08:00:00Z",
     region: "EU",
@@ -23,7 +23,7 @@ export const DEMO_FACILITIES: Facility[] = [
 export const DEMO_ROBOTS: Robot[] = [
   {
     id: "rbt-ur5e-001",
-    facility_id: "fac-walldorf-001",
+    facility_id: "fac-production-001",
     name: "Assembly Cell 1",
     brand: "Universal Robots",
     model: "UR5e",
@@ -36,7 +36,7 @@ export const DEMO_ROBOTS: Robot[] = [
   },
   {
     id: "rbt-kuka-001",
-    facility_id: "fac-walldorf-001",
+    facility_id: "fac-production-001",
     name: "Welding Station 3",
     brand: "KUKA",
     model: "KR 6 R900",
@@ -49,7 +49,7 @@ export const DEMO_ROBOTS: Robot[] = [
   },
   {
     id: "rbt-techman-001",
-    facility_id: "fac-walldorf-001",
+    facility_id: "fac-production-001",
     name: "Quality Inspection Cell",
     brand: "Techman",
     model: "TM12",
@@ -65,7 +65,7 @@ export const DEMO_ROBOTS: Robot[] = [
 export const DEMO_SKILLS: Skill[] = [
   {
     id: "skl-pick-bracket-a",
-    facility_id: "fac-walldorf-001",
+    facility_id: "fac-production-001",
     name: "Pick Bracket A",
     description: "Pick metal bracket from conveyor, orient, place in assembly fixture",
     task_language: "en",
@@ -81,7 +81,7 @@ export const DEMO_SKILLS: Skill[] = [
   },
   {
     id: "skl-weld-chassis",
-    facility_id: "fac-walldorf-001",
+    facility_id: "fac-production-001",
     name: "Spot Weld Chassis Bracket",
     description: "Three-point spot weld on lower chassis bracket assembly",
     task_language: "en",
@@ -97,7 +97,7 @@ export const DEMO_SKILLS: Skill[] = [
   },
   {
     id: "skl-inspect-pcb",
-    facility_id: "fac-walldorf-001",
+    facility_id: "fac-production-001",
     name: "Inspect PCB Solder Joints",
     description: "Vision-based inspection of 32 solder joints on PCB",
     task_language: "en",
@@ -113,7 +113,7 @@ export const DEMO_SKILLS: Skill[] = [
   },
   {
     id: "skl-pack-tray",
-    facility_id: "fac-walldorf-001",
+    facility_id: "fac-production-001",
     name: "Pack Components in Tray",
     description: "Sort and place 12 components in shipping tray, 4x3 grid",
     task_language: "en",
@@ -127,7 +127,7 @@ export const DEMO_SKILLS: Skill[] = [
   },
   {
     id: "skl-degraded-example",
-    facility_id: "fac-walldorf-001",
+    facility_id: "fac-production-001",
     name: "Place Connector (drift detected)",
     description: "Connector placement on motherboard - confidence dropping over last 14 days",
     task_language: "en",

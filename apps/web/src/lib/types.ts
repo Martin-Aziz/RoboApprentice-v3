@@ -1,3 +1,5 @@
+export type LocaleCode = "en-US" | "en-GB" | "de-DE" | "es-ES" | "zh-CN" | "ja-JP";
+
 export interface User {
   id: string;
   email: string;
@@ -154,4 +156,57 @@ export interface Task {
   errorMessage?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SessionPreferences {
+  locale: LocaleCode;
+  theme: "light" | "dark";
+  units: "metric" | "imperial";
+  default_facility_id: string | null;
+}
+
+export interface SessionRecord {
+  session_id: string;
+  created_at: string;
+  preferences: SessionPreferences;
+}
+
+export interface ROIInputs {
+  robots: number;
+  shiftsPerDay: number;
+  hoursPerShift: number;
+  hourlyLaborCost: number;
+  annualMaintenanceCost: number;
+  robotCellCost: number;
+  currentCycleSeconds: number;
+  automatedCycleSeconds: number;
+}
+
+export interface ROIOutputs {
+  annualSavings: number;
+  paybackMonths: number;
+  fiveYearNet: number;
+  throughputGain: number;
+}
+
+export interface PersistedPolicy {
+  policy_id: string;
+  skill_id: string;
+  version: number;
+  task_policy: TaskPolicy;
+  generated_code: {
+    urscript: string;
+    ros2_python: string;
+    pseudocode: string;
+  };
+  simulation_manifest: object;
+  created_at: string;
+}
+
+export interface ROIAnalysis {
+  analysis_id: string;
+  created_at: string;
+  inputs: ROIInputs;
+  outputs: ROIOutputs;
+  locale: LocaleCode;
 }

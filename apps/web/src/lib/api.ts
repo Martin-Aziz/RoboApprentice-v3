@@ -1,4 +1,5 @@
-// Use empty base so requests go through Next.js rewrites proxy (/api/* → API server)
+// Future cloud/API integration helper. The v3 runtime path stores workspace data
+// in IndexedDB and does not attach auth tokens or perform login retries.
 const API_BASE = "";
 
 export class ApiError extends Error {
@@ -44,14 +45,6 @@ async function request<T>(
   } else if (body !== undefined) {
     headers["Content-Type"] = "application/json";
     fetchBody = JSON.stringify(body);
-  }
-
-  const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("forge_access_token")
-      : null;
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
   }
 
   const res = await fetch(`${API_BASE}${path}`, {

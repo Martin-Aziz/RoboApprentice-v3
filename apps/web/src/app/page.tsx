@@ -26,7 +26,7 @@ export default function LandingPage() {
 
       <section className="mx-auto grid min-h-[72vh] max-w-7xl items-center gap-10 px-5 py-10 lg:grid-cols-[1fr_0.9fr]">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-[rgb(var(--signal-cyan))]">Aurevix demo-first global edition</p>
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-[rgb(var(--signal-cyan))]">Aurevix enterprise robot teaching</p>
           <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">{regional.primary}</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-[rgb(var(--bone-2))]">{t("landing.sub")}</p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -83,4 +83,3 @@ function MiniStat({ value, label }: { value: string; label: string }) {
 function Feature({ icon, title }: { icon: React.ReactElement; title: string }) {
   return <div className="flex items-center gap-2 rounded-md bg-[rgb(var(--ink-3))] px-3 py-2 text-sm [&>svg]:h-4 [&>svg]:w-4">{icon}{title}</div>;
 }
-

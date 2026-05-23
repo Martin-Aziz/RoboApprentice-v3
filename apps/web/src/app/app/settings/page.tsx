@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { LanguageSelector } from "@/components/language-selector";
-import { useAuthStore } from "@/lib/store";
+import { useSessionStore } from "@/lib/store";
 import { useDemoData, resetDemoData } from "@/lib/use-demo-data";
 import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
-  const { user } = useAuthStore();
+  const { session_id, preferences, setPreferences } = useSessionStore();
   const { facility, robots, skills } = useDemoData();
   const [theme, setTheme] = useState("light");
 
@@ -18,15 +18,15 @@ export default function SettingsPage() {
 
   const toggleTheme = () => {
     const next = theme === "light" ? "dark" : "light";
-    localStorage.setItem("aurevix_theme", next);
     document.documentElement.dataset.theme = next;
+    setPreferences({ theme: next as "light" | "dark" });
     setTheme(next);
   };
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-5 md:p-8">
       <div>
-        <p className="font-mono text-xs uppercase tracking-[0.22em] text-[rgb(var(--signal-cyan))]">Demo settings</p>
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-[rgb(var(--signal-cyan))]">Workspace settings</p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight">Settings</h1>
       </div>
       <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
@@ -38,11 +38,11 @@ export default function SettingsPage() {
         </div>
       </section>
       <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
-        <h2 className="font-semibold">Operator</h2>
+        <h2 className="font-semibold">Session</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <Info label="Name" value={user?.name ?? "Demo User"} />
-          <Info label="Email" value={user?.email ?? "demo@aurevix.local"} />
-          <Info label="Role" value={user?.role ?? "admin"} />
+          <Info label="Identity" value="Anonymous browser session" />
+          <Info label="Session ID" value={session_id?.slice(0, 12) ?? "initializing"} />
+          <Info label="Units" value={preferences.units} />
         </div>
       </section>
       <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
@@ -50,7 +50,7 @@ export default function SettingsPage() {
         <div className="mt-4 flex flex-wrap gap-3">
           <LanguageSelector />
           <Button variant="outline" onClick={toggleTheme}>{theme === "light" ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />} {theme === "light" ? "Dark mode" : "Light mode"}</Button>
-          <Button variant="outline" onClick={resetDemoData}>Reset demo</Button>
+          <Button variant="outline" onClick={resetDemoData}>Reset workspace</Button>
         </div>
       </section>
     </div>

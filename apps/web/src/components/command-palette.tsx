@@ -59,9 +59,11 @@ export function CommandPalette() {
             {skills.map((skill) => <Item key={skill.id} onSelect={() => go("/app/skills")} icon={<Zap />}>{skill.name}</Item>)}
           </Command.Group>
           <Command.Group heading="Actions">
-            <Item onSelect={() => resetDemoData()} icon={<RotateCcw />}>Reset demo</Item>
+            <Item onSelect={() => resetDemoData()} icon={<RotateCcw />}>Reset workspace</Item>
             <Item onSelect={() => setLocale("de-DE")} icon={<Languages />}>Switch to German</Item>
+            <Item onSelect={() => setLocale("es-ES")} icon={<Languages />}>Switch to Spanish</Item>
             <Item onSelect={() => setLocale("zh-CN")} icon={<Languages />}>Switch to Chinese</Item>
+            <Item onSelect={() => setLocale("ja-JP")} icon={<Languages />}>Switch to Japanese</Item>
           </Command.Group>
         </Command.List>
       </Command>
@@ -80,4 +82,3 @@ function Item({ children, icon, onSelect }: { children: React.ReactNode; icon: R
     </Command.Item>
   );
 }
-

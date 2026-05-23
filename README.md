@@ -1,8 +1,7 @@
-# Aurevix V2 - Demo-First Global Edition
+# Aurevix
 
-Aurevix turns a human demonstration video into a reusable robot skill: interpreted motion steps, replayable policy, generated robot code, and a shareable ROI artifact.
-
-V2 is a buyer-facing demo fork. It removes the login wall, preloads realistic plant data, localizes the product for four regions, and gets a prospect from landing page to visible robot-learning result in under 30 seconds.
+Teach industrial robots new tasks from a single human demonstration.
+Browser-based, no login required.
 
 ## Quick Start
 
@@ -11,42 +10,32 @@ pnpm install
 pnpm dev
 ```
 
-Open `http://localhost:3000`.
+Open http://localhost:3000
 
-The demo runs from the Next.js frontend with seeded in-memory/localStorage data. The Rust API and Python ML service remain in the repository and still build, but they are not required for the v2 demo path.
-
-## Ollama
-
-The teach flow still uses local-only Ollama when available. Start Ollama separately:
+Optional: install Ollama for local LLM interpretation.
 
 ```bash
-ollama serve
-ollama pull gemma4
+brew install ollama
+ollama pull llama3.1:8b
 ```
 
-If Ollama is unavailable, `/app/teach` falls back to a pre-recorded interpretation sequence so the prospect demo does not break.
+## Supported Robots
 
-## Locales
+- Universal Robots UR3, UR5, UR5e, UR10, UR10e
+- KUKA KR 6, KR 10
+- Techman TM5, TM12
 
-Use the flag pills in the nav or settings page to switch between:
+## Languages
 
-- `en-US`
-- `en-GB`
-- `de-DE`
-- `zh-CN`
+English (US/UK), Deutsch, Español, 中文 (简体), 日本語
 
-Currency, dates, units, ROI defaults, and regional product framing adapt to the selected locale.
+## Architecture
 
-## Reset Demo Data
+- Frontend: Next.js 15, React 19, Three.js, urdf-loader
+- Local LLM: Ollama optional, with deterministic fallback interpretation
+- Persistence: IndexedDB via `idb`
+- Backend services for future cloud integration: Rust API and Python ML service
 
-Use the reset button in the sidebar, command palette, or settings page. It clears v2 localStorage demo state and reloads the app.
+## License
 
-## Backend Services
-
-The original services are still present:
-
-- `apps/api` - Rust Axum API with auth, facilities, robots, skills, demonstrations
-- `apps/ml-service` - Python FastAPI ML service
-
-They are preserved for the migration path back to the full v1 architecture.
-
+See `LICENSE`.

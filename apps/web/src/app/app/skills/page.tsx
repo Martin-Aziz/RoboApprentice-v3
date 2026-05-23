@@ -21,7 +21,7 @@ export default function SkillsPage() {
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {skills.map((skill) => (
-          <article key={skill.id} className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
+          <Link key={skill.id} href={`/app/skills/${skill.id}`} data-testid="skill-card" className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5 transition hover:border-[rgb(var(--signal-cyan))]">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-semibold">{skill.name}</h2>
@@ -37,7 +37,7 @@ export default function SkillsPage() {
               <Small label="Cycle" value={skill.mean_cycle_ms ? formatDuration(skill.mean_cycle_ms, locale) : "training"} />
             </div>
             <p className="mt-4 text-xs text-[rgb(var(--bone-2))]">Updated {formatDate(skill.updated_at, locale)}</p>
-          </article>
+          </Link>
         ))}
       </div>
     </div>
@@ -52,4 +52,3 @@ function Confidence({ value }: { value: number }) {
 function Small({ label, value }: { label: string; value: string }) {
   return <div><p className="font-mono text-sm tabular">{value}</p><p className="text-xs text-[rgb(var(--bone-2))]">{label}</p></div>;
 }
-

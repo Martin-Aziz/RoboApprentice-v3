@@ -8,7 +8,7 @@ import { Bot, CheckCircle2, Code2, Download, Play, Rocket, TrendingUp, X } from 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RobotArm } from "@/components/robot-arm";
+import { RobotViewport } from "@/components/robot-viewport";
 import { RoiCalculator } from "@/components/roi-calculator";
 import { DEMO_VIDEO_URL, FALLBACK_POLICY, FALLBACK_STEPS } from "@/lib/demo-seed";
 import { useDemoData } from "@/lib/use-demo-data";
@@ -36,7 +36,7 @@ export default function TeachPage() {
       try {
         await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(900) });
       } catch {
-        console.warn("Aurevix demo: Ollama unavailable, using pre-recorded interpretation fallback.");
+        console.warn("Ollama unavailable, using deterministic interpretation fallback.");
       }
       for (let i = 0; i < FALLBACK_STEPS.length; i++) {
         if (cancelled) return;
@@ -57,9 +57,9 @@ export default function TeachPage() {
     await new Promise((resolve) => setTimeout(resolve, 3000));
     const skill: Skill = {
       id: "skl-v2-precision-gripper",
-      facility_id: "fac-walldorf-001",
+      facility_id: "fac-production-001",
       name: "Pick Bracket A",
-      description: "Learned from the v2 precision gripper demo",
+      description: "Learned from the precision gripper workflow",
       task_language: "en",
       confidence: 0.94,
       status: "ready",
@@ -78,11 +78,6 @@ export default function TeachPage() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-5 p-4 md:p-6">
-      <div className="flex flex-col gap-3 rounded-lg border border-[rgb(var(--signal-cyan)/0.35)] bg-[rgb(var(--signal-cyan)/0.08)] p-4 md:flex-row md:items-center md:justify-between">
-        <p className="text-sm font-medium text-[rgb(var(--bone))]">{t("teach.banner")}</p>
-        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Reset</Button>
-      </div>
-
       <div className="grid gap-5 lg:grid-cols-[0.45fr_0.55fr]">
         <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-4">
           <div className="flex items-center justify-between">
@@ -90,7 +85,7 @@ export default function TeachPage() {
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-[rgb(var(--signal-cyan))]">Video input</p>
               <h1 className="mt-2 text-2xl font-semibold">{t("teach.title")}</h1>
             </div>
-            {!started && <Button onClick={() => setStarted(true)} className="gap-2"><Play className="h-4 w-4" /> {t("teach.autoplay")}</Button>}
+            {!started && <Button data-testid="auto-play-demo" onClick={() => setStarted(true)} className="gap-2"><Play className="h-4 w-4" /> {t("teach.autoplay")}</Button>}
           </div>
           <video src={DEMO_VIDEO_URL} controls muted loop className="mt-4 aspect-video w-full rounded-md bg-[rgb(var(--ink-3))] object-cover" />
           <Button variant="outline" className="mt-4 w-full">Try your own video</Button>
@@ -104,7 +99,12 @@ export default function TeachPage() {
             </div>
             <span className="font-mono text-sm tabular">{activeStep + 1}/{FALLBACK_STEPS.length}</span>
           </div>
-          <RobotArm steps={steps} activeStepIndex={activeStep} controlled className="h-[420px] overflow-hidden rounded-md" />
+          <RobotViewport
+            robotType="ur5e"
+            policy={steps.length ? policy : FALLBACK_POLICY}
+            playbackState={done || started ? "playing" : "paused"}
+            className="min-h-[520px]"
+          />
         </section>
       </div>
 
@@ -124,7 +124,7 @@ export default function TeachPage() {
       </section>
 
       {done && (
-        <section className="rounded-lg border border-[rgb(var(--signal-green)/0.5)] bg-[rgb(var(--signal-green)/0.08)] p-5">
+        <section data-testid="result-panel" className="rounded-lg border border-[rgb(var(--signal-green)/0.5)] bg-[rgb(var(--signal-green)/0.08)] p-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-2xl font-semibold"><CheckCircle2 className="h-6 w-6 text-[rgb(var(--signal-green))]" /> {t("teach.result")}</h2>
@@ -145,7 +145,7 @@ export default function TeachPage() {
             <label className="grid gap-1 text-sm"><span>Robot</span><select className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-3 py-2"><option>{robots[0]?.name} - {robots[0]?.model}</option></select></label>
             <div className="grid grid-cols-2 gap-3"><Info label="Estimated cycle" value="4.2s" /><Info label="Confidence" value="94%" /></div>
             {deploying && <Progress value={66} />}
-            {deployed ? <p className="rounded-md bg-[rgb(var(--signal-green)/0.12)] p-3 text-sm text-[rgb(var(--signal-green))]">Skill is now live on Assembly Cell 1. <a href="/app/robots" className="underline">Open in fleet view</a></p> : <Button onClick={deploy}>Deploy</Button>}
+            {deployed ? <p className="rounded-md bg-[rgb(var(--signal-green)/0.12)] p-3 text-sm text-[rgb(var(--signal-green))]">Skill is now live on Assembly Cell 1. <a href="/app/robots" className="underline">Open in fleet view</a></p> : <Button data-testid="deploy-skill" onClick={deploy}>Deploy</Button>}
           </div>
         </Modal>
       )}

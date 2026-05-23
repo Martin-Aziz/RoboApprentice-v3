@@ -99,7 +99,7 @@ export function RoiCalculator({ initial, readOnly = false }: { initial?: RoiInpu
               <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" className="min-w-0 flex-1 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-3 py-2 text-sm" />
               <Button variant="outline" onClick={() => setEmailed(true)}>Send</Button>
             </div>
-            {emailed && <p className="mt-2 text-sm text-[rgb(var(--signal-green))]">Captured for demo follow-up. No email was sent.</p>}
+            {emailed && <p className="mt-2 text-sm text-[rgb(var(--signal-green))]">Saved to this workspace. No email was sent.</p>}
           </div>
         )}
       </section>

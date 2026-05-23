@@ -29,7 +29,9 @@ const regionalOpportunityPerRobot: Record<DemoLocale, number> = {
   "en-US": 15000,
   "en-GB": 12200,
   "de-DE": 13500,
+  "es-ES": 11800,
   "zh-CN": 113500,
+  "ja-JP": 2100000,
 };
 
 export function calculateRoi(inputs: RoiInputs, locale: DemoLocale = "en-US") {

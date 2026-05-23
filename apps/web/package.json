@@ -1,5 +1,5 @@
 {
-  "name": "@forge-mind/web-v2",
+  "name": "@forge-mind/web-v3",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "audit:translations": "node scripts/audit-translations.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
@@ -31,6 +32,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "html2canvas": "^1.4.1",
+    "idb": "^8.0.3",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.454.0",
     "next": "^15.1.0",
@@ -43,6 +45,8 @@
     "sonner": "^1.7.0",
     "tailwind-merge": "^2.6.0",
     "three": "^0.184.0",
+    "three-mesh-bvh": "^0.9.10",
+    "urdf-loader": "^0.12.7",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
