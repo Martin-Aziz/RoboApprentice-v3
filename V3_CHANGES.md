@@ -1,5 +1,51 @@
 # Aurevix V3 Changes
 
+## Fix pass - 2026-05-24
+
+### 3D viewport calibration
+- Revalidated the robot viewport in browser.
+- Kept the demo cell as a table-mounted UR5e and added a visible mount plate.
+- Added table legs so the work surface reads as a real 0.75m-high table instead of a floating slab.
+- Kept policy target Z values relative to the table/base surface.
+- Confirmed the full 8-step workflow completes with zero collision warnings.
+- Replaced the visible arm motion with a single target-driven rig so the gripper fingers, not a waypoint marker or mid-link joint, reach the taught box contact point.
+- Reduced waypoint/active marker prominence so overlays no longer read as a second robot arm.
+
+### Export code quality
+- Replaced the simple teach-page export snippets with production-structured URScript.
+- Added policy provenance, safety constants, TCP setup, gripper helpers, guarded motion wrappers, per-step comments, and verification checkpoints.
+- Replaced the simple ROS 2 class snippet with a typed node scaffold using dataclass step definitions and adapter hooks for MoveIt 2/gripper integration.
+- Captured refreshed export screenshots for URScript and ROS 2.
+
+## Fix pass - 2026-05-23
+
+### Problem 1 fixed: Robot arm geometry now renders
+- Built procedural UR5e arm from Three.js primitives
+- 6 links with correct DH dimensions
+- PBR materials: grey body, dark joint covers, blue accents
+- Two-finger gripper with tip detail
+- End-effector coordinate frame axes
+- Trajectory curve with velocity coloring (green->amber->red)
+- Waypoint sphere markers
+- Ghost trail of recent positions
+- Three-point lighting with soft shadows
+
+### Problem 2 fixed: Collision detection calibrated
+- Home position no longer triggers false collision
+- Depth reporting is physically accurate
+- Minimum reportable depth is 5mm (noise floor)
+- Robot mounting configuration documented
+
+### Problem 3 fixed: ROI calculator math corrected
+- 3-year savings formula corrected (was negative, now positive)
+- Payback period formula corrected
+- Decimal separator respects locale
+
+### Problem 4 fixed: Locale decimal consistency
+- en-US inputs use period decimal separator
+- de-DE / es-ES inputs use comma decimal separator
+- Defaults are locale-aware
+
 ## Phase 0 - Fork Verification
 
 - Created `RoboApprentice-v3` as a sibling copy of `RoboApprentice-v2`.

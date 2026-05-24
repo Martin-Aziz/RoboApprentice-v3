@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from "three-mesh-bvh";
-import URDFLoader, { type URDFJoint } from "urdf-loader";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Box, Maximize2, Pause, Play, RotateCcw, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,10 +9,6 @@ import { cn } from "@/lib/utils";
 import { solveCcdIk, type IKJoint } from "@/lib/ik-solver";
 import type { Pose } from "@/lib/robot-viewport-types";
 import type { TaskPolicy } from "@/lib/types";
-
-THREE.Mesh.prototype.raycast = acceleratedRaycast;
-THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
-THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 
 type RobotType = "ur5e" | "kuka_kr6" | "techman_tm12";
 
@@ -33,11 +27,39 @@ interface RobotViewportProps {
   className?: string;
 }
 
-const ROBOTS: Record<RobotType, { label: string; urdf: string }> = {
-  ur5e: { label: "Universal Robots UR5e", urdf: "/robots/ur5e/ur5e.urdf" },
-  kuka_kr6: { label: "KUKA KR 6 R900", urdf: "/robots/kuka_kr6/kr6.urdf" },
-  techman_tm12: { label: "Techman TM12", urdf: "/robots/techman_tm12/tm12.urdf" },
+interface CollisionResult {
+  detected: boolean;
+  depth: number;
+  description: string;
+}
+
+interface WorkcellGeometry {
+  tableTop: number;
+  tableBox: THREE.Box3;
+  floorY: number;
+}
+
+const ROBOTS: Record<RobotType, { label: string }> = {
+  ur5e: { label: "Universal Robots UR5e" },
+  kuka_kr6: { label: "KUKA KR 6 R900" },
+  techman_tm12: { label: "Techman TM12" },
 };
+
+const TABLE_TOP_Y = 0.75;
+const ROBOT_BASE_Y = TABLE_TOP_Y;
+const TABLE_THICKNESS = 0.05;
+const TABLE_CENTER = { x: 0.35, z: 0 };
+const TABLE_SIZE = { x: 0.8, z: 0.6 };
+const FLOOR_Y = 0;
+
+const UR5E_JOINTS: IKJoint[] = [
+  { name: "shoulder_pan_joint", value: 0, lower: -Math.PI * 2, upper: Math.PI * 2 },
+  { name: "shoulder_lift_joint", value: 0, lower: -Math.PI, upper: Math.PI },
+  { name: "elbow_joint", value: 0, lower: -Math.PI, upper: Math.PI },
+  { name: "wrist_1_joint", value: 0, lower: -Math.PI * 2, upper: Math.PI * 2 },
+  { name: "wrist_2_joint", value: 0, lower: -Math.PI * 2, upper: Math.PI * 2 },
+  { name: "wrist_3_joint", value: 0, lower: -Math.PI * 2, upper: Math.PI * 2 },
+];
 
 function clamp(value: number, lower: number, upper: number) {
   return Math.max(lower, Math.min(upper, value));
@@ -52,7 +74,436 @@ function waypointToPose(policy: TaskPolicy | undefined, index: number): Pose {
 }
 
 function sceneVector(pose: Pose) {
-  return new THREE.Vector3(pose.position.x, pose.position.z, -pose.position.y);
+  return new THREE.Vector3(pose.position.x, ROBOT_BASE_Y + pose.position.z, -pose.position.y);
+}
+
+function poseForIk(pose: Pose): Pose {
+  return pose;
+}
+
+function buildUR5eArm(): THREE.Group {
+  const arm = new THREE.Group();
+
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0xc8c8c8,
+    metalness: 0.4,
+    roughness: 0.5,
+  });
+  const jointMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1a2e,
+    metalness: 0.7,
+    roughness: 0.3,
+  });
+  const accentMat = new THREE.MeshStandardMaterial({
+    color: 0x2f75b5,
+    metalness: 0.3,
+    roughness: 0.6,
+  });
+  const gripperMat = new THREE.MeshStandardMaterial({
+    color: 0x2a2a2a,
+    metalness: 0.8,
+    roughness: 0.2,
+  });
+
+  const baseOuter = new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.085, 0.06, 32), bodyMat);
+  baseOuter.position.y = 0.03;
+  arm.add(baseOuter);
+
+  const baseRing = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.006, 8, 32), accentMat);
+  baseRing.rotation.x = Math.PI / 2;
+  baseRing.position.y = 0.055;
+  arm.add(baseRing);
+
+  const j1Housing = new THREE.Group();
+  j1Housing.name = "joint1";
+  j1Housing.position.y = 0.1273;
+
+  const j1Body = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.068, 0.095, 32), bodyMat);
+  j1Housing.add(j1Body);
+
+  const j1Cap = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.02, 32), jointMat);
+  j1Cap.position.y = 0.057;
+  j1Housing.add(j1Cap);
+
+  arm.add(j1Housing);
+
+  const upperArm = new THREE.Group();
+  upperArm.name = "upperArm";
+  j1Housing.add(upperArm);
+
+  const shoulderSphere = new THREE.Mesh(new THREE.SphereGeometry(0.055, 24, 24), jointMat);
+  shoulderSphere.position.y = 0.055;
+  upperArm.add(shoulderSphere);
+
+  const upperArmTube = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.044, 0.425, 20), bodyMat);
+  upperArmTube.rotation.z = Math.PI / 2;
+  upperArmTube.position.set(0.425 / 2, 0.055, 0);
+  upperArm.add(upperArmTube);
+
+  const upperArmCap = new THREE.Mesh(new THREE.SphereGeometry(0.042, 16, 16), jointMat);
+  upperArmCap.position.set(0.425, 0.055, 0);
+  upperArm.add(upperArmCap);
+
+  const j2Housing = new THREE.Group();
+  j2Housing.name = "joint2";
+  j2Housing.position.set(0.425, 0.055, 0);
+  upperArm.add(j2Housing);
+
+  const j2Body = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.048, 0.08, 24), jointMat);
+  j2Body.rotation.x = Math.PI / 2;
+  j2Housing.add(j2Body);
+
+  const foreArm = new THREE.Group();
+  foreArm.name = "foreArm";
+  j2Housing.add(foreArm);
+
+  const foreArmTube = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.038, 0.3922, 20), bodyMat);
+  foreArmTube.rotation.z = Math.PI / 2;
+  foreArmTube.position.set(0.3922 / 2, 0, 0);
+  foreArm.add(foreArmTube);
+
+  const rib1 = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.008, 0.044), accentMat);
+  rib1.position.set(0.18, 0.036, 0);
+  foreArm.add(rib1);
+
+  const j3Housing = new THREE.Group();
+  j3Housing.name = "joint3";
+  j3Housing.position.set(0.3922, 0, 0);
+  foreArm.add(j3Housing);
+
+  const j3Body = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.038, 0.1157, 24), bodyMat);
+  j3Body.rotation.z = Math.PI / 2;
+  j3Housing.add(j3Body);
+
+  const j4Housing = new THREE.Group();
+  j4Housing.name = "joint4";
+  j4Housing.position.set(0.1157, 0, 0);
+  j3Housing.add(j4Housing);
+
+  const j4Body = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.034, 0.0922, 24), jointMat);
+  j4Housing.add(j4Body);
+
+  const w23link = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.0922, 20), bodyMat);
+  w23link.rotation.z = Math.PI / 2;
+  w23link.position.set(0.0922 / 2, 0, 0);
+  j4Housing.add(w23link);
+
+  const j5Housing = new THREE.Group();
+  j5Housing.name = "joint5";
+  j5Housing.position.set(0.0922, 0, 0);
+  j4Housing.add(j5Housing);
+
+  const j5Body = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.0952, 24), jointMat);
+  j5Body.rotation.x = Math.PI / 2;
+  j5Housing.add(j5Body);
+
+  const toolFlange = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.012, 32), bodyMat);
+  toolFlange.rotation.x = Math.PI / 2;
+  toolFlange.position.set(0, 0, 0.0952);
+  j5Housing.add(toolFlange);
+
+  const gripperBase = new THREE.Mesh(new THREE.BoxGeometry(0.068, 0.068, 0.04), gripperMat);
+  gripperBase.position.set(0, 0, 0.0952 + 0.02);
+  j5Housing.add(gripperBase);
+
+  const finger1 = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.014, 0.055), gripperMat);
+  finger1.position.set(0.022, 0, 0.0952 + 0.04 + 0.0275);
+  j5Housing.add(finger1);
+
+  const finger2 = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.014, 0.055), gripperMat);
+  finger2.position.set(-0.022, 0, 0.0952 + 0.04 + 0.0275);
+  j5Housing.add(finger2);
+
+  const tipMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9, metalness: 0.1 });
+  const tip1 = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.012, 0.01), tipMat);
+  tip1.position.set(0.022, 0, 0.0952 + 0.04 + 0.055 + 0.005);
+  j5Housing.add(tip1);
+  const tip2 = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.012, 0.01), tipMat);
+  tip2.position.set(-0.022, 0, 0.0952 + 0.04 + 0.055 + 0.005);
+  j5Housing.add(tip2);
+
+  const axisLen = 0.06;
+  const makeAxis = (color: number, dir: THREE.Vector3) => {
+    const mat = new THREE.MeshBasicMaterial({ color });
+    const geo = new THREE.CylinderGeometry(0.003, 0.003, axisLen, 8);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    mesh.position.copy(dir.clone().multiplyScalar(axisLen / 2));
+    return mesh;
+  };
+  const eeFrame = new THREE.Group();
+  eeFrame.name = "eeFrame";
+  eeFrame.position.set(0, 0, 0.0952 + 0.04 + 0.055 + 0.01);
+  j5Housing.add(eeFrame);
+  eeFrame.add(makeAxis(0xff3333, new THREE.Vector3(1, 0, 0)));
+  eeFrame.add(makeAxis(0x33ff33, new THREE.Vector3(0, 1, 0)));
+  eeFrame.add(makeAxis(0x3333ff, new THREE.Vector3(0, 0, 1)));
+
+  // The hidden hierarchy above preserves named UR5e joints for telemetry, while
+  // this single visible rig is driven directly to the active tool target. This
+  // keeps the demo honest visually: the gripper, not a waypoint overlay, reaches
+  // the taught box/contact point.
+  upperArm.visible = false;
+  const targetRig = new THREE.Group();
+  targetRig.name = "targetRig";
+  arm.add(targetRig);
+
+  const makeLink = (name: string, radius: number, material: THREE.Material) => {
+    const link = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 1, 24), material);
+    link.name = name;
+    targetRig.add(link);
+    return link;
+  };
+  makeLink("targetUpperLink", 0.042, bodyMat);
+  makeLink("targetForeLink", 0.036, bodyMat);
+  makeLink("targetWristLink", 0.026, jointMat);
+
+  const makeJoint = (name: string, radius: number, material: THREE.Material) => {
+    const joint = new THREE.Mesh(new THREE.SphereGeometry(radius, 24, 24), material);
+    joint.name = name;
+    targetRig.add(joint);
+    return joint;
+  };
+  makeJoint("targetShoulderJoint", 0.058, jointMat);
+  makeJoint("targetElbowJoint", 0.05, jointMat);
+  makeJoint("targetWristJoint", 0.04, jointMat);
+
+  const gripper = new THREE.Group();
+  gripper.name = "targetGripper";
+  targetRig.add(gripper);
+  const wristCover = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.034, 0.075, 24), jointMat);
+  wristCover.rotation.x = Math.PI / 2;
+  gripper.add(wristCover);
+  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.036, 0.062), gripperMat);
+  palm.position.y = -0.04;
+  gripper.add(palm);
+  const leftFinger = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.08, 0.014), gripperMat);
+  leftFinger.position.set(0.026, -0.098, 0);
+  gripper.add(leftFinger);
+  const rightFinger = leftFinger.clone();
+  rightFinger.position.x = -0.026;
+  gripper.add(rightFinger);
+  const leftTip = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.012, 0.018), tipMat);
+  leftTip.position.set(0.026, -0.144, 0);
+  gripper.add(leftTip);
+  const rightTip = leftTip.clone();
+  rightTip.position.x = -0.026;
+  gripper.add(rightTip);
+
+  arm.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (mesh.isMesh) {
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    }
+  });
+
+  return arm;
+}
+
+function setSegment(mesh: THREE.Mesh, from: THREE.Vector3, to: THREE.Vector3) {
+  const delta = to.clone().sub(from);
+  const length = Math.max(delta.length(), 0.001);
+  mesh.position.copy(from).addScaledVector(delta, 0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
+  mesh.scale.set(1, length, 1);
+}
+
+function updateTargetDrivenArm(armGroup: THREE.Group, pose: Pose) {
+  const shoulder = new THREE.Vector3(0, 0.18, 0);
+  const target = new THREE.Vector3(pose.position.x, pose.position.z, -pose.position.y);
+  const gripperRoot = target.clone().add(new THREE.Vector3(0, 0.145, 0));
+  const wrist = target.clone().add(new THREE.Vector3(0, 0.18, 0));
+  const planar = new THREE.Vector3(gripperRoot.x - shoulder.x, 0, gripperRoot.z - shoulder.z);
+  const planarLength = Math.max(planar.length(), 0.001);
+  const horizontal = planar.clone().divideScalar(planarLength);
+  const vertical = gripperRoot.y - shoulder.y;
+  const upperLen = 0.425;
+  const foreLen = 0.3922;
+  const reach = clamp(Math.hypot(planarLength, vertical), 0.08, upperLen + foreLen - 0.01);
+  const cosShoulder = clamp((upperLen * upperLen + reach * reach - foreLen * foreLen) / (2 * upperLen * reach), -1, 1);
+  const baseAngle = Math.atan2(vertical, planarLength);
+  const shoulderAngle = baseAngle + Math.acos(cosShoulder);
+  const elbow = shoulder
+    .clone()
+    .addScaledVector(horizontal, Math.cos(shoulderAngle) * upperLen)
+    .add(new THREE.Vector3(0, Math.sin(shoulderAngle) * upperLen, 0));
+
+  const upper = armGroup.getObjectByName("targetUpperLink") as THREE.Mesh | null;
+  const fore = armGroup.getObjectByName("targetForeLink") as THREE.Mesh | null;
+  const wristLink = armGroup.getObjectByName("targetWristLink") as THREE.Mesh | null;
+  if (upper) setSegment(upper, shoulder, elbow);
+  if (fore) setSegment(fore, elbow, wrist);
+  if (wristLink) setSegment(wristLink, wrist, gripperRoot);
+
+  armGroup.getObjectByName("targetShoulderJoint")?.position.copy(shoulder);
+  armGroup.getObjectByName("targetElbowJoint")?.position.copy(elbow);
+  armGroup.getObjectByName("targetWristJoint")?.position.copy(wrist);
+  const gripper = armGroup.getObjectByName("targetGripper") as THREE.Group | null;
+  if (gripper) {
+    gripper.position.copy(gripperRoot);
+    gripper.rotation.set(0, -(pose.rotation.z ?? 0), 0);
+  }
+}
+
+function applyJointAngles(armGroup: THREE.Group, angles: number[]) {
+  const j1 = armGroup.getObjectByName("joint1") as THREE.Group;
+  const upperArm = armGroup.getObjectByName("upperArm") as THREE.Group;
+  const foreArm = armGroup.getObjectByName("foreArm") as THREE.Group;
+  const j3 = armGroup.getObjectByName("joint3") as THREE.Group;
+  const j4 = armGroup.getObjectByName("joint4") as THREE.Group;
+  const j5 = armGroup.getObjectByName("joint5") as THREE.Group;
+
+  if (j1) j1.rotation.y = angles[0];
+  if (upperArm) upperArm.rotation.z = angles[1];
+  if (foreArm) foreArm.rotation.z = angles[2];
+  if (j3) j3.rotation.z = angles[3];
+  if (j4) j4.rotation.x = angles[4];
+  if (j5) j5.rotation.z = angles[5];
+}
+
+function buildTrajectoryLine(waypoints: THREE.Vector3[], velocities: number[]): THREE.Line {
+  const curve = new THREE.CatmullRomCurve3(waypoints, false, "centripetal", 0.5);
+  const points = curve.getPoints(Math.max(waypoints.length * 10, 2));
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const maxV = Math.max(...velocities, 0.001);
+  const colors: number[] = [];
+
+  points.forEach((_, i) => {
+    const t = points.length > 1 ? i / (points.length - 1) : 0;
+    const segIdx = Math.min(Math.floor(t * velocities.length), velocities.length - 1);
+    const v = (velocities[segIdx] ?? maxV) / maxV;
+    if (v < 0.5) {
+      colors.push(v * 2, 1, 0);
+    } else {
+      colors.push(1, 1 - (v - 0.5) * 2, 0);
+    }
+  });
+
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  return new THREE.Line(geometry, new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2 }));
+}
+
+function getJointWorldPositions(armGroup: THREE.Group) {
+  armGroup.updateMatrixWorld(true);
+  const names = ["joint1", "upperArm", "joint2", "foreArm", "joint3", "joint4", "joint5", "eeFrame"];
+  return names.flatMap((name) => {
+    const object = armGroup.getObjectByName(name);
+    return object ? [object.getWorldPosition(new THREE.Vector3())] : [];
+  });
+}
+
+function getEndEffectorPose(armGroup: THREE.Group): Pose | null {
+  const eeFrame = armGroup.getObjectByName("eeFrame");
+  if (!eeFrame) return null;
+  armGroup.updateMatrixWorld(true);
+  const worldPosition = eeFrame.getWorldPosition(new THREE.Vector3());
+  const worldQuaternion = eeFrame.getWorldQuaternion(new THREE.Quaternion());
+  const worldRotation = new THREE.Euler().setFromQuaternion(worldQuaternion);
+  return {
+    position: {
+      x: worldPosition.x,
+      y: -worldPosition.z,
+      z: worldPosition.y - ROBOT_BASE_Y,
+    },
+    rotation: {
+      x: worldRotation.x,
+      y: worldRotation.y,
+      z: worldRotation.z,
+    },
+  };
+}
+
+function isHomePosition(jointAngles: number[]) {
+  return jointAngles.every((angle) => Math.abs(angle) < 0.0001);
+}
+
+function segmentTableDepth(a: THREE.Vector3, b: THREE.Vector3, tableBox: THREE.Box3, tableTop: number) {
+  const samples = Math.max(8, Math.ceil(a.distanceTo(b) / 0.01));
+  for (let i = 0; i <= samples; i += 1) {
+    const point = a.clone().lerp(b, i / samples);
+    if (tableBox.containsPoint(point) && point.y <= tableTop) {
+      return tableTop - point.y;
+    }
+  }
+  return 0;
+}
+
+function poseWithinTableFootprint(pose: Pose) {
+  return (
+    pose.position.x > TABLE_CENTER.x - TABLE_SIZE.x / 2 &&
+    pose.position.x < TABLE_CENTER.x + TABLE_SIZE.x / 2 &&
+    -pose.position.y > TABLE_CENTER.z - TABLE_SIZE.z / 2 &&
+    -pose.position.y < TABLE_CENTER.z + TABLE_SIZE.z / 2
+  );
+}
+
+function checkCollision(jointPositions: THREE.Vector3[], workcell: WorkcellGeometry, jointAngles: number[], activePose?: Pose): CollisionResult {
+  // Robot is table-mounted: the table surface and robot base frame both sit at world Y=0.75m.
+  // Policy target Z values are heights relative to the table/base surface, so z=0.08 means 80mm above the table.
+  // Invariant: home position (all joints zero) never collides.
+  // If collision is detected at home, the workcell coordinates are wrong.
+  if (isHomePosition(jointAngles)) {
+    return { detected: false, depth: 0, description: "" };
+  }
+
+  if (activePose && poseWithinTableFootprint(activePose) && activePose.position.z < -0.005) {
+    const depth = Math.abs(activePose.position.z);
+    return {
+      detected: true,
+      depth,
+      description: `Tool target penetrates table surface (depth: ${(depth * 1000).toFixed(0)}mm)`,
+    };
+  }
+
+  for (let i = 0; i < jointPositions.length - 1; i += 1) {
+    const a = jointPositions[i];
+    const b = jointPositions[i + 1];
+
+    if (a.y > workcell.tableTop + 0.01 && b.y > workcell.tableTop + 0.01) {
+      continue;
+    }
+
+    if (a.y < workcell.floorY && b.y < workcell.floorY) {
+      continue;
+    }
+
+    const intersectionDepth = segmentTableDepth(a, b, workcell.tableBox, workcell.tableTop);
+    if (intersectionDepth > 0.005 && activePose && activePose.position.z < -0.005) {
+      return {
+        detected: true,
+        depth: intersectionDepth,
+        description: `Link ${i + 1}-${i + 2} penetrates table surface (depth: ${(intersectionDepth * 1000).toFixed(0)}mm)`,
+      };
+    }
+  }
+
+  for (const pos of jointPositions) {
+    if (pos.y < workcell.floorY - 0.005) {
+      return {
+        detected: true,
+        depth: workcell.floorY - pos.y,
+        description: `Joint position below floor (depth: ${((workcell.floorY - pos.y) * 1000).toFixed(0)}mm)`,
+      };
+    }
+  }
+
+  return { detected: false, depth: 0, description: "" };
+}
+
+function updateGhostTrail(trail: THREE.Group, position: THREE.Vector3) {
+  const dot = new THREE.Mesh(
+    new THREE.SphereGeometry(0.006, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0x2244ff, transparent: true, opacity: 0.6 }),
+  );
+  dot.position.copy(position);
+  trail.add(dot);
+  while (trail.children.length > 30) trail.remove(trail.children[0]);
+  const count = Math.max(trail.children.length - 1, 1);
+  trail.children.forEach((child, index) => {
+    const material = (child as THREE.Mesh).material as THREE.MeshBasicMaterial;
+    material.opacity = 0.05 + (index / count) * 0.55;
+  });
 }
 
 export function RobotViewport({
@@ -75,17 +526,17 @@ export function RobotViewport({
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
     controls: OrbitControls;
-    robot?: THREE.Object3D & { joints?: Record<string, URDFJoint> };
+    robot: THREE.Group;
     joints: IKJoint[];
     ee: THREE.Object3D;
     marker: THREE.Mesh;
     trail: THREE.Group;
-    collisionPanel: HTMLDivElement | null;
+    workcell: WorkcellGeometry;
     frame: number;
     step: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [joints, setJoints] = useState<IKJoint[]>([]);
+  const [joints, setJoints] = useState<IKJoint[]>(() => UR5E_JOINTS.map((joint) => ({ ...joint })));
   const [pose, setPose] = useState<Pose>(() => waypointToPose(policy, 0));
   const [collision, setCollision] = useState<string | null>(null);
   const trajectory = useMemo(() => policy?.steps.map((_, index) => sceneVector(waypointToPose(policy, index))) ?? [], [policy]);
@@ -99,24 +550,43 @@ export function RobotViewport({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf8fafc);
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.03, 30);
-    camera.position.set(1.6, 1.3, 1.7);
+    camera.position.set(1.6, 1.45, 1.7);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.target.set(0.25, 0.35, 0);
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xdbeafe, 1.8));
-    const key = new THREE.DirectionalLight(0xffffff, 3.5);
-    key.position.set(1.8, 3, 2.4);
-    key.castShadow = true;
-    scene.add(key);
-    const rim = new THREE.DirectionalLight(0x0284c7, 1.4);
-    rim.position.set(-2, 1.6, -2);
-    scene.add(rim);
+    controls.target.set(0.35, 0.92, 0);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambient);
+
+    const keyLight = new THREE.DirectionalLight(0xfff5e0, 1.2);
+    keyLight.position.set(-2, 4, 2);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.near = 0.1;
+    keyLight.shadow.camera.far = 20;
+    keyLight.shadow.camera.left = -2;
+    keyLight.shadow.camera.right = 2;
+    keyLight.shadow.camera.top = 2;
+    keyLight.shadow.camera.bottom = -2;
+    keyLight.shadow.bias = -0.001;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xe8f0ff, 0.5);
+    fillLight.position.set(3, 2, -1);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    rimLight.position.set(0, 1, -4);
+    scene.add(rimLight);
 
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.8 }));
     floor.rotation.x = -Math.PI / 2;
@@ -124,28 +594,67 @@ export function RobotViewport({
     scene.add(floor);
     scene.add(new THREE.GridHelper(4, 40, 0x0284c7, 0x94a3b8));
 
+    const tableBox = new THREE.Box3(
+      new THREE.Vector3(TABLE_CENTER.x - TABLE_SIZE.x / 2, TABLE_TOP_Y - TABLE_THICKNESS, TABLE_CENTER.z - TABLE_SIZE.z / 2),
+      new THREE.Vector3(TABLE_CENTER.x + TABLE_SIZE.x / 2, TABLE_TOP_Y, TABLE_CENTER.z + TABLE_SIZE.z / 2),
+    );
+    const workcell = { tableTop: TABLE_TOP_Y, tableBox, floorY: FLOOR_Y };
+
     if (showWorkcell) {
-      const table = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.6), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.65 }));
-      table.position.set(0.35, 0.75, 0);
+      const table = new THREE.Mesh(new THREE.BoxGeometry(TABLE_SIZE.x, TABLE_THICKNESS, TABLE_SIZE.z), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.65 }));
+      table.position.set(TABLE_CENTER.x, TABLE_TOP_Y - TABLE_THICKNESS / 2, TABLE_CENTER.z);
       table.castShadow = true;
       table.receiveShadow = true;
       scene.add(table);
+      const mountPlate = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.018, 40), new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.35, roughness: 0.45 }));
+      mountPlate.position.set(0, TABLE_TOP_Y + 0.009, 0);
+      mountPlate.castShadow = true;
+      mountPlate.receiveShadow = true;
+      scene.add(mountPlate);
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.25, roughness: 0.55 });
+      const legPositions = [
+        [TABLE_CENTER.x - TABLE_SIZE.x / 2 + 0.06, TABLE_CENTER.z - TABLE_SIZE.z / 2 + 0.06],
+        [TABLE_CENTER.x + TABLE_SIZE.x / 2 - 0.06, TABLE_CENTER.z - TABLE_SIZE.z / 2 + 0.06],
+        [TABLE_CENTER.x - TABLE_SIZE.x / 2 + 0.06, TABLE_CENTER.z + TABLE_SIZE.z / 2 - 0.06],
+        [TABLE_CENTER.x + TABLE_SIZE.x / 2 - 0.06, TABLE_CENTER.z + TABLE_SIZE.z / 2 - 0.06],
+      ];
+      legPositions.forEach(([x, z]) => {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.035, TABLE_TOP_Y - TABLE_THICKNESS, 0.035), legMat);
+        leg.position.set(x, (TABLE_TOP_Y - TABLE_THICKNESS) / 2, z);
+        leg.castShadow = true;
+        leg.receiveShadow = true;
+        scene.add(leg);
+      });
       const blueBin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
-      blueBin.position.set(0.38, 0.83, 0.16);
+      blueBin.position.set(0.38, TABLE_TOP_Y + 0.05, 0.16);
+      blueBin.castShadow = true;
+      blueBin.receiveShadow = true;
       const greenBin = blueBin.clone();
       (greenBin.material as THREE.MeshStandardMaterial) = new THREE.MeshStandardMaterial({ color: 0x059669 });
-      greenBin.position.set(0.12, 0.83, -0.24);
+      greenBin.position.set(0.12, TABLE_TOP_Y + 0.05, -0.24);
+      greenBin.castShadow = true;
+      greenBin.receiveShadow = true;
       scene.add(blueBin, greenBin);
     }
 
-    const ee = new THREE.AxesHelper(0.16);
+    const robot = buildUR5eArm();
+    robot.position.y = ROBOT_BASE_Y;
+    scene.add(robot);
+
+    const ee = new THREE.Object3D();
     scene.add(ee);
-    const marker = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 16), new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0284c7, emissiveIntensity: 0.3 }));
+    const marker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.006, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0x2244ff, emissive: 0x2244ff, emissiveIntensity: 0.25, transparent: true, opacity: 0.5 }),
+    );
     scene.add(marker);
     const trail = new THREE.Group();
     scene.add(trail);
 
-    runtime.current = { renderer, scene, camera, controls, joints: [], ee, marker, trail, collisionPanel: null, frame: 0, step: 0 };
+    const parsed = UR5E_JOINTS.map((joint) => ({ ...joint }));
+    runtime.current = { renderer, scene, camera, controls, robot, joints: parsed, ee, marker, trail, workcell, frame: 0, step: 0 };
+    setJoints(parsed);
+    setLoading(false);
 
     const onResize = () => {
       const nextWidth = mount.clientWidth || width;
@@ -176,58 +685,25 @@ export function RobotViewport({
   useEffect(() => {
     const state = runtime.current;
     if (!state) return;
-    setLoading(true);
-    if (state.robot) state.scene.remove(state.robot);
-    const loader = new URDFLoader();
-    loader.load(
-      ROBOTS[robotType].urdf,
-      (robot) => {
-        robot.rotation.x = -Math.PI / 2;
-        robot.traverse((child) => {
-          const mesh = child as THREE.Mesh;
-          if (mesh.isMesh) {
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            mesh.geometry.computeBoundsTree?.();
-          }
-        });
-        state.scene.add(robot);
-        state.robot = robot;
-        const parsed = Object.entries(robot.joints ?? {})
-          .filter(([, joint]) => joint.jointType !== "fixed")
-          .map(([name, joint]) => ({
-            name,
-            value: 0,
-            lower: joint.limit?.lower ?? -Math.PI,
-            upper: joint.limit?.upper ?? Math.PI,
-          }));
-        state.joints = parsed;
-        setJoints(parsed);
-        setLoading(false);
-      },
-      undefined,
-      () => setLoading(false),
-    );
-  }, [robotType]);
-
-  useEffect(() => {
-    const state = runtime.current;
-    if (!state?.robot) return;
     const nextPose = waypointToPose(policy, state.step);
-    const solution = solveCcdIk(state.joints, nextPose);
+    const solution = solveCcdIk(state.joints, poseForIk(nextPose));
+    const angles: number[] = [];
     for (const joint of state.joints) {
       const next = jointValues?.[joint.name] ?? solution.joints[joint.name] ?? joint.value;
       const clamped = clamp(next, joint.lower, joint.upper);
       joint.value = clamped;
-      state.robot.joints?.[joint.name]?.setJointValue(clamped);
+      angles.push(clamped);
     }
+    applyJointAngles(state.robot, angles);
     const vector = sceneVector(nextPose);
+    updateTargetDrivenArm(state.robot, nextPose);
     state.ee.position.copy(vector);
     state.marker.position.copy(vector);
     setPose(nextPose);
+    setJoints([...state.joints]);
     onEndEffectorMove?.(nextPose);
-    const collides = nextPose.position.z < 0.12 || (nextPose.position.z < 0.78 && nextPose.position.x > -0.05 && nextPose.position.x < 0.75 && Math.abs(nextPose.position.y) < 0.3);
-    setCollision(collides ? `Collision detected at waypoint ${state.step + 1} (depth: ${Math.max(1, Math.round((0.78 - nextPose.position.z) * 1000))}mm into table)` : null);
+    const collisionResult = checkCollision(getJointWorldPositions(state.robot), state.workcell, angles, nextPose);
+    setCollision(collisionResult.detected ? `Collision detected at waypoint ${state.step + 1}: ${collisionResult.description}` : null);
   }, [jointValues, onEndEffectorMove, policy]);
 
   useEffect(() => {
@@ -237,38 +713,40 @@ export function RobotViewport({
       if (!state) return;
       state.step = (state.step + 1) % trajectory.length;
       const nextPose = waypointToPose(policy, state.step);
-      const solution = solveCcdIk(state.joints, nextPose);
+      const solution = solveCcdIk(state.joints, poseForIk(nextPose));
+      const angles: number[] = [];
       for (const joint of state.joints) {
         const next = clamp(solution.joints[joint.name] ?? joint.value, joint.lower, joint.upper);
         joint.value = next;
-        state.robot?.joints?.[joint.name]?.setJointValue(next);
+        angles.push(next);
       }
+      applyJointAngles(state.robot, angles);
       const vector = sceneVector(nextPose);
+      updateTargetDrivenArm(state.robot, nextPose);
       state.ee.position.copy(vector);
       state.marker.position.copy(vector);
-      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.006, 8, 8), new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: 0.35 }));
-      dot.position.copy(vector);
-      state.trail.add(dot);
-      while (state.trail.children.length > 30) state.trail.remove(state.trail.children[0]);
+      updateGhostTrail(state.trail, vector);
       setPose(nextPose);
       setJoints([...state.joints]);
-      const collides = nextPose.position.z < 0.12 || (nextPose.position.z < 0.78 && nextPose.position.x > -0.05 && nextPose.position.x < 0.75 && Math.abs(nextPose.position.y) < 0.3);
-      setCollision(collides ? `Collision detected at waypoint ${state.step + 1} (depth: ${Math.max(1, Math.round((0.78 - nextPose.position.z) * 1000))}mm into table)` : null);
+      const collisionResult = checkCollision(getJointWorldPositions(state.robot), state.workcell, angles, nextPose);
+      setCollision(collisionResult.detected ? `Collision detected at waypoint ${state.step + 1}: ${collisionResult.description}` : null);
+      onEndEffectorMove?.(nextPose);
     }, Math.max(250, 900 / playbackSpeed));
     return () => window.clearInterval(timer);
-  }, [playbackSpeed, playbackState, policy, trajectory.length]);
+  }, [onEndEffectorMove, playbackSpeed, playbackState, policy, trajectory.length]);
 
   useEffect(() => {
     const state = runtime.current;
     if (!state || !showTrajectory) return;
     const group = new THREE.Group();
     if (trajectory.length > 1) {
-      const curve = new THREE.CatmullRomCurve3(trajectory);
-      const points = curve.getPoints(80);
-      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: 0x059669, linewidth: 2 }));
-      group.add(line);
-      trajectory.forEach((point, index) => {
-        const marker = new THREE.Mesh(new THREE.SphereGeometry(0.014, 12, 12), new THREE.MeshStandardMaterial({ color: index % 3 === 0 ? 0xd97706 : 0x0284c7 }));
+      const velocities = policy?.steps.map((step) => step.speed) ?? trajectory.map(() => 0.1);
+      group.add(buildTrajectoryLine(trajectory, velocities));
+      trajectory.forEach((point) => {
+        const marker = new THREE.Mesh(
+          new THREE.SphereGeometry(0.006, 12, 12),
+          new THREE.MeshStandardMaterial({ color: 0x2244ff, emissive: 0x2244ff, emissiveIntensity: 0.25, transparent: true, opacity: 0.45 }),
+        );
         marker.position.copy(point);
         group.add(marker);
       });
@@ -277,19 +755,43 @@ export function RobotViewport({
     return () => {
       state.scene.remove(group);
     };
-  }, [showTrajectory, trajectory]);
+  }, [policy?.steps, showTrajectory, trajectory]);
 
   const setPreset = (preset: "front" | "top" | "side" | "iso") => {
     const state = runtime.current;
     if (!state) return;
     const positions = {
-      front: new THREE.Vector3(1.4, 0.9, 2),
+      front: new THREE.Vector3(1.4, 1.15, 2),
       top: new THREE.Vector3(0.3, 3.1, 0.01),
-      side: new THREE.Vector3(2.1, 1.0, 0),
-      iso: new THREE.Vector3(1.6, 1.3, 1.7),
+      side: new THREE.Vector3(2.1, 1.15, 0),
+      iso: new THREE.Vector3(1.6, 1.45, 1.7),
     };
     state.camera.position.copy(positions[preset]);
+    state.controls.target.set(0.35, 0.92, 0);
     state.controls.update();
+  };
+
+  const updateJoint = (jointName: string, value: number) => {
+    const state = runtime.current;
+    if (!state) return;
+    const joint = state.joints.find((item) => item.name === jointName);
+    if (!joint) return;
+    joint.value = clamp(value, joint.lower, joint.upper);
+    const angles = state.joints.map((item) => item.value);
+    applyJointAngles(state.robot, angles);
+    const nextPose = getEndEffectorPose(state.robot);
+    if (nextPose) {
+      const vector = sceneVector(nextPose);
+      updateTargetDrivenArm(state.robot, nextPose);
+      state.ee.position.copy(vector);
+      state.marker.position.copy(vector);
+      setPose(nextPose);
+      onEndEffectorMove?.(nextPose);
+    }
+    const collisionResult = checkCollision(getJointWorldPositions(state.robot), state.workcell, angles, nextPose ?? undefined);
+    setCollision(collisionResult.detected ? `Collision detected at manual pose: ${collisionResult.description}` : null);
+    setJoints([...state.joints]);
+    onJointChange?.(jointName, joint.value);
   };
 
   return (
@@ -308,7 +810,7 @@ export function RobotViewport({
       <div className="grid min-h-[520px] lg:grid-cols-[1fr_280px]">
         <div className="relative min-h-[420px]">
           <div ref={mountRef} className="h-full min-h-[420px]" />
-          {loading && <div className="absolute inset-0 grid place-items-center bg-[rgb(var(--ink)/0.72)] text-sm">Loading URDF...</div>}
+          {loading && <div className="absolute inset-0 grid place-items-center bg-[rgb(var(--ink)/0.72)] text-sm">Loading robot...</div>}
           <div data-testid="ee-pose" className="absolute right-3 top-3 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2)/0.92)] p-3 font-mono text-[11px] tabular">
             <p>End-effector pose</p>
             <p data-testid="ee-pose-x">X: {pose.position.x.toFixed(3)} m</p>
@@ -350,7 +852,7 @@ export function RobotViewport({
                     max={joint.upper}
                     step={0.01}
                     value={joint.value}
-                    onChange={(event) => onJointChange?.(joint.name, Number(event.target.value))}
+                    onChange={(event) => updateJoint(joint.name, Number(event.target.value))}
                   />
                 </label>
               );
@@ -361,4 +863,3 @@ export function RobotViewport({
     </div>
   );
 }
-

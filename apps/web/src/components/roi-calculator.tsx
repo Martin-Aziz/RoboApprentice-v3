@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
-import { calculateRoi, defaultRoiInputs, encodeRoi, type RoiInputs } from "@/lib/roi";
+import { calculateRoi, defaultRoiInputs, encodeRoi, parseLocaleNumber, type RoiInputs } from "@/lib/roi";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
+import type { DemoLocale } from "@/lib/demo-seed";
 
 export function RoiCalculator({ initial, readOnly = false }: { initial?: RoiInputs; readOnly?: boolean }) {
   const { locale, t } = useLocale();
@@ -23,6 +24,10 @@ export function RoiCalculator({ initial, readOnly = false }: { initial?: RoiInpu
   ];
 
   const update = (key: keyof RoiInputs, value: number) => setInputs((current) => ({ ...current, [key]: value }));
+
+  useEffect(() => {
+    if (!initial) setInputs(defaultRoiInputs(locale));
+  }, [initial, locale]);
 
   const share = () => {
     const encoded = encodeRoi(inputs);
@@ -55,14 +60,14 @@ export function RoiCalculator({ initial, readOnly = false }: { initial?: RoiInpu
       <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
         <h2 className="font-semibold">Inputs</h2>
         <div className="mt-4 grid gap-3">
-          <Field label="Number of robots" value={inputs.robots} disabled={readOnly} onChange={(v) => update("robots", v)} />
-          <Field label="Tasks per robot per shift" value={inputs.tasksPerRobotPerShift} disabled={readOnly} onChange={(v) => update("tasksPerRobotPerShift", v)} />
-          <Field label="Shifts per day" value={inputs.shiftsPerDay} disabled={readOnly} onChange={(v) => update("shiftsPerDay", v)} />
-          <Field label="Operating days per year" value={inputs.operatingDaysPerYear} disabled={readOnly} onChange={(v) => update("operatingDaysPerYear", v)} />
-          <Field label="Current programming time per task (hours)" value={inputs.currentProgrammingHours} step={0.1} disabled={readOnly} onChange={(v) => update("currentProgrammingHours", v)} />
-          <Field label="Aurevix programming time per task (hours)" value={inputs.aurevixProgrammingHours} step={0.1} disabled={readOnly} onChange={(v) => update("aurevixProgrammingHours", v)} />
-          <Field label="Operator hourly rate" value={inputs.operatorHourlyRate} disabled={readOnly} onChange={(v) => update("operatorHourlyRate", v)} />
-          <Field label="Tasks reprogrammed per year" value={inputs.tasksReprogrammedPerYear} disabled={readOnly} onChange={(v) => update("tasksReprogrammedPerYear", v)} />
+          <Field label="Number of robots" value={inputs.robots} locale={locale} disabled={readOnly} onChange={(v) => update("robots", v)} />
+          <Field label="Tasks per robot per shift" value={inputs.tasksPerRobotPerShift} locale={locale} disabled={readOnly} onChange={(v) => update("tasksPerRobotPerShift", v)} />
+          <Field label="Shifts per day" value={inputs.shiftsPerDay} locale={locale} disabled={readOnly} onChange={(v) => update("shiftsPerDay", v)} />
+          <Field label="Operating days per year" value={inputs.operatingDaysPerYear} locale={locale} disabled={readOnly} onChange={(v) => update("operatingDaysPerYear", v)} />
+          <Field label="Current programming time per task (hours)" value={inputs.currentProgrammingHours} locale={locale} step={0.1} disabled={readOnly} onChange={(v) => update("currentProgrammingHours", v)} />
+          <Field label="Aurevix programming time per task (hours)" value={inputs.aurevixProgrammingHours} locale={locale} step={0.1} disabled={readOnly} onChange={(v) => update("aurevixProgrammingHours", v)} />
+          <Field label="Operator hourly rate" value={inputs.operatorHourlyRate} locale={locale} disabled={readOnly} onChange={(v) => update("operatorHourlyRate", v)} />
+          <Field label="Tasks reprogrammed per year" value={inputs.tasksReprogrammedPerYear} locale={locale} disabled={readOnly} onChange={(v) => update("tasksReprogrammedPerYear", v)} />
         </div>
       </section>
 
@@ -73,7 +78,7 @@ export function RoiCalculator({ initial, readOnly = false }: { initial?: RoiInpu
           <div className="mt-5 grid grid-cols-3 gap-3">
             <Output label="Hours saved" value={formatNumber(Math.round(result.annualHoursSaved), locale)} />
             <Output label="Payback" value={`${result.paybackMonths.toFixed(1)} mo`} />
-            <Output label="3-year savings" value={formatCurrency(result.threeYearSavings, locale)} />
+            <Output label="3-year savings" value={formatSignedCurrency(result.threeYearSavings, locale)} />
           </div>
         </div>
         <div ref={chartRef} className="h-72 rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-4">
@@ -107,11 +112,34 @@ export function RoiCalculator({ initial, readOnly = false }: { initial?: RoiInpu
   );
 }
 
-function Field({ label, value, step = 1, disabled, onChange }: { label: string; value: number; step?: number; disabled?: boolean; onChange: (value: number) => void }) {
+function formatInputValue(value: number, locale: DemoLocale, step: number) {
+  const maximumFractionDigits = step < 1 ? 1 : 0;
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: step < 1 ? 1 : 0,
+    maximumFractionDigits,
+    useGrouping: false,
+  }).format(value);
+}
+
+function formatSignedCurrency(value: number, locale: DemoLocale) {
+  const formatted = formatCurrency(value, locale);
+  return value > 0 ? `+${formatted}` : formatted;
+}
+
+function Field({ label, value, locale, step = 1, disabled, onChange }: { label: string; value: number; locale: DemoLocale; step?: number; disabled?: boolean; onChange: (value: number) => void }) {
   return (
     <label className="grid gap-1 text-sm">
       <span className="text-[rgb(var(--bone-2))]">{label}</span>
-      <input disabled={disabled} type="number" step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-3 py-2 font-mono tabular" />
+      <input
+        disabled={disabled}
+        inputMode="decimal"
+        value={formatInputValue(value, locale, step)}
+        onChange={(event) => {
+          const next = parseLocaleNumber(event.target.value, locale);
+          if (!Number.isNaN(next)) onChange(next);
+        }}
+        className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-3 py-2 font-mono tabular"
+      />
     </label>
   );
 }

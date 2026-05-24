@@ -56,4 +56,5 @@ htmlcov/
 
 # ─── Build artifacts ─────────────────
 *.log
+*.tsbuildinfo
 tmp/

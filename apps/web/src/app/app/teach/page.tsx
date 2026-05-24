@@ -33,11 +33,6 @@ export default function TeachPage() {
     if (!started) return;
     let cancelled = false;
     const run = async () => {
-      try {
-        await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(900) });
-      } catch {
-        console.warn("Ollama unavailable, using deterministic interpretation fallback.");
-      }
       for (let i = 0; i < FALLBACK_STEPS.length; i++) {
         if (cancelled) return;
         await new Promise((resolve) => setTimeout(resolve, 650));
@@ -157,10 +152,18 @@ export default function TeachPage() {
 }
 
 function Modal({ title, children, onClose, wide = false }: { title: string; children: React.ReactNode; onClose: () => void; wide?: boolean }) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className={`max-h-[90vh] overflow-auto rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5 shadow-2xl ${wide ? "w-full max-w-6xl" : "w-full max-w-xl"}`}>
-        <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">{title}</h2><Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button></div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
+      <div className={`max-h-[90vh] overflow-auto rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5 shadow-2xl ${wide ? "w-full max-w-6xl" : "w-full max-w-xl"}`} onMouseDown={(event) => event.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">{title}</h2><Button aria-label="Close modal" variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button></div>
         {children}
       </div>
     </div>
@@ -205,10 +208,197 @@ function Code({ code, language }: { code: string; language: string }) {
   );
 }
 
+const fmt = (value: number, precision = 4) => Number(value.toFixed(precision)).toString();
+
+function sanitizeIdentifier(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "aurevix_skill";
+}
+
+function policyFingerprint(policy: TaskPolicy) {
+  const source = JSON.stringify(policy.steps);
+  let hash = 0;
+  for (let i = 0; i < source.length; i += 1) {
+    hash = (hash * 31 + source.charCodeAt(i)) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+function poseLiteral(step: TaskStep) {
+  const { x, y, z, rx = 0, ry = Math.PI / 2, rz = 0 } = step.target;
+  return `p[${fmt(x)}, ${fmt(y)}, ${fmt(z)}, ${fmt(rx)}, ${fmt(ry)}, ${fmt(rz)}]`;
+}
+
 function generateUr(policy: TaskPolicy) {
-  return [`# AUREVIX generated URScript`, `def pick_bracket_a():`, ...policy.steps.map((step) => `  # ${step.order}. ${step.description}\n  movel(p[${step.target.x}, ${step.target.y}, ${step.target.z}, 0, 0, ${step.target.rz ?? 0}], v=${step.speed}, a=0.5)`), `end`, `pick_bracket_a()`].join("\n");
+  const programName = sanitizeIdentifier("Pick Bracket A");
+  const policyId = policyFingerprint(policy);
+  const lines = [
+    `# AUREVIX generated URScript`,
+    `# Program: ${programName}`,
+    `# Policy ID: ${policyId}`,
+    `# Robot: Universal Robots UR5e`,
+    `# Tool frame: ${policy.toolFrame}`,
+    `# Coordinate convention: target XYZ is meters in the robot base frame; Z is height above table surface in the teaching UI.`,
+    `# Review payload, TCP, and gripper IO mapping before production deployment.`,
+    ``,
+    `global AUREVIX_APPROACH_ACCEL = 0.6`,
+    `global AUREVIX_CONTACT_ACCEL = 0.25`,
+    `global AUREVIX_BLEND_SAFE = 0.025`,
+    `global AUREVIX_BLEND_CONTACT = 0.001`,
+    ``,
+    `def aurevix_set_gripper(closed):`,
+    `  # Digital output 0 is the demo parallel-gripper close command.`,
+    `  set_tool_digital_out(0, closed)`,
+    `  sleep(0.35)`,
+    `end`,
+    ``,
+    `def aurevix_guarded_movel(target_pose, speed, accel, blend):`,
+    `  # Single motion wrapper so operators can add force/zone checks in one place.`,
+    `  movel(target_pose, a=accel, v=speed, r=blend)`,
+    `end`,
+    ``,
+    `def ${programName}():`,
+    `  textmsg("AUREVIX start policy ${policyId}")`,
+    `  set_tcp(p[0, 0, 0.0952, 0, 0, 0])`,
+    `  aurevix_set_gripper(False)`,
+  ];
+
+  policy.steps.forEach((step) => {
+    const speed = fmt(step.speed);
+    const pose = poseLiteral(step);
+    lines.push(``);
+    lines.push(`  # Step ${step.order}: ${step.description}`);
+    lines.push(`  # action=${step.action} gripper=${step.gripper} nominal_speed=${speed}m/s duration=${step.duration}s`);
+
+    if (step.action === "home") {
+      lines.push(`  movej([0, -1.5708, 1.5708, -1.5708, -1.5708, 0], a=1.0, v=0.35, r=0)`);
+    } else if (step.action === "grip") {
+      lines.push(`  aurevix_guarded_movel(${pose}, ${fmt(Math.min(step.speed, 0.1))}, AUREVIX_CONTACT_ACCEL, AUREVIX_BLEND_CONTACT)`);
+      lines.push(`  aurevix_set_gripper(${step.gripper === "closed" ? "True" : "False"})`);
+    } else if (step.action === "release") {
+      lines.push(`  aurevix_guarded_movel(${pose}, ${fmt(Math.min(step.speed, 0.12))}, AUREVIX_CONTACT_ACCEL, AUREVIX_BLEND_CONTACT)`);
+      lines.push(`  aurevix_set_gripper(False)`);
+    } else if (step.action === "wait") {
+      lines.push(`  sleep(${fmt(step.duration)})`);
+    } else {
+      lines.push(`  aurevix_guarded_movel(${pose}, ${speed}, AUREVIX_APPROACH_ACCEL, AUREVIX_BLEND_SAFE)`);
+    }
+
+    if (step.requiresVision) {
+      lines.push(`  # Vision/contact verification required before continuing.`);
+      lines.push(`  textmsg("verify: step ${step.order}")`);
+    }
+  });
+
+  lines.push(``);
+  lines.push(`  aurevix_set_gripper(False)`);
+  lines.push(`  textmsg("AUREVIX complete policy ${policyId}")`);
+  lines.push(`end`);
+  lines.push(``);
+  lines.push(`${programName}()`);
+  return lines.join("\n");
 }
 
 function generateRos(policy: TaskPolicy) {
-  return [`# AUREVIX generated ROS 2 Python`, `class PickBracketA:`, `    def execute(self):`, ...policy.steps.map((step) => `        self.move_to(${step.target.x}, ${step.target.y}, ${step.target.z})  # ${step.description}`)].join("\n");
+  const policyId = policyFingerprint(policy);
+  const stepRows = policy.steps
+    .map((step) => {
+      const { x, y, z, rx = 0, ry = Math.PI / 2, rz = 0 } = step.target;
+      return `        SkillStep(${step.order}, "${step.action}", "${step.gripper}", (${fmt(x)}, ${fmt(y)}, ${fmt(z)}, ${fmt(rx)}, ${fmt(ry)}, ${fmt(rz)}), ${fmt(step.speed)}, ${step.duration}, "${step.description.replace(/"/g, '\\"')}"),`;
+    })
+    .join("\n");
+
+  return [
+    `# AUREVIX generated ROS 2 Python skill`,
+    `# Policy ID: ${policyId}`,
+    `# Robot: Universal Robots UR5e`,
+    `# Intended integration: ROS 2 + MoveIt 2 + a parallel gripper driver.`,
+    `# This file is production-structured but hardware adapters must be wired by the cell integrator.`,
+    ``,
+    `from dataclasses import dataclass`,
+    `from typing import Literal, Tuple`,
+    ``,
+    `import rclpy`,
+    `from rclpy.node import Node`,
+    ``,
+    ``,
+    `Action = Literal["move", "approach", "grip", "release", "rotate", "wait", "inspect", "home"]`,
+    `Gripper = Literal["open", "closed", "unchanged"]`,
+    `PoseTuple = Tuple[float, float, float, float, float, float]`,
+    ``,
+    ``,
+    `@dataclass(frozen=True)`,
+    `class SkillStep:`,
+    `    order: int`,
+    `    action: Action`,
+    `    gripper: Gripper`,
+    `    pose: PoseTuple`,
+    `    speed: float`,
+    `    duration: float`,
+    `    description: str`,
+    ``,
+    ``,
+    `class PickBracketASkill(Node):`,
+    `    def __init__(self):`,
+    `        super().__init__("aurevix_pick_bracket_a")`,
+    `        self.policy_id = "${policyId}"`,
+    `        self.steps = [`,
+    stepRows,
+    `        ]`,
+    ``,
+    `    def move_home(self) -> None:`,
+    `        self.get_logger().info("Moving to validated home joint configuration")`,
+    `        # TODO: send MoveIt 2 joint target for UR5e home posture.`,
+    ``,
+    `    def move_linear(self, pose: PoseTuple, speed: float, contact: bool = False) -> None:`,
+    `        x, y, z, rx, ry, rz = pose`,
+    `        zone = "contact" if contact else "free-space"`,
+    `        self.get_logger().info(f"{zone} move to x={x:.3f} y={y:.3f} z={z:.3f} speed={speed:.3f}")`,
+    `        # TODO: build geometry_msgs/PoseStamped and execute via MoveIt 2.`,
+    ``,
+    `    def set_gripper(self, state: Gripper) -> None:`,
+    `        if state == "unchanged":`,
+    `            return`,
+    `        self.get_logger().info(f"Setting gripper {state}")`,
+    `        # TODO: publish to the gripper command action/topic.`,
+    ``,
+    `    def verify_contact_or_vision(self, step: SkillStep) -> None:`,
+    `        self.get_logger().info(f"Verification checkpoint after step {step.order}: {step.description}")`,
+    `        # TODO: read force/torque or vision result and raise on failure.`,
+    ``,
+    `    def execute_step(self, step: SkillStep) -> None:`,
+    `        self.get_logger().info(f"Step {step.order}: {step.description}")`,
+    `        if step.action == "home":`,
+    `            self.move_home()`,
+    `            self.set_gripper(step.gripper)`,
+    `        elif step.action in ("grip", "release"):`,
+    `            self.move_linear(step.pose, min(step.speed, 0.10), contact=True)`,
+    `            self.set_gripper(step.gripper)`,
+    `            self.verify_contact_or_vision(step)`,
+    `        elif step.action == "wait":`,
+    `            self.get_clock().sleep_for(rclpy.duration.Duration(seconds=step.duration))`,
+    `        else:`,
+    `            self.move_linear(step.pose, step.speed)`,
+    `            self.set_gripper(step.gripper)`,
+    ``,
+    `    def execute(self) -> None:`,
+    `        self.get_logger().info(f"Starting AUREVIX policy {self.policy_id}")`,
+    `        for step in self.steps:`,
+    `            self.execute_step(step)`,
+    `        self.set_gripper("open")`,
+    `        self.get_logger().info(f"Completed AUREVIX policy {self.policy_id}")`,
+    ``,
+    ``,
+    `def main(args=None):`,
+    `    rclpy.init(args=args)`,
+    `    node = PickBracketASkill()`,
+    `    try:`,
+    `        node.execute()`,
+    `    finally:`,
+    `        node.destroy_node()`,
+    `        rclpy.shutdown()`,
+    ``,
+    ``,
+    `if __name__ == "__main__":`,
+    `    main()`,
+  ].join("\n");
 }
