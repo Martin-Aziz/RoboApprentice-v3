@@ -32,6 +32,103 @@ const ALLOWED_ACTIONS: RobotAction[] = [
 
 const ALLOWED_GRIPPER: GripperState[] = ["open", "closed", "unchanged"];
 
+function buildDeterministicSteps(title: string, transcript?: string): TaskStep[] {
+  const source = `${title} ${transcript ?? ""}`.toLowerCase();
+  const needsVision = /\b(bin|unsorted|random|camera|vision|unknown)\b/.test(source);
+  const rotateForFixture = /\b(rotate|orient|orientation|align)\b/.test(source);
+  const pickLabel = /\bpart\b/.test(source) ? "part" : /\bbracket\b/.test(source) ? "bracket" : "workpiece";
+
+  const rawSteps: RawStep[] = [
+    {
+      order: 1,
+      description: "Move to calibrated home pose with gripper open",
+      action: "home",
+      target: { x: 0.28, y: 0, z: 0.52, ry: Math.PI / 2 },
+      gripper: "open",
+      speed: 0.3,
+      duration: 2,
+      requires_vision: false,
+      notes: "Deterministic fallback used because the local language model was unavailable.",
+    },
+    {
+      order: 2,
+      description: `Approach 6cm above pickup ${pickLabel} at position A`,
+      action: "approach",
+      target: { x: 0.38, y: -0.16, z: 0.18, ry: Math.PI / 2 },
+      gripper: "unchanged",
+      speed: 0.1,
+      duration: 2,
+      requires_vision: needsVision,
+    },
+    {
+      order: 3,
+      description: `Descend onto ${pickLabel} at position A and close gripper`,
+      action: "grip",
+      target: { x: 0.38, y: -0.16, z: 0.1, ry: Math.PI / 2 },
+      gripper: "closed",
+      speed: 0.06,
+      duration: 2,
+      requires_vision: needsVision,
+      notes: "Verify stable grip before lifting.",
+    },
+    {
+      order: 4,
+      description: `Lift ${pickLabel} clear of pickup area`,
+      action: "move",
+      target: { x: 0.34, y: -0.12, z: 0.28, ry: Math.PI / 2 },
+      gripper: "unchanged",
+      speed: 0.18,
+      duration: 2,
+      requires_vision: false,
+    },
+    {
+      order: 5,
+      description: rotateForFixture
+        ? "Carry to fixture B while rotating tool for alignment"
+        : "Carry to fixture B above placement position",
+      action: rotateForFixture ? "rotate" : "move",
+      target: { x: 0.14, y: 0.22, z: 0.28, ry: Math.PI / 2, rz: rotateForFixture ? 0.31 : 0 },
+      gripper: "unchanged",
+      speed: 0.2,
+      duration: 2,
+      requires_vision: false,
+    },
+    {
+      order: 6,
+      description: `Approach 6cm above placement fixture B with ${pickLabel}`,
+      action: "approach",
+      target: { x: 0.12, y: 0.24, z: 0.16, ry: Math.PI / 2, rz: rotateForFixture ? 0.31 : 0 },
+      gripper: "unchanged",
+      speed: 0.1,
+      duration: 2,
+      requires_vision: false,
+    },
+    {
+      order: 7,
+      description: `Place ${pickLabel} into fixture B and open gripper`,
+      action: "release",
+      target: { x: 0.12, y: 0.24, z: 0.09, ry: Math.PI / 2, rz: rotateForFixture ? 0.31 : 0 },
+      gripper: "open",
+      speed: 0.06,
+      duration: 2,
+      requires_vision: false,
+      notes: "Use low contact speed at fixture.",
+    },
+    {
+      order: 8,
+      description: "Return to calibrated home pose",
+      action: "home",
+      target: { x: 0.28, y: 0, z: 0.52, ry: Math.PI / 2 },
+      gripper: "open",
+      speed: 0.3,
+      duration: 2,
+      requires_vision: false,
+    },
+  ];
+
+  return rawSteps.map((step, index) => normalizeStep(step, index + 1));
+}
+
 function clamp(value: number, min: number, max: number): number {
   if (Number.isNaN(value) || !Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
@@ -288,6 +385,8 @@ export async function POST(
           .filter(Boolean)
           .join("\n");
 
+        let usedFallback = false;
+        let fallbackReason = "";
         const ollamaRes = await fetch(`${OLLAMA_URL}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -299,14 +398,36 @@ export async function POST(
               { role: "user", content: userPrompt },
             ],
           }),
+        }).catch((error: unknown) => {
+          usedFallback = true;
+          fallbackReason = error instanceof Error ? error.message : "Ollama request failed";
+          return null;
         });
 
-        if (!ollamaRes.ok || !ollamaRes.body) {
-          const errText = await ollamaRes.text().catch(() => "unknown error");
-          throw new Error(`Ollama error ${ollamaRes.status}: ${errText}`);
+        if (!ollamaRes || !ollamaRes.ok || !ollamaRes.body) {
+          const errText = ollamaRes ? await ollamaRes.text().catch(() => "unknown error") : "no response";
+          usedFallback = true;
+          fallbackReason = ollamaRes ? `Ollama error ${ollamaRes.status}: ${errText}` : fallbackReason;
         }
 
-        const reader = ollamaRes.body.getReader();
+        if (usedFallback) {
+          const rawPolicy = buildPolicy(buildDeterministicSteps(task.title, task.transcript));
+          const { policy, warnings, errors } = processPolicyPipeline(rawPolicy);
+          updateTask(id, { steps: policy.steps, policy, status: "done" });
+          send({
+            type: "warning",
+            message: `Local LLM unavailable; deterministic interpreter used. ${fallbackReason}`,
+          });
+          for (const step of policy.steps) send({ type: "step", step });
+          send({ type: "done", steps: policy.steps, policy, warnings, errors, fallback: "deterministic" });
+          return;
+        }
+
+        if (!ollamaRes?.body) {
+          throw new Error("Ollama stream was unavailable after fallback check");
+        }
+        const ollamaBody = ollamaRes.body;
+        const reader = ollamaBody.getReader();
         const dec = new TextDecoder();
 
         // Ollama streams NDJSON: each line is a JSON object

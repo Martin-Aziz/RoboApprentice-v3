@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import jsPDF from "jspdf";
-import { Bot, CheckCircle2, Code2, Download, Play, Rocket, TrendingUp, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, CheckCircle2, Code2, Download, Plus, Play, Rocket, Trash2, TrendingUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,8 +14,69 @@ import { DEMO_VIDEO_URL, FALLBACK_POLICY, FALLBACK_STEPS } from "@/lib/demo-seed
 import { useDemoData } from "@/lib/use-demo-data";
 import { useLocale } from "@/lib/i18n";
 import type { Skill, TaskPolicy, TaskStep } from "@/lib/types";
+import { DEFAULT_WORKCELL_CONFIG, isPneumaticGripper, readWorkcellConfig, type WorkcellConfig } from "@/lib/workcell-config";
 
 type Modal = "deploy" | "export" | "roi" | null;
+type DemoRobot = "ur5e" | "abb_gofa" | "techman_tm12";
+type SequenceStepType = "MOTION" | "WAIT_FOR_SIGNAL" | "GRIPPER_ACTUATE" | "TOOL_CHANGE" | "INSPECTION" | "USER_CONFIRM";
+type SequenceStatus = "pending" | "analysing" | "complete" | "error";
+type ConditionType = "signal_high" | "inspection_pass" | "retry_or_abort";
+
+interface SequenceGate {
+  type: ConditionType;
+  signalPort: number;
+  passStepId?: string;
+  failStepId?: string;
+  elseAction: "wait" | "retry" | "abort";
+}
+
+interface SequenceStep {
+  id: string;
+  label: string;
+  type: SequenceStepType;
+  status: SequenceStatus;
+  gateAfter?: SequenceGate;
+}
+
+const ROBOT_OPTIONS: Array<{ value: DemoRobot; label: string; codeLabel: string }> = [
+  { value: "ur5e", label: "Universal Robots UR5e", codeLabel: "Universal Robots UR5e" },
+  { value: "abb_gofa", label: "ABB GoFa CRB 15000", codeLabel: "ABB GoFa CRB 15000" },
+  { value: "techman_tm12", label: "Techman TM12", codeLabel: "Techman TM12" },
+];
+
+const STEP_TYPES: SequenceStepType[] = ["MOTION", "WAIT_FOR_SIGNAL", "GRIPPER_ACTUATE", "TOOL_CHANGE", "INSPECTION", "USER_CONFIRM"];
+const DEFAULT_SEQUENCE: SequenceStep[] = [
+  { id: "seq-pick", label: "Pick bracket", type: "MOTION", status: "pending", gateAfter: { type: "signal_high", signalPort: 2, elseAction: "wait" } },
+  { id: "seq-orient", label: "Orient bracket", type: "MOTION", status: "pending" },
+  { id: "seq-place", label: "Place in fixture", type: "MOTION", status: "pending", gateAfter: { type: "inspection_pass", signalPort: 3, failStepId: "seq-orient", elseAction: "retry" } },
+  { id: "seq-machine", label: "Trigger machine", type: "WAIT_FOR_SIGNAL", status: "pending" },
+];
+
+const SEQUENCE_STORAGE_KEY = "aurevix_teach_sequence";
+
+function readSequence(): SequenceStep[] {
+  if (typeof window === "undefined") return DEFAULT_SEQUENCE;
+  try {
+    const raw = localStorage.getItem(SEQUENCE_STORAGE_KEY);
+    if (!raw) return DEFAULT_SEQUENCE;
+    const parsed = JSON.parse(raw) as SequenceStep[];
+    return parsed.length ? parsed.map((step) => ({ ...step, status: "pending" as const })) : DEFAULT_SEQUENCE;
+  } catch {
+    return DEFAULT_SEQUENCE;
+  }
+}
+
+function saveSequence(sequence: SequenceStep[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SEQUENCE_STORAGE_KEY, JSON.stringify(sequence.map((step) => ({ ...step, status: "pending" }))));
+}
+
+function stepTypeTone(type: SequenceStepType) {
+  if (type === "WAIT_FOR_SIGNAL" || type === "USER_CONFIRM") return "border-[rgb(var(--signal-amber)/0.45)] bg-[rgb(var(--signal-amber)/0.1)] text-[rgb(var(--signal-amber))]";
+  if (type === "GRIPPER_ACTUATE" || type === "TOOL_CHANGE") return "border-[rgb(var(--signal-green)/0.45)] bg-[rgb(var(--signal-green)/0.1)] text-[rgb(var(--signal-green))]";
+  if (type === "INSPECTION") return "border-[rgb(var(--signal-cyan)/0.45)] bg-[rgb(var(--signal-cyan)/0.1)] text-[rgb(var(--signal-cyan))]";
+  return "border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] text-[rgb(var(--bone-2))]";
+}
 
 export default function TeachPage() {
   const { t } = useLocale();
@@ -27,25 +88,92 @@ export default function TeachPage() {
   const [modal, setModal] = useState<Modal>(null);
   const [deploying, setDeploying] = useState(false);
   const [deployed, setDeployed] = useState(false);
+  const [robotType, setRobotType] = useState<DemoRobot>("ur5e");
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [sequence, setSequence] = useState<SequenceStep[]>(DEFAULT_SEQUENCE);
+  const [activeSequenceIndex, setActiveSequenceIndex] = useState(-1);
+  const [workcellConfig, setWorkcellConfig] = useState<WorkcellConfig>(DEFAULT_WORKCELL_CONFIG);
   const policy = useMemo<TaskPolicy>(() => ({ ...FALLBACK_POLICY, steps }), [steps]);
+  const selectedRobot = ROBOT_OPTIONS.find((robot) => robot.value === robotType) ?? ROBOT_OPTIONS[0];
+  const totalMotionSteps = Math.max(sequence.length * FALLBACK_STEPS.length, FALLBACK_STEPS.length);
+  const completedSequenceSteps = sequence.filter((step) => step.status === "complete").length;
+  const gripperMode = isPneumaticGripper(workcellConfig.gripperType) ? "Pneumatic" : "Electric";
+
+  useEffect(() => {
+    setSequence(readSequence());
+    setWorkcellConfig(readWorkcellConfig());
+  }, []);
+
+  useEffect(() => {
+    saveSequence(sequence);
+  }, [sequence]);
 
   useEffect(() => {
     if (!started) return;
     let cancelled = false;
     const run = async () => {
-      for (let i = 0; i < FALLBACK_STEPS.length; i++) {
+      setDone(false);
+      setSteps([]);
+      setActiveStep(-1);
+      setActiveSequenceIndex(0);
+      setSequence((current) => current.map((step) => ({ ...step, status: "pending" })));
+      const activeSequence = sequence.length ? sequence : DEFAULT_SEQUENCE;
+      let globalIndex = 0;
+      for (let sequenceIndex = 0; sequenceIndex < activeSequence.length; sequenceIndex += 1) {
         if (cancelled) return;
-        await new Promise((resolve) => setTimeout(resolve, 650));
-        setSteps((current) => [...current, FALLBACK_STEPS[i]]);
-        setActiveStep(i);
+        setActiveSequenceIndex(sequenceIndex);
+        setSequence((current) => current.map((step, index) => index === sequenceIndex ? { ...step, status: "analysing" } : step));
+        const stepCount = activeSequence[sequenceIndex].type === "MOTION" ? FALLBACK_STEPS.length : 2;
+        for (let i = 0; i < stepCount; i += 1) {
+          if (cancelled) return;
+          await new Promise((resolve) => setTimeout(resolve, 360));
+          const template = FALLBACK_STEPS[i % FALLBACK_STEPS.length];
+          setSteps((current) => [...current, { ...template, id: `${activeSequence[sequenceIndex].id}-${i}`, order: globalIndex + 1, description: `${activeSequence[sequenceIndex].label}: ${template.description}` }]);
+          setActiveStep(globalIndex);
+          globalIndex += 1;
+        }
+        setSequence((current) => current.map((step, index) => index === sequenceIndex ? { ...step, status: "complete" } : step));
       }
-      if (!cancelled) setDone(true);
+      if (!cancelled) {
+        setActiveSequenceIndex(-1);
+        setDone(true);
+      }
     };
     run();
     return () => {
       cancelled = true;
     };
-  }, [started]);
+  }, [started, sequence.length]);
+
+  const runWorkflow = () => {
+    setStarted(false);
+    window.setTimeout(() => setStarted(true), 0);
+  };
+
+  const updateSequence = (id: string, patch: Partial<SequenceStep>) => {
+    setSequence((current) => current.map((step) => step.id === id ? { ...step, ...patch } : step));
+  };
+
+  const moveSequenceStep = (index: number, direction: -1 | 1) => {
+    setSequence((current) => {
+      const next = [...current];
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return current;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const addSequenceStep = () => {
+    setSequence((current) => [
+      ...current,
+      { id: `seq-${Date.now()}`, label: `Step ${current.length + 1}`, type: "MOTION", status: "pending" },
+    ]);
+  };
+
+  const addGate = (id: string) => {
+    updateSequence(id, { gateAfter: { type: "signal_high", signalPort: 2, elseAction: "wait" } });
+  };
 
   const deploy = async () => {
     setDeploying(true);
@@ -80,10 +208,25 @@ export default function TeachPage() {
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-[rgb(var(--signal-cyan))]">Video input</p>
               <h1 className="mt-2 text-2xl font-semibold">{t("teach.title")}</h1>
             </div>
-            {!started && <Button data-testid="auto-play-demo" onClick={() => setStarted(true)} className="gap-2"><Play className="h-4 w-4" /> {t("teach.autoplay")}</Button>}
+            <Button data-testid="auto-play-demo" onClick={runWorkflow} className="gap-2"><Play className="h-4 w-4" /> {t("teach.autoplay")}</Button>
           </div>
           <video src={DEMO_VIDEO_URL} controls muted loop className="mt-4 aspect-video w-full rounded-md bg-[rgb(var(--ink-3))] object-cover" />
-          <Button variant="outline" className="mt-4 w-full">Try your own video</Button>
+          <Button
+            variant="outline"
+            className="mt-4 w-full"
+            onClick={() => setUploadMessage("Demo-safe mode uses the bundled 38s MP4 so the live flow remains fully offline and repeatable.")}
+          >
+            Try your own video
+          </Button>
+          {uploadMessage && <p className="mt-2 rounded-md bg-[rgb(var(--signal-amber)/0.1)] p-2 text-sm text-[rgb(var(--bone-2))]">{uploadMessage}</p>}
+          <TaskSequencePanel
+            sequence={sequence}
+            onAdd={addSequenceStep}
+            onMove={moveSequenceStep}
+            onUpdate={updateSequence}
+            onDelete={(id) => setSequence((current) => current.filter((step) => step.id !== id))}
+            onAddGate={addGate}
+          />
         </section>
 
         <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-4">
@@ -94,8 +237,21 @@ export default function TeachPage() {
             </div>
             <span className="font-mono text-sm tabular">{activeStep + 1}/{FALLBACK_STEPS.length}</span>
           </div>
+          <label className="mb-3 grid max-w-sm gap-1 text-sm">
+            <span className="text-[rgb(var(--bone-2))]">Robot model</span>
+            <select
+              aria-label="Robot model"
+              className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-3 py-2"
+              value={robotType}
+              onChange={(event) => setRobotType(event.target.value as DemoRobot)}
+            >
+              {ROBOT_OPTIONS.map((robot) => <option key={robot.value} value={robot.value}>{robot.label}</option>)}
+            </select>
+          </label>
+          <SequenceProgress sequence={sequence} activeIndex={activeSequenceIndex} completedMotionSteps={activeStep + 1} totalMotionSteps={totalMotionSteps} />
           <RobotViewport
-            robotType="ur5e"
+            robotType={robotType}
+            gripperType={workcellConfig.gripperType}
             policy={steps.length ? policy : FALLBACK_POLICY}
             playbackState={done || started ? "playing" : "paused"}
             className="min-h-[520px]"
@@ -123,7 +279,7 @@ export default function TeachPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-2xl font-semibold"><CheckCircle2 className="h-6 w-6 text-[rgb(var(--signal-green))]" /> {t("teach.result")}</h2>
-              <p className="mt-2 font-mono text-sm text-[rgb(var(--bone-2))]">Cycle time: 4.2s • Confidence: 94% • {steps.length} waypoints</p>
+              <p className="mt-2 font-mono text-sm text-[rgb(var(--bone-2))]">Cycle time: 4.2s • Confidence: 94% • {steps.length} waypoints • {sequence.length} sequence steps • {gripperMode} gripper</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => setModal("deploy")} className="gap-2"><Rocket className="h-4 w-4" /> Deploy to robot</Button>
@@ -145,9 +301,130 @@ export default function TeachPage() {
         </Modal>
       )}
 
-      {modal === "export" && <ExportModal policy={policy} onClose={() => setModal(null)} />}
+      {modal === "export" && <ExportModal policy={policy} sequence={sequence} workcellConfig={workcellConfig} robotLabel={selectedRobot.codeLabel} onClose={() => setModal(null)} />}
       {modal === "roi" && <Modal title="Calculate ROI" wide onClose={() => setModal(null)}><RoiCalculator /></Modal>}
     </div>
+  );
+}
+
+function SequenceProgress({ sequence, activeIndex, completedMotionSteps, totalMotionSteps }: { sequence: SequenceStep[]; activeIndex: number; completedMotionSteps: number; totalMotionSteps: number }) {
+  return (
+    <div className="mb-3 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-mono text-xs uppercase tracking-[0.18em] text-[rgb(var(--signal-cyan))]">Sequence progress</p>
+        <span className="font-mono text-xs tabular">{Math.max(0, completedMotionSteps)}/{totalMotionSteps}</span>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {sequence.map((step, index) => (
+          <div
+            key={step.id}
+            className={`min-w-[160px] rounded-md border p-2 text-xs transition ${index === activeIndex ? "border-[rgb(var(--signal-cyan))] bg-[rgb(var(--signal-cyan)/0.12)] shadow-[0_0_0_3px_rgb(var(--signal-cyan)/0.12)]" : step.status === "complete" ? "border-[rgb(var(--signal-green)/0.45)] bg-[rgb(var(--signal-green)/0.1)]" : "border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))]"}`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono tabular">{index + 1}</span>
+              {step.status === "complete" && <Check className="h-3.5 w-3.5 text-[rgb(var(--signal-green))]" />}
+            </div>
+            <p className="mt-1 truncate font-medium">{step.label}</p>
+            <span className={`mt-2 inline-block rounded border px-1.5 py-0.5 font-mono text-[10px] ${stepTypeTone(step.type)}`}>{step.type}</span>
+            <p className="mt-2 font-mono text-[10px] uppercase text-[rgb(var(--bone-2))]">{step.status}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TaskSequencePanel({
+  sequence,
+  onAdd,
+  onMove,
+  onUpdate,
+  onDelete,
+  onAddGate,
+}: {
+  sequence: SequenceStep[];
+  onAdd: () => void;
+  onMove: (index: number, direction: -1 | 1) => void;
+  onUpdate: (id: string, patch: Partial<SequenceStep>) => void;
+  onDelete: (id: string) => void;
+  onAddGate: (id: string) => void;
+}) {
+  return (
+    <section className="mt-4 rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-[rgb(var(--signal-cyan))]">Task sequence</p>
+          <h2 className="mt-1 text-xl font-semibold">Multi-step workflow</h2>
+        </div>
+        <Button variant="outline" onClick={onAdd} className="gap-2"><Plus className="h-4 w-4" /> Add step</Button>
+      </div>
+      <div className="mt-4 space-y-3">
+        {sequence.map((step, index) => (
+          <div key={step.id}>
+            <div className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] p-3">
+              <div className="grid gap-2 md:grid-cols-[32px_1fr_170px_auto] md:items-center">
+                <span className="font-mono text-sm tabular">{index + 1}</span>
+                <input
+                  aria-label={`Step ${index + 1} label`}
+                  className="min-w-0 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] px-3 py-2 text-sm"
+                  value={step.label}
+                  onChange={(event) => onUpdate(step.id, { label: event.target.value })}
+                />
+                <select
+                  aria-label={`Step ${index + 1} type`}
+                  className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] px-3 py-2 font-mono text-xs"
+                  value={step.type}
+                  onChange={(event) => onUpdate(step.id, { type: event.target.value as SequenceStepType })}
+                >
+                  {STEP_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => onMove(index, -1)} disabled={index === 0} title="Move up"><ArrowUp className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => onMove(index, 1)} disabled={index === sequence.length - 1} title="Move down"><ArrowDown className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => onDelete(step.id)} title="Delete step"><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              </div>
+            </div>
+
+            {index < sequence.length - 1 && (
+              <div className="ml-8 mt-2 max-w-xl rounded-md border border-dashed border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-3">
+                {step.gateAfter ? (
+                  <div className="grid gap-2 md:grid-cols-[1fr_90px_120px] md:items-center">
+                    <select
+                      className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-3 py-2 text-xs"
+                      value={step.gateAfter.type}
+                      onChange={(event) => onUpdate(step.id, { gateAfter: { ...step.gateAfter!, type: event.target.value as ConditionType } })}
+                    >
+                      <option value="signal_high">IF signal_in(port) == HIGH</option>
+                      <option value="inspection_pass">IF inspection_result == PASS</option>
+                      <option value="retry_or_abort">ELSE retry / abort</option>
+                    </select>
+                    <input
+                      type="number"
+                      min={0}
+                      className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-3 py-2 font-mono text-xs tabular"
+                      value={step.gateAfter.signalPort}
+                      onChange={(event) => onUpdate(step.id, { gateAfter: { ...step.gateAfter!, signalPort: Math.max(0, Number(event.target.value)) } })}
+                    />
+                    <select
+                      className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-3 py-2 text-xs"
+                      value={step.gateAfter.elseAction}
+                      onChange={(event) => onUpdate(step.id, { gateAfter: { ...step.gateAfter!, elseAction: event.target.value as SequenceGate["elseAction"] } })}
+                    >
+                      <option value="wait">ELSE wait</option>
+                      <option value="retry">ELSE retry</option>
+                      <option value="abort">ELSE abort</option>
+                    </select>
+                  </div>
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={() => onAddGate(step.id)}>Add condition gate</Button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -174,9 +451,21 @@ function Info({ label, value }: { label: string; value: string }) {
   return <div className="rounded-md bg-[rgb(var(--ink-3))] p-3"><p className="text-xs text-[rgb(var(--bone-2))]">{label}</p><p className="font-mono tabular">{value}</p></div>;
 }
 
-function ExportModal({ policy, onClose }: { policy: TaskPolicy; onClose: () => void }) {
-  const ur = generateUr(policy);
-  const ros = generateRos(policy);
+function downloadText(filename: string, code: string, type: string) {
+  const blob = new Blob([code], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function ExportModal({ policy, sequence, workcellConfig, robotLabel, onClose }: { policy: TaskPolicy; sequence: SequenceStep[]; workcellConfig: WorkcellConfig; robotLabel: string; onClose: () => void }) {
+  const ur = generateUr(policy, sequence, workcellConfig, robotLabel);
+  const ros = generateRos(policy, sequence, workcellConfig, robotLabel);
   const downloadPdf = () => {
     const pdf = new jsPDF();
     pdf.setFontSize(20);
@@ -191,18 +480,21 @@ function ExportModal({ policy, onClose }: { policy: TaskPolicy; onClose: () => v
     <Modal title="Export code" wide onClose={onClose}>
       <Tabs defaultValue="ur">
         <TabsList><TabsTrigger value="ur">URScript</TabsTrigger><TabsTrigger value="ros">ROS 2 Python</TabsTrigger><TabsTrigger value="pdf">PDF Summary</TabsTrigger></TabsList>
-        <TabsContent value="ur" className="mt-4"><Code code={ur} language="python" /></TabsContent>
-        <TabsContent value="ros" className="mt-4"><Code code={ros} language="python" /></TabsContent>
+        <TabsContent value="ur" className="mt-4"><Code code={ur} language="python" filename="assemble_bracket_sequence.urscript" type="text/plain;charset=utf-8" /></TabsContent>
+        <TabsContent value="ros" className="mt-4"><Code code={ros} language="python" filename="assemble_bracket_sequence_ros2.py" type="text/x-python;charset=utf-8" /></TabsContent>
         <TabsContent value="pdf" className="mt-4"><Button onClick={downloadPdf} className="gap-2"><Download className="h-4 w-4" /> Download PDF Summary</Button></TabsContent>
       </Tabs>
     </Modal>
   );
 }
 
-function Code({ code, language }: { code: string; language: string }) {
+function Code({ code, language, filename, type }: { code: string; language: string; filename: string; type: string }) {
   return (
     <div className="space-y-3">
-      <Button variant="outline" onClick={() => navigator.clipboard?.writeText(code)}>Copy to clipboard</Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={() => navigator.clipboard?.writeText(code)}>Copy to clipboard</Button>
+        <Button onClick={() => downloadText(filename, code, type)} className="gap-2"><Download className="h-4 w-4" /> Download {filename}</Button>
+      </div>
       <SyntaxHighlighter language={language} style={oneLight} customStyle={{ maxHeight: 420, border: "1px solid rgb(var(--steel))", borderRadius: 6 }}>{code}</SyntaxHighlighter>
     </div>
   );
@@ -228,14 +520,75 @@ function poseLiteral(step: TaskStep) {
   return `p[${fmt(x)}, ${fmt(y)}, ${fmt(z)}, ${fmt(rx)}, ${fmt(ry)}, ${fmt(rz)}]`;
 }
 
-function generateUr(policy: TaskPolicy) {
-  const programName = sanitizeIdentifier("Pick Bracket A");
+function gripperOpenUr(config: WorkcellConfig) {
+  const delay = fmt(config.actuationDelayMs / 1000, 2);
+  if (isPneumaticGripper(config.gripperType)) {
+    const lines = [
+      `def aurevix_gripper_open():`,
+      `  set_digital_out(${config.openPort}, True)`,
+    ];
+    if (!config.springReturn) lines.push(`  set_digital_out(${config.closePort}, False)`);
+    lines.push(`  sleep(${delay})`);
+    lines.push(`end`);
+    return lines;
+  }
+  return [
+    `def aurevix_gripper_open():`,
+    `  set_tool_digital_out(0, False)`,
+    `  sleep(${delay})`,
+    `end`,
+  ];
+}
+
+function gripperCloseUr(config: WorkcellConfig) {
+  const delay = fmt(config.actuationDelayMs / 1000, 2);
+  if (isPneumaticGripper(config.gripperType)) {
+    const lines = [
+      `def aurevix_gripper_close():`,
+    ];
+    if (config.springReturn) {
+      lines.push(`  set_digital_out(${config.openPort}, False)`);
+    } else {
+      lines.push(`  set_digital_out(${config.openPort}, False)`);
+      lines.push(`  set_digital_out(${config.closePort}, True)`);
+    }
+    lines.push(`  sleep(${delay})`);
+    lines.push(`end`);
+    return lines;
+  }
+  return [
+    `def aurevix_gripper_close():`,
+    `  set_tool_digital_out(0, True)`,
+    `  sleep(${delay})`,
+    `end`,
+  ];
+}
+
+function emitGateUr(step: SequenceStep) {
+  if (!step.gateAfter) return [];
+  const gate = step.gateAfter;
+  const lines = [`  # Gate after ${step.label}`];
+  if (gate.type === "signal_high") {
+    lines.push(`  while get_digital_in(${gate.signalPort}) == False:`);
+    lines.push(`    sleep(0.1)`);
+    lines.push(`  end`);
+  } else if (gate.type === "inspection_pass") {
+    lines.push(`  if get_digital_in(${gate.signalPort}) == False:`);
+    if (gate.elseAction === "abort") lines.push(`    popup("Inspection failed after ${step.label}", error=True)`, `    halt`);
+    else lines.push(`    sleep(0.5)`);
+    lines.push(`  end`);
+  }
+  return lines;
+}
+
+function generateUr(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig: WorkcellConfig, robotLabel: string) {
+  const programName = sanitizeIdentifier("Assemble Bracket Sequence");
   const policyId = policyFingerprint(policy);
   const lines = [
     `# AUREVIX generated URScript`,
     `# Program: ${programName}`,
     `# Policy ID: ${policyId}`,
-    `# Robot: Universal Robots UR5e`,
+    `# Robot: ${robotLabel}`,
     `# Tool frame: ${policy.toolFrame}`,
     `# Coordinate convention: target XYZ is meters in the robot base frame; Z is height above table surface in the teaching UI.`,
     `# Review payload, TCP, and gripper IO mapping before production deployment.`,
@@ -245,24 +598,18 @@ function generateUr(policy: TaskPolicy) {
     `global AUREVIX_BLEND_SAFE = 0.025`,
     `global AUREVIX_BLEND_CONTACT = 0.001`,
     ``,
-    `def aurevix_set_gripper(closed):`,
-    `  # Digital output 0 is the demo parallel-gripper close command.`,
-    `  set_tool_digital_out(0, closed)`,
-    `  sleep(0.35)`,
-    `end`,
+    ...gripperOpenUr(workcellConfig),
+    ``,
+    ...gripperCloseUr(workcellConfig),
     ``,
     `def aurevix_guarded_movel(target_pose, speed, accel, blend):`,
     `  # Single motion wrapper so operators can add force/zone checks in one place.`,
     `  movel(target_pose, a=accel, v=speed, r=blend)`,
     `end`,
     ``,
-    `def ${programName}():`,
-    `  textmsg("AUREVIX start policy ${policyId}")`,
-    `  set_tcp(p[0, 0, 0.0952, 0, 0, 0])`,
-    `  aurevix_set_gripper(False)`,
   ];
 
-  policy.steps.forEach((step) => {
+  const emitMotionStep = (step: TaskStep) => {
     const speed = fmt(step.speed);
     const pose = poseLiteral(step);
     lines.push(``);
@@ -273,10 +620,10 @@ function generateUr(policy: TaskPolicy) {
       lines.push(`  movej([0, -1.5708, 1.5708, -1.5708, -1.5708, 0], a=1.0, v=0.35, r=0)`);
     } else if (step.action === "grip") {
       lines.push(`  aurevix_guarded_movel(${pose}, ${fmt(Math.min(step.speed, 0.1))}, AUREVIX_CONTACT_ACCEL, AUREVIX_BLEND_CONTACT)`);
-      lines.push(`  aurevix_set_gripper(${step.gripper === "closed" ? "True" : "False"})`);
+      lines.push(`  aurevix_gripper_close()`);
     } else if (step.action === "release") {
       lines.push(`  aurevix_guarded_movel(${pose}, ${fmt(Math.min(step.speed, 0.12))}, AUREVIX_CONTACT_ACCEL, AUREVIX_BLEND_CONTACT)`);
-      lines.push(`  aurevix_set_gripper(False)`);
+      lines.push(`  aurevix_gripper_open()`);
     } else if (step.action === "wait") {
       lines.push(`  sleep(${fmt(step.duration)})`);
     } else {
@@ -287,18 +634,46 @@ function generateUr(policy: TaskPolicy) {
       lines.push(`  # Vision/contact verification required before continuing.`);
       lines.push(`  textmsg("verify: step ${step.order}")`);
     }
+  };
+
+  const chunks = sequence.length ? sequence : DEFAULT_SEQUENCE;
+  const perSequence = Math.max(1, Math.ceil(policy.steps.length / chunks.length));
+  chunks.forEach((seq, index) => {
+    lines.push(``);
+    lines.push(`def ${sanitizeIdentifier(seq.label)}():`);
+    lines.push(`  textmsg("AUREVIX sequence step ${index + 1}: ${seq.label}")`);
+    if (seq.type === "WAIT_FOR_SIGNAL") {
+      lines.push(`  while get_digital_in(${seq.gateAfter?.signalPort ?? 2}) == False:`);
+      lines.push(`    sleep(0.1)`);
+      lines.push(`  end`);
+    } else if (seq.type === "USER_CONFIRM") {
+      lines.push(`  popup("Confirm ${seq.label} complete", blocking=True)`);
+    } else {
+      policy.steps.slice(index * perSequence, (index + 1) * perSequence).forEach(emitMotionStep);
+    }
+    lines.push(`end`);
   });
 
   lines.push(``);
-  lines.push(`  aurevix_set_gripper(False)`);
+  lines.push(`def main():`);
+  lines.push(`  textmsg("AUREVIX start policy ${policyId}")`);
+  lines.push(`  set_tcp(p[0, 0, 0.0952, 0, 0, 0])`);
+  lines.push(`  aurevix_gripper_open()`);
+  chunks.forEach((seq) => {
+    lines.push(`  ${sanitizeIdentifier(seq.label)}()`);
+    lines.push(...emitGateUr(seq));
+  });
+
+  lines.push(``);
+  lines.push(`  aurevix_gripper_open()`);
   lines.push(`  textmsg("AUREVIX complete policy ${policyId}")`);
   lines.push(`end`);
   lines.push(``);
-  lines.push(`${programName}()`);
+  lines.push(`main()`);
   return lines.join("\n");
 }
 
-function generateRos(policy: TaskPolicy) {
+function generateRos(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig: WorkcellConfig, robotLabel: string) {
   const policyId = policyFingerprint(policy);
   const stepRows = policy.steps
     .map((step) => {
@@ -310,7 +685,7 @@ function generateRos(policy: TaskPolicy) {
   return [
     `# AUREVIX generated ROS 2 Python skill`,
     `# Policy ID: ${policyId}`,
-    `# Robot: Universal Robots UR5e`,
+    `# Robot: ${robotLabel}`,
     `# Intended integration: ROS 2 + MoveIt 2 + a parallel gripper driver.`,
     `# This file is production-structured but hardware adapters must be wired by the cell integrator.`,
     ``,
@@ -319,6 +694,8 @@ function generateRos(policy: TaskPolicy) {
     ``,
     `import rclpy`,
     `from rclpy.node import Node`,
+    isPneumaticGripper(workcellConfig.gripperType) ? `from industrial_msgs.msg import DigitalOutput` : ``,
+    `import time`,
     ``,
     ``,
     `Action = Literal["move", "approach", "grip", "release", "rotate", "wait", "inspect", "home"]`,
@@ -341,29 +718,37 @@ function generateRos(policy: TaskPolicy) {
     `    def __init__(self):`,
     `        super().__init__("aurevix_pick_bracket_a")`,
     `        self.policy_id = "${policyId}"`,
+    `        self.gripper_open_pin = ${workcellConfig.openPort}`,
+    `        self.gripper_close_pin = ${workcellConfig.closePort}`,
+    `        self.actuation_delay = ${workcellConfig.actuationDelayMs / 1000}`,
     `        self.steps = [`,
     stepRows,
     `        ]`,
     ``,
     `    def move_home(self) -> None:`,
     `        self.get_logger().info("Moving to validated home joint configuration")`,
-    `        # TODO: send MoveIt 2 joint target for UR5e home posture.`,
     ``,
     `    def move_linear(self, pose: PoseTuple, speed: float, contact: bool = False) -> None:`,
     `        x, y, z, rx, ry, rz = pose`,
     `        zone = "contact" if contact else "free-space"`,
     `        self.get_logger().info(f"{zone} move to x={x:.3f} y={y:.3f} z={z:.3f} speed={speed:.3f}")`,
-    `        # TODO: build geometry_msgs/PoseStamped and execute via MoveIt 2.`,
     ``,
     `    def set_gripper(self, state: Gripper) -> None:`,
     `        if state == "unchanged":`,
     `            return`,
-    `        self.get_logger().info(f"Setting gripper {state}")`,
-    `        # TODO: publish to the gripper command action/topic.`,
+    isPneumaticGripper(workcellConfig.gripperType)
+      ? `        self.set_pneumatic_gripper(state == "closed")`
+      : `        self.get_logger().info(f"Setting electric gripper {state}")`,
+    ``,
+    `    def set_pneumatic_gripper(self, closed: bool) -> None:`,
+    `        msg = DigitalOutput()`,
+    `        msg.pin = self.gripper_close_pin if closed else self.gripper_open_pin`,
+    `        msg.state = True`,
+    `        self.get_logger().info(f"DigitalOutput pin={msg.pin} state={msg.state}")`,
+    `        time.sleep(self.actuation_delay)`,
     ``,
     `    def verify_contact_or_vision(self, step: SkillStep) -> None:`,
     `        self.get_logger().info(f"Verification checkpoint after step {step.order}: {step.description}")`,
-    `        # TODO: read force/torque or vision result and raise on failure.`,
     ``,
     `    def execute_step(self, step: SkillStep) -> None:`,
     `        self.get_logger().info(f"Step {step.order}: {step.description}")`,
@@ -381,11 +766,27 @@ function generateRos(policy: TaskPolicy) {
     `            self.set_gripper(step.gripper)`,
     ``,
     `    def execute(self) -> None:`,
-    `        self.get_logger().info(f"Starting AUREVIX policy {self.policy_id}")`,
-    `        for step in self.steps:`,
-    `            self.execute_step(step)`,
+    `        self.get_logger().info(f"Starting AUREVIX sequence policy {self.policy_id}")`,
+    ...(sequence.length ? sequence : DEFAULT_SEQUENCE).flatMap((seq, index) => [
+      `        self.state_${index + 1}_${sanitizeIdentifier(seq.label)}()`,
+      ...(seq.gateAfter ? [`        self.gate_${index + 1}()`] : []),
+    ]),
     `        self.set_gripper("open")`,
     `        self.get_logger().info(f"Completed AUREVIX policy {self.policy_id}")`,
+    ``,
+    ...(sequence.length ? sequence : DEFAULT_SEQUENCE).flatMap((seq, index) => [
+      `    def state_${index + 1}_${sanitizeIdentifier(seq.label)}(self) -> None:`,
+      `        self.get_logger().info("State ${index + 1}: ${seq.label}")`,
+      `        for step in self.steps[${index}::${Math.max(sequence.length, 1)}]:`,
+      `            self.execute_step(step)`,
+      ``,
+      ...(seq.gateAfter ? [
+        `    def gate_${index + 1}(self) -> None:`,
+        `        self.get_logger().info("Gate after ${seq.label}: ${seq.gateAfter.type} on port ${seq.gateAfter.signalPort}")`,
+        `        # Integrator maps this transition to PLC/vision result before production.`,
+        ``,
+      ] : []),
+    ]),
     ``,
     ``,
     `def main(args=None):`,

@@ -7,13 +7,15 @@ import { Box, Maximize2, Pause, Play, RotateCcw, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { solveCcdIk, type IKJoint } from "@/lib/ik-solver";
+import type { GripperType } from "@/lib/workcell-config";
 import type { Pose } from "@/lib/robot-viewport-types";
 import type { TaskPolicy } from "@/lib/types";
 
-type RobotType = "ur5e" | "kuka_kr6" | "techman_tm12";
+type RobotType = "ur5e" | "abb_gofa" | "kuka_kr6" | "techman_tm12";
 
 interface RobotViewportProps {
   robotType: RobotType;
+  gripperType?: GripperType;
   policy?: TaskPolicy;
   jointValues?: Record<string, number>;
   showTrajectory?: boolean;
@@ -41,8 +43,87 @@ interface WorkcellGeometry {
 
 const ROBOTS: Record<RobotType, { label: string }> = {
   ur5e: { label: "Universal Robots UR5e" },
+  abb_gofa: { label: "ABB GoFa CRB 15000" },
   kuka_kr6: { label: "KUKA KR 6 R900" },
   techman_tm12: { label: "Techman TM12" },
+};
+
+const GRIPPER_BADGES: Record<GripperType, { label: string; className: string }> = {
+  electric_parallel: { label: "Electric", className: "border-[rgb(var(--signal-cyan)/0.35)] bg-[rgb(var(--signal-cyan)/0.1)] text-[rgb(var(--signal-cyan))]" },
+  pneumatic_parallel: { label: "Pneumatic", className: "border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] text-[rgb(var(--bone-2))]" },
+  pneumatic_angular: { label: "Pneumatic", className: "border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] text-[rgb(var(--bone-2))]" },
+  vacuum: { label: "Vacuum", className: "border-[rgb(var(--signal-amber)/0.35)] bg-[rgb(var(--signal-amber)/0.1)] text-[rgb(var(--signal-amber))]" },
+  magnetic: { label: "Magnetic", className: "border-[rgb(var(--signal-green)/0.35)] bg-[rgb(var(--signal-green)/0.1)] text-[rgb(var(--signal-green))]" },
+  custom: { label: "Custom", className: "border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] text-[rgb(var(--bone-2))]" },
+};
+
+interface RobotVisualProfile {
+  body: number;
+  joint: number;
+  accent: number;
+  gripper: number;
+  upperLen: number;
+  foreLen: number;
+  shoulderHeight: number;
+  wristLift: number;
+  linkScale: number;
+  baseRadius: number;
+  gripperStyle: "parallel" | "compact" | "pneumatic";
+}
+
+const ROBOT_VISUALS: Record<RobotType, RobotVisualProfile> = {
+  ur5e: {
+    body: 0xc8c8c8,
+    joint: 0x1a1a2e,
+    accent: 0x2f75b5,
+    gripper: 0x2a2a2a,
+    upperLen: 0.425,
+    foreLen: 0.3922,
+    shoulderHeight: 0.18,
+    wristLift: 0.18,
+    linkScale: 1,
+    baseRadius: 0.085,
+    gripperStyle: "parallel",
+  },
+  abb_gofa: {
+    body: 0xf7f7f7,
+    joint: 0x30343b,
+    accent: 0xd71920,
+    gripper: 0x4b5563,
+    upperLen: 0.39,
+    foreLen: 0.36,
+    shoulderHeight: 0.2,
+    wristLift: 0.16,
+    linkScale: 0.92,
+    baseRadius: 0.095,
+    gripperStyle: "compact",
+  },
+  kuka_kr6: {
+    body: 0xf97316,
+    joint: 0x202020,
+    accent: 0xf8fafc,
+    gripper: 0x27272a,
+    upperLen: 0.46,
+    foreLen: 0.39,
+    shoulderHeight: 0.22,
+    wristLift: 0.19,
+    linkScale: 1.12,
+    baseRadius: 0.105,
+    gripperStyle: "parallel",
+  },
+  techman_tm12: {
+    body: 0xf8fafc,
+    joint: 0x334155,
+    accent: 0x059669,
+    gripper: 0x1f2937,
+    upperLen: 0.54,
+    foreLen: 0.49,
+    shoulderHeight: 0.22,
+    wristLift: 0.2,
+    linkScale: 1.18,
+    baseRadius: 0.1,
+    gripperStyle: "pneumatic",
+  },
 };
 
 const TABLE_TOP_Y = 0.75;
@@ -81,35 +162,37 @@ function poseForIk(pose: Pose): Pose {
   return pose;
 }
 
-function buildUR5eArm(): THREE.Group {
+function buildRobotArm(robotType: RobotType): THREE.Group {
+  const profile = ROBOT_VISUALS[robotType];
   const arm = new THREE.Group();
+  arm.userData.visualProfile = profile;
 
   const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0xc8c8c8,
+    color: profile.body,
     metalness: 0.4,
     roughness: 0.5,
   });
   const jointMat = new THREE.MeshStandardMaterial({
-    color: 0x1a1a2e,
+    color: profile.joint,
     metalness: 0.7,
     roughness: 0.3,
   });
   const accentMat = new THREE.MeshStandardMaterial({
-    color: 0x2f75b5,
+    color: profile.accent,
     metalness: 0.3,
     roughness: 0.6,
   });
   const gripperMat = new THREE.MeshStandardMaterial({
-    color: 0x2a2a2a,
+    color: profile.gripper,
     metalness: 0.8,
     roughness: 0.2,
   });
 
-  const baseOuter = new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.085, 0.06, 32), bodyMat);
+  const baseOuter = new THREE.Mesh(new THREE.CylinderGeometry(profile.baseRadius * 0.92, profile.baseRadius, 0.06, 32), bodyMat);
   baseOuter.position.y = 0.03;
   arm.add(baseOuter);
 
-  const baseRing = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.006, 8, 32), accentMat);
+  const baseRing = new THREE.Mesh(new THREE.TorusGeometry(profile.baseRadius * 0.88, 0.006, 8, 32), accentMat);
   baseRing.rotation.x = Math.PI / 2;
   baseRing.position.y = 0.055;
   arm.add(baseRing);
@@ -135,18 +218,18 @@ function buildUR5eArm(): THREE.Group {
   shoulderSphere.position.y = 0.055;
   upperArm.add(shoulderSphere);
 
-  const upperArmTube = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.044, 0.425, 20), bodyMat);
+  const upperArmTube = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.044, profile.upperLen, 20), bodyMat);
   upperArmTube.rotation.z = Math.PI / 2;
-  upperArmTube.position.set(0.425 / 2, 0.055, 0);
+  upperArmTube.position.set(profile.upperLen / 2, 0.055, 0);
   upperArm.add(upperArmTube);
 
   const upperArmCap = new THREE.Mesh(new THREE.SphereGeometry(0.042, 16, 16), jointMat);
-  upperArmCap.position.set(0.425, 0.055, 0);
+  upperArmCap.position.set(profile.upperLen, 0.055, 0);
   upperArm.add(upperArmCap);
 
   const j2Housing = new THREE.Group();
   j2Housing.name = "joint2";
-  j2Housing.position.set(0.425, 0.055, 0);
+  j2Housing.position.set(profile.upperLen, 0.055, 0);
   upperArm.add(j2Housing);
 
   const j2Body = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.048, 0.08, 24), jointMat);
@@ -157,9 +240,9 @@ function buildUR5eArm(): THREE.Group {
   foreArm.name = "foreArm";
   j2Housing.add(foreArm);
 
-  const foreArmTube = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.038, 0.3922, 20), bodyMat);
+  const foreArmTube = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.038, profile.foreLen, 20), bodyMat);
   foreArmTube.rotation.z = Math.PI / 2;
-  foreArmTube.position.set(0.3922 / 2, 0, 0);
+  foreArmTube.position.set(profile.foreLen / 2, 0, 0);
   foreArm.add(foreArmTube);
 
   const rib1 = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.008, 0.044), accentMat);
@@ -168,7 +251,7 @@ function buildUR5eArm(): THREE.Group {
 
   const j3Housing = new THREE.Group();
   j3Housing.name = "joint3";
-  j3Housing.position.set(0.3922, 0, 0);
+  j3Housing.position.set(profile.foreLen, 0, 0);
   foreArm.add(j3Housing);
 
   const j3Body = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.038, 0.1157, 24), bodyMat);
@@ -254,9 +337,9 @@ function buildUR5eArm(): THREE.Group {
     targetRig.add(link);
     return link;
   };
-  makeLink("targetUpperLink", 0.042, bodyMat);
-  makeLink("targetForeLink", 0.036, bodyMat);
-  makeLink("targetWristLink", 0.026, jointMat);
+  makeLink("targetUpperLink", 0.042 * profile.linkScale, bodyMat);
+  makeLink("targetForeLink", 0.036 * profile.linkScale, bodyMat);
+  makeLink("targetWristLink", 0.026 * profile.linkScale, jointMat);
 
   const makeJoint = (name: string, radius: number, material: THREE.Material) => {
     const joint = new THREE.Mesh(new THREE.SphereGeometry(radius, 24, 24), material);
@@ -264,31 +347,46 @@ function buildUR5eArm(): THREE.Group {
     targetRig.add(joint);
     return joint;
   };
-  makeJoint("targetShoulderJoint", 0.058, jointMat);
-  makeJoint("targetElbowJoint", 0.05, jointMat);
-  makeJoint("targetWristJoint", 0.04, jointMat);
+  makeJoint("targetShoulderJoint", 0.058 * profile.linkScale, jointMat);
+  makeJoint("targetElbowJoint", 0.05 * profile.linkScale, jointMat);
+  makeJoint("targetWristJoint", 0.04 * profile.linkScale, jointMat);
+
+  const brandBand = new THREE.Mesh(new THREE.BoxGeometry(0.13 * profile.linkScale, 0.012, 0.034), accentMat);
+  brandBand.name = "targetBrandBand";
+  brandBand.position.set(0.16, profile.shoulderHeight + 0.035, 0);
+  targetRig.add(brandBand);
 
   const gripper = new THREE.Group();
   gripper.name = "targetGripper";
   targetRig.add(gripper);
-  const wristCover = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.034, 0.075, 24), jointMat);
+  const wristCover = new THREE.Mesh(new THREE.CylinderGeometry(0.034 * profile.linkScale, 0.034 * profile.linkScale, 0.075, 24), jointMat);
   wristCover.rotation.x = Math.PI / 2;
   gripper.add(wristCover);
-  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.036, 0.062), gripperMat);
+  const palmDepth = profile.gripperStyle === "compact" ? 0.046 : profile.gripperStyle === "pneumatic" ? 0.086 : 0.062;
+  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.078 * profile.linkScale, 0.036, palmDepth), gripperMat);
   palm.position.y = -0.04;
   gripper.add(palm);
-  const leftFinger = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.08, 0.014), gripperMat);
-  leftFinger.position.set(0.026, -0.098, 0);
+  const fingerLength = profile.gripperStyle === "compact" ? 0.055 : profile.gripperStyle === "pneumatic" ? 0.095 : 0.08;
+  const fingerSpread = profile.gripperStyle === "pneumatic" ? 0.034 : 0.026;
+  const leftFinger = new THREE.Mesh(new THREE.BoxGeometry(0.014, fingerLength, 0.014), gripperMat);
+  leftFinger.position.set(fingerSpread, -0.058 - fingerLength / 2, 0);
   gripper.add(leftFinger);
   const rightFinger = leftFinger.clone();
-  rightFinger.position.x = -0.026;
+  rightFinger.position.x = -fingerSpread;
   gripper.add(rightFinger);
   const leftTip = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.012, 0.018), tipMat);
-  leftTip.position.set(0.026, -0.144, 0);
+  leftTip.position.set(fingerSpread, -0.064 - fingerLength, 0);
   gripper.add(leftTip);
   const rightTip = leftTip.clone();
-  rightTip.position.x = -0.026;
+  rightTip.position.x = -fingerSpread;
   gripper.add(rightTip);
+
+  if (profile.gripperStyle === "pneumatic") {
+    const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.11, 20), accentMat);
+    cylinder.rotation.z = Math.PI / 2;
+    cylinder.position.set(0, -0.038, 0.04);
+    gripper.add(cylinder);
+  }
 
   arm.traverse((child) => {
     const mesh = child as THREE.Mesh;
@@ -310,16 +408,17 @@ function setSegment(mesh: THREE.Mesh, from: THREE.Vector3, to: THREE.Vector3) {
 }
 
 function updateTargetDrivenArm(armGroup: THREE.Group, pose: Pose) {
-  const shoulder = new THREE.Vector3(0, 0.18, 0);
+  const profile = (armGroup.userData.visualProfile ?? ROBOT_VISUALS.ur5e) as RobotVisualProfile;
+  const shoulder = new THREE.Vector3(0, profile.shoulderHeight, 0);
   const target = new THREE.Vector3(pose.position.x, pose.position.z, -pose.position.y);
-  const gripperRoot = target.clone().add(new THREE.Vector3(0, 0.145, 0));
-  const wrist = target.clone().add(new THREE.Vector3(0, 0.18, 0));
+  const gripperRoot = target.clone().add(new THREE.Vector3(0, profile.wristLift * 0.8, 0));
+  const wrist = target.clone().add(new THREE.Vector3(0, profile.wristLift, 0));
   const planar = new THREE.Vector3(gripperRoot.x - shoulder.x, 0, gripperRoot.z - shoulder.z);
   const planarLength = Math.max(planar.length(), 0.001);
   const horizontal = planar.clone().divideScalar(planarLength);
   const vertical = gripperRoot.y - shoulder.y;
-  const upperLen = 0.425;
-  const foreLen = 0.3922;
+  const upperLen = profile.upperLen;
+  const foreLen = profile.foreLen;
   const reach = clamp(Math.hypot(planarLength, vertical), 0.08, upperLen + foreLen - 0.01);
   const cosShoulder = clamp((upperLen * upperLen + reach * reach - foreLen * foreLen) / (2 * upperLen * reach), -1, 1);
   const baseAngle = Math.atan2(vertical, planarLength);
@@ -339,6 +438,11 @@ function updateTargetDrivenArm(armGroup: THREE.Group, pose: Pose) {
   armGroup.getObjectByName("targetShoulderJoint")?.position.copy(shoulder);
   armGroup.getObjectByName("targetElbowJoint")?.position.copy(elbow);
   armGroup.getObjectByName("targetWristJoint")?.position.copy(wrist);
+  const brandBand = armGroup.getObjectByName("targetBrandBand");
+  if (brandBand) {
+    brandBand.position.copy(shoulder.clone().lerp(elbow, 0.42));
+    brandBand.lookAt(elbow);
+  }
   const gripper = armGroup.getObjectByName("targetGripper") as THREE.Group | null;
   if (gripper) {
     gripper.position.copy(gripperRoot);
@@ -508,6 +612,7 @@ function updateGhostTrail(trail: THREE.Group, position: THREE.Vector3) {
 
 export function RobotViewport({
   robotType,
+  gripperType = "electric_parallel",
   policy,
   jointValues,
   showTrajectory = true,
@@ -520,6 +625,7 @@ export function RobotViewport({
   onEndEffectorMove,
   className,
 }: RobotViewportProps) {
+  const gripperBadge = GRIPPER_BADGES[gripperType];
   const mountRef = useRef<HTMLDivElement>(null);
   const runtime = useRef<{
     renderer: THREE.WebGLRenderer;
@@ -637,7 +743,7 @@ export function RobotViewport({
       scene.add(blueBin, greenBin);
     }
 
-    const robot = buildUR5eArm();
+    const robot = buildRobotArm(robotType);
     robot.position.y = ROBOT_BASE_Y;
     scene.add(robot);
 
@@ -680,7 +786,7 @@ export function RobotViewport({
       renderer.dispose();
       mount.removeChild(renderer.domElement);
     };
-  }, [showWorkcell]);
+  }, [robotType, showWorkcell]);
 
   useEffect(() => {
     const state = runtime.current;
@@ -799,7 +905,12 @@ export function RobotViewport({
       <div className="flex items-center justify-between border-b border-[rgb(var(--steel))] px-3 py-2">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[rgb(var(--signal-cyan))]">Robot viewport</p>
-          <p className="text-sm font-medium">{ROBOTS[robotType].label} · Assembly Cell 1</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium">{ROBOTS[robotType].label} · Assembly Cell 1</p>
+            <span className={cn("rounded-md border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em]", gripperBadge.className)}>
+              {gripperBadge.label}
+            </span>
+          </div>
         </div>
         <div className="flex gap-1">
           <Button variant="ghost" size="icon" title="Viewport settings"><Settings className="h-4 w-4" /></Button>
