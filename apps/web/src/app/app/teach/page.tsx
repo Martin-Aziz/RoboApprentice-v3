@@ -14,6 +14,7 @@ import { DEMO_VIDEO_URL, FALLBACK_POLICY, FALLBACK_STEPS } from "@/lib/demo-seed
 import { useDemoData } from "@/lib/use-demo-data";
 import { useLocale } from "@/lib/i18n";
 import type { Skill, TaskPolicy, TaskStep } from "@/lib/types";
+import { readSafeDemoMode } from "@/lib/demo-mode";
 import { DEFAULT_WORKCELL_CONFIG, isPneumaticGripper, readWorkcellConfig, type WorkcellConfig } from "@/lib/workcell-config";
 
 type Modal = "deploy" | "export" | "roi" | null;
@@ -93,6 +94,7 @@ export default function TeachPage() {
   const [sequence, setSequence] = useState<SequenceStep[]>(DEFAULT_SEQUENCE);
   const [activeSequenceIndex, setActiveSequenceIndex] = useState(-1);
   const [workcellConfig, setWorkcellConfig] = useState<WorkcellConfig>(DEFAULT_WORKCELL_CONFIG);
+  const [safeDemoMode, setSafeDemoMode] = useState(true);
   const policy = useMemo<TaskPolicy>(() => ({ ...FALLBACK_POLICY, steps }), [steps]);
   const selectedRobot = ROBOT_OPTIONS.find((robot) => robot.value === robotType) ?? ROBOT_OPTIONS[0];
   const totalMotionSteps = Math.max(sequence.length * FALLBACK_STEPS.length, FALLBACK_STEPS.length);
@@ -102,6 +104,7 @@ export default function TeachPage() {
   useEffect(() => {
     setSequence(readSequence());
     setWorkcellConfig(readWorkcellConfig());
+    setSafeDemoMode(readSafeDemoMode());
   }, []);
 
   useEffect(() => {
@@ -208,7 +211,10 @@ export default function TeachPage() {
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-[rgb(var(--signal-cyan))]">Video input</p>
               <h1 className="mt-2 text-2xl font-semibold">{t("teach.title")}</h1>
             </div>
-            <Button data-testid="auto-play-demo" onClick={runWorkflow} className="gap-2"><Play className="h-4 w-4" /> {t("teach.autoplay")}</Button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {safeDemoMode && <span className="rounded-md border border-[rgb(var(--signal-green)/0.35)] bg-[rgb(var(--signal-green)/0.1)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[rgb(var(--signal-green))]">Safe demo mode</span>}
+              <Button data-testid="auto-play-demo" onClick={runWorkflow} className="gap-2"><Play className="h-4 w-4" /> {t("teach.autoplay")}</Button>
+            </div>
           </div>
           <video src={DEMO_VIDEO_URL} controls muted loop className="mt-4 aspect-video w-full rounded-md bg-[rgb(var(--ink-3))] object-cover" />
           <Button

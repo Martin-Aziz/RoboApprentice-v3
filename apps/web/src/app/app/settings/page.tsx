@@ -5,15 +5,18 @@ import { Moon, Sun } from "lucide-react";
 import { LanguageSelector } from "@/components/language-selector";
 import { useSessionStore } from "@/lib/store";
 import { useDemoData, resetDemoData } from "@/lib/use-demo-data";
+import { readSafeDemoMode, saveSafeDemoMode } from "@/lib/demo-mode";
 import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
   const { session_id, preferences, setPreferences } = useSessionStore();
   const { facility, robots, skills } = useDemoData();
   const [theme, setTheme] = useState("light");
+  const [safeDemoMode, setSafeDemoMode] = useState(true);
 
   useEffect(() => {
     setTheme(document.documentElement.dataset.theme ?? "light");
+    setSafeDemoMode(readSafeDemoMode());
   }, []);
 
   const toggleTheme = () => {
@@ -21,6 +24,12 @@ export default function SettingsPage() {
     document.documentElement.dataset.theme = next;
     setPreferences({ theme: next as "light" | "dark" });
     setTheme(next);
+  };
+
+  const toggleSafeDemoMode = () => {
+    const next = !safeDemoMode;
+    saveSafeDemoMode(next);
+    setSafeDemoMode(next);
   };
 
   return (
@@ -51,6 +60,21 @@ export default function SettingsPage() {
           <LanguageSelector />
           <Button variant="outline" onClick={toggleTheme}>{theme === "light" ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />} {theme === "light" ? "Dark mode" : "Light mode"}</Button>
           <Button variant="outline" onClick={resetDemoData}>Reset workspace</Button>
+        </div>
+      </section>
+      <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-[rgb(var(--signal-cyan))]">Demo resilience</p>
+            <h2 className="mt-2 font-semibold">Safe Demo Mode</h2>
+            <p className="mt-1 max-w-2xl text-sm text-[rgb(var(--bone-2))]">
+              When enabled, the teaching workflow uses deterministic cached results while preserving streaming progress, robot replay, and exports.
+            </p>
+          </div>
+          <label className="flex items-center gap-3 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-4 py-3 text-sm">
+            <input type="checkbox" checked={safeDemoMode} onChange={toggleSafeDemoMode} />
+            <span className="font-mono uppercase tracking-[0.14em]">{safeDemoMode ? "On" : "Off"}</span>
+          </label>
         </div>
       </section>
     </div>
