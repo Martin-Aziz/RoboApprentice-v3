@@ -642,6 +642,7 @@ export function RobotViewport({
     step: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [webglUnavailable, setWebglUnavailable] = useState(false);
   const [joints, setJoints] = useState<IKJoint[]>(() => UR5E_JOINTS.map((joint) => ({ ...joint })));
   const [pose, setPose] = useState<Pose>(() => waypointToPose(policy, 0));
   const [collision, setCollision] = useState<string | null>(null);
@@ -652,7 +653,14 @@ export function RobotViewport({
     if (!mount) return;
     const width = mount.clientWidth || 720;
     const height = mount.clientHeight || 520;
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+    } catch {
+      setLoading(false);
+      setWebglUnavailable(true);
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
     renderer.shadowMap.enabled = true;
@@ -921,6 +929,15 @@ export function RobotViewport({
       <div className="grid min-h-[520px] lg:grid-cols-[1fr_280px]">
         <div className="relative min-h-[420px]">
           <div ref={mountRef} className="h-full min-h-[420px]" />
+          {webglUnavailable && (
+            <div className="absolute inset-0 grid place-items-center bg-[rgb(var(--ink-3))] p-8 text-center">
+              <div className="max-w-sm">
+                <p className="font-mono text-xs uppercase tracking-[0.18em] text-[rgb(var(--signal-cyan))]">Robot policy replay</p>
+                <p className="mt-3 text-2xl font-semibold">8 generated waypoints</p>
+                <p className="mt-2 text-sm text-[rgb(var(--bone-2))]">Viewport running in capture-safe mode because WebGL is unavailable in this browser.</p>
+              </div>
+            </div>
+          )}
           {loading && <div className="absolute inset-0 grid place-items-center bg-[rgb(var(--ink)/0.72)] text-sm">Loading robot...</div>}
           <div data-testid="ee-pose" className="absolute right-3 top-3 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2)/0.92)] p-3 font-mono text-[11px] tabular">
             <p>End-effector pose</p>

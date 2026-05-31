@@ -169,7 +169,7 @@ export function generateExecutionHistory(): SkillExecution[] {
 }
 
 export const DEMO_EXECUTIONS = generateExecutionHistory();
-export const DEMO_VIDEO_URL = "/demos/precision-gripper.mp4";
+export const DEMO_VIDEO_URL = "/demos/multitask.mp4";
 
 export const FALLBACK_STEPS: TaskStep[] = [
   { id: "step-1", order: 1, description: "Move to home position above the fixture", action: "home", target: { x: 0.25, y: 0, z: 0.34 }, gripper: "open", speed: 0.25, duration: 2 },

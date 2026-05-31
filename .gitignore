@@ -17,9 +17,25 @@ Cargo.lock
 node_modules/
 .pnpm-store/
 
+# ─── Swift / Xcode / desktop provider ───
+**/.build/
+**/.swiftpm/
+**/DerivedData/
+**/*.xcodeproj/xcuserdata/
+LLM provider/.build/
+
 # ─── Next.js ─────────────────────────
 apps/web/.next/
 apps/web/out/
+apps/web/video-tmp-raw/
+apps/web/Aurevix_Demo_Video.mp4
+Precision_Gripper.mp4
+apps/web/public/*.html
+apps/web/public/test-data/
+
+# Generated demo/report artifacts
+docs/live-app-verification-*/
+docs/demo-qa-screenshots-*/
 
 # ─── Python ──────────────────────────
 __pycache__/
