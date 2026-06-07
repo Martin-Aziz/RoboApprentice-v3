@@ -146,7 +146,9 @@ export interface TaskFeedback {
 
 export interface Task {
   id: string;
+  facility_id: string;
   title: string;
+  description?: string;
   videoUrl: string;
   transcript?: string;
   status: TaskStatus;
@@ -156,6 +158,43 @@ export interface Task {
   errorMessage?: string;
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string;
+  targetRobotModels?: string[];
+  gripperConfig?: string;
+}
+
+export type TaskVersionStatus = "active" | "archived";
+
+export interface TaskVersion {
+  version_id: string;
+  task_id: string;
+  version_number: number;
+  facility_id: string;
+  title: string;
+  description?: string;
+  steps: TaskStep[];
+  policy?: TaskPolicy;
+  created_by?: string;
+  created_at: string;
+  status: TaskVersionStatus;
+}
+
+export interface CloudTaskLibrary {
+  task_id: string;
+  facility_id: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  current_version: number;
+  total_versions: number;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  archivedAt?: string;
+  targetRobotModels?: string[];
+  gripperConfig?: string;
+  confidence?: number;
+  lastExecutedAt?: string;
 }
 
 export interface SessionPreferences {

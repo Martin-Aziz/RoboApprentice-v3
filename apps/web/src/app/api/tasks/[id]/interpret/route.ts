@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { getTask, updateTask } from "@/lib/task-store";
+import { getTask, updateTask } from "@/lib/task-store-db";
 import { processPolicyPipeline } from "@/lib/policy-pipeline";
 import type { GripperState, RobotAction, TaskPolicy, TaskStep, Waypoint } from "@/lib/types";
 
@@ -355,10 +355,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const task = getTask(id);
+  const task = await getTask(id);
   if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  updateTask(id, { status: "processing" });
+  await updateTask(id, { status: "processing" });
 
   const encoder = new TextEncoder();
 
@@ -413,7 +413,7 @@ export async function POST(
         if (usedFallback) {
           const rawPolicy = buildPolicy(buildDeterministicSteps(task.title, task.transcript));
           const { policy, warnings, errors } = processPolicyPipeline(rawPolicy);
-          updateTask(id, { steps: policy.steps, policy, status: "done" });
+          await updateTask(id, { steps: policy.steps, policy, status: "done" });
           send({
             type: "warning",
             message: `Local LLM unavailable; deterministic interpreter used. ${fallbackReason}`,
@@ -498,11 +498,11 @@ export async function POST(
           });
         }
 
-        updateTask(id, { steps: policy.steps, policy, status: "done" });
+        await updateTask(id, { steps: policy.steps, policy, status: "done" });
         send({ type: "done", steps: policy.steps, policy, warnings });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Interpretation failed";
-        updateTask(id, { status: "error", errorMessage: msg });
+        await updateTask(id, { status: "error", errorMessage: msg });
         send({ type: "error", message: msg });
       } finally {
         controller.close();

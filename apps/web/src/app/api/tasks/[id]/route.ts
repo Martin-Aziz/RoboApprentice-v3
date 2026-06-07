@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTask, updateTask } from "@/lib/task-store";
+import { getTask, updateTask } from "@/lib/task-store-db";
 import type { TaskPolicy, TaskStatus, TaskStep } from "@/lib/types";
 
-export function GET(
+export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  return params.then(({ id }) => {
-    const task = getTask(id);
-    if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json(task);
-  });
+  const { id } = await params;
+  const task = await getTask(id);
+  if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(task);
 }
 
 export async function PATCH(
@@ -27,14 +26,16 @@ export async function PATCH(
     status?: TaskStatus;
     transcript?: string;
     errorMessage?: string;
+    description?: string;
   } = {};
   if (Array.isArray(body.steps)) patch.steps = body.steps;
   if (body.policy && typeof body.policy === "object") patch.policy = body.policy as TaskPolicy;
   if (typeof body.status === "string") patch.status = body.status as TaskStatus;
   if (typeof body.transcript === "string") patch.transcript = body.transcript;
   if (typeof body.errorMessage === "string") patch.errorMessage = body.errorMessage;
+  if (typeof body.description === "string") patch.description = body.description;
 
-  const updated = updateTask(id, patch);
+  const updated = await updateTask(id, patch);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(updated);
 }

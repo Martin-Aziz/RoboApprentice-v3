@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Bot, Calculator, Code2, Factory, GraduationCap, History, Library, RotateCcw, Settings, Wrench, X, Zap } from "lucide-react";
+import { BarChart3, Bot, Calculator, Code2, Factory, GraduationCap, History, Library, RotateCcw, Settings, Wrench, X, Zap, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -24,6 +24,7 @@ const navGroups = [
     label: "Content",
     items: [
       { href: "/app/skills", key: "nav.skills", icon: Zap },
+      { href: "/app/tasks", key: "nav.tasks", icon: BookOpen },
       { href: "/app/library", key: "nav.library", icon: Library },
       { href: "/app/teach", key: "nav.teach", icon: GraduationCap },
     ],

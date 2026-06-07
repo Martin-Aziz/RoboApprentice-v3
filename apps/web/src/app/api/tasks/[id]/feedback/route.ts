@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { appendFeedback, getTask } from "@/lib/task-store";
+import { appendFeedback, getTask } from "@/lib/task-store-db";
 import type { FeedbackVerdict, TaskFeedback } from "@/lib/types";
 
 const VERDICTS: FeedbackVerdict[] = ["success", "partial", "failed"];
@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const task = getTask(id);
+  const task = await getTask(id);
   if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(task.feedback ?? []);
 }
@@ -19,7 +19,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const task = getTask(id);
+  const task = await getTask(id);
   if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json().catch(() => null);
@@ -49,7 +49,7 @@ export async function POST(
     createdAt: new Date().toISOString(),
   };
 
-  const updated = appendFeedback(id, feedback);
+  const updated = await appendFeedback(id, feedback);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(feedback, { status: 201 });
 }

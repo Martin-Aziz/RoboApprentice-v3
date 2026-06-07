@@ -24,6 +24,7 @@ export function createTask(title: string, videoUrl: string, transcript?: string)
   const now = new Date().toISOString();
   const task: Task = {
     id: randomUUID(),
+    facility_id: "fac-production-001",
     title,
     videoUrl,
     transcript,

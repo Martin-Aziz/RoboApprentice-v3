@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTask } from "@/lib/task-store";
+import { getTask } from "@/lib/task-store-db";
 import { toUrscript, toRos2Python, toPseudocode } from "@/lib/codegen";
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const task = getTask(id);
+  const task = await getTask(id);
   if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!task.policy || task.policy.steps.length === 0) {
     return NextResponse.json(

@@ -2,6 +2,7 @@ const { chromium } = require("/Users/martin/node_modules/@playwright/test");
 const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const FX = require("./public/fx");
 
 const W = 1280;
 const H = 720;
@@ -10,6 +11,9 @@ const OUT = path.join(__dirname, "Aurevix_Demo_Video.mp4");
 const AUDIO = path.join(__dirname, "..", "..", "audio_for_demo.mp3");
 const OUT_AUDIO = path.join(__dirname, "Aurevix_Demo_Video_With_Audio.mp4");
 const TMP = path.join(__dirname, "video-tmp-raw");
+
+// Aurevix brand: signal-cyan #0284C7 = rgb(2, 132, 199)
+FX.setBrand("#0284C7", 2, 132, 199);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -217,14 +221,15 @@ async function hideChip(page) {
   });
 }
 
+// Upgraded: bounce-in entry + shimmer on active callout
 async function show(page, id, dir) {
-  await page.evaluate(({ id, dir }) => {
+  await page.evaluate((id) => {
     const el = document.getElementById(id);
     if (!el) return;
-    const animation = { right: "fromRight", left: "fromLeft", up: "fromBottom" }[dir] || "fromBottom";
-    el.style.animation = `${animation} .5s ease forwards`;
     el.classList.add("show");
-  }, { id, dir });
+  }, id);
+  await FX.bounceIn(page, id);
+  await FX.addShimmer(page, id);
 }
 
 async function hide(page, id) {
@@ -294,7 +299,28 @@ async function activateStep(page, calloutId, stepIndex) {
   }, { calloutId, stepIndex });
 }
 
+// Fade in from black on the current page (call right after page.goto)
+async function fadeFromBlackOnLoad(page, ms = 350) {
+  await page.evaluate((fadeMs) => {
+    let ov = document.getElementById("fx-transition-overlay");
+    if (!ov) {
+      ov = document.createElement("div");
+      ov.id = "fx-transition-overlay";
+      ov.style.cssText = "position:fixed;inset:0;background:#000;pointer-events:none;z-index:99995;opacity:1;transition:none;";
+      document.body.appendChild(ov);
+    }
+    ov.style.opacity = "1";
+    ov.style.transition = "none";
+    void ov.offsetHeight;
+    ov.style.transition = `opacity ${fadeMs}ms ease`;
+    requestAnimationFrame(() => { ov.style.opacity = "0"; });
+  }, ms);
+  await page.waitForTimeout(ms + 50);
+}
+
+// Upgraded: fade transitions + cursor + particles + scramble title
 async function useCaseTitle(page, num, total, title, sub, stats) {
+  await FX.fadeToBlack(page, 300);
   await page.goto(`${SRV}/use-case-title.html`, { waitUntil: "load" });
   await cleanupChrome(page);
   await page.evaluate(({ num, total, title, sub, stats }) => {
@@ -305,8 +331,17 @@ async function useCaseTitle(page, num, total, title, sub, stats) {
       `<div class="stat"><div class="sv">${item.v}</div><div class="sl">${item.l}</div></div>`
     ).join("");
   }, { num, total, title, sub, stats });
+  // Start scramble and cursor, then fade in simultaneously
+  await FX.initCursor(page);
+  await FX.particles(page, true);
+  FX.scramble(page, "ucTitle", title, 1000).catch(() => {});
+  await fadeFromBlackOnLoad(page, 350);
   await sleep(4500);
+
+  await FX.fadeToBlack(page, 300);
   await page.goto(`${SRV}/full-video.html`, { waitUntil: "load" });
+  await fadeFromBlackOnLoad(page, 300);
+  await FX.initCursor(page);
   await cleanupChrome(page);
   await killModal(page);
   await sleep(700);
@@ -348,10 +383,16 @@ async function main() {
   });
   const page = await context.newPage();
 
+  // ── Scene 0: Product title card ───────────────────────────────────────────
   console.log("[0] Product title");
   await page.goto(`${SRV}/title-card.html`, { waitUntil: "load" });
+  await FX.initCursor(page);
+  await FX.particles(page, true);
+  // Scramble the app name reveal (fire-and-forget — 900ms animation)
+  FX.scramble(page, "app-name", "Aurevix", 900).catch(() => {});
   await sleep(7000);
 
+  // ── Use Case 1: Teach and export ──────────────────────────────────────────
   console.log("[1] Teach and export");
   await useCaseTitle(page, 1, 2, "Teach and export", "A factory operator records the task. Aurevix turns it into robot motion, code, and a reusable skill.", [
     { v: "Days", l: "before" },
@@ -359,17 +400,27 @@ async function main() {
     { v: "1 task", l: "input" },
     { v: "AI", l: "generation" },
   ]);
+
   await chip(page, "Aurevix", "exec");
   await nav(page, `${SRV}/app/teach`);
+
+  // Before — pain callout with spotlight focus
   await show(page, "uc1L", "right");
   type(page, "uc1Lt", "Traditional robot programming can take days to weeks, with specialist engineers involved before a single new task is proven.");
+  await FX.spotlight(page, true);
   await sleep(6200);
+  await FX.spotlight(page, false);
   await hide(page, "uc1L");
   await sleep(700);
 
+  // Execution — arrow points to Run workflow, then click rings
   await show(page, "uc1R", "left");
   type(page, "uc1Rt", "Running the bundled multi-task robot demonstration. The workflow builds sequence gates, waypoints, and a replayable policy.");
   await sleep(600);
+  await FX.arrow(page, 540, 470, "down");
+  await sleep(500);
+  await FX.hideArrow(page);
+  await FX.clickTargetRings(page, 540, 470);
   await iframeClick(page, "Run workflow");
   for (let step = 0; step < 4; step += 1) {
     await activateStep(page, "uc1R", step);
@@ -386,19 +437,28 @@ async function main() {
   await hide(page, "uc1R");
   await sleep(700);
 
+  // Result callout with success effects
   await show(page, "uc1Res", "left");
   type(page, "uc1Rest", "The result panel is now live: 4.2 second cycle estimate, generated waypoints, and export actions for URScript, ROS 2, and a PDF summary.");
+  await FX.successPulse(page, 880, 430);
+  await FX.confetti(page);
   await sleep(3400);
+
+  // Export clicks with target rings
+  await FX.clickTargetRings(page, 830, 490);
   await iframeClick(page, "Export code");
   await sleep(1600);
+  await FX.clickTargetRings(page, 760, 480);
   await iframeClick(page, "ROS 2 Python");
   await sleep(1700);
+  await FX.clickTargetRings(page, 860, 480);
   await iframeClick(page, "PDF Summary");
   await sleep(1700);
   await hide(page, "uc1Res");
   await hideChip(page);
   await sleep(900);
 
+  // ── Use Case 2: ROI before integration ───────────────────────────────────
   console.log("[2] ROI");
   await useCaseTitle(page, 2, 2, "ROI before integration", "Build the business case with operator-led teaching, AI-assisted policy generation, and payback math.", [
     { v: "$10K+", l: "cell cost risk" },
@@ -406,22 +466,31 @@ async function main() {
     { v: "AI", l: "assisted" },
     { v: "Minutes", l: "analysis" },
   ]);
+
   await chip(page, "ROI Calculator", "exec");
   await nav(page, `${SRV}/app/roi`);
+
+  // Before — pain callout with spotlight
   await show(page, "uc2L", "right");
   type(page, "uc2Lt", "Before Aurevix, teams often need a specialist estimate before they can even decide whether a pilot is worth the integration cost.");
+  await FX.spotlight(page, true);
   await sleep(5800);
+  await FX.spotlight(page, false);
   await hide(page, "uc2L");
   await sleep(700);
 
+  // Execution — progress bar + scroll with scroll hint
   await show(page, "uc2R", "left");
   type(page, "uc2Rt", "Changing the teaching assumptions live: traditional programming stays high, Aurevix teaching drops to a short operator-led session.");
   await setIframeInput(page, "Current programming time", 40);
   await setIframeInput(page, "Aurevix programming time", 0.5);
+  await FX.scrollHint(page, true);
   await Promise.all([
     progressBar(page, "uc2prog", "uc2pct", 100, 6200),
     (async () => {
-      await sleep(1500);
+      await sleep(300);
+      await FX.scrollHint(page, false);
+      await sleep(1200);
       await scrollIframe(page, 260, 1700);
       await sleep(1200);
       await scrollIframe(page, 220, 1500);
@@ -430,18 +499,31 @@ async function main() {
   await hide(page, "uc2R");
   await sleep(700);
 
+  // Result callout with confetti
   await show(page, "uc2Res", "left");
   type(page, "uc2Rest", "The output is a shareable sales artifact: hours saved, payback period, three-year savings, and a PDF-ready ROI analysis.");
+  await FX.confetti(page);
+  await FX.successPulse(page, 880, 430);
+  await FX.clickTargetRings(page, 460, 560);
   await iframeClick(page, "Share link");
   await sleep(4300);
   await hide(page, "uc2Res");
   await hideChip(page);
   await sleep(900);
 
+  // ── Final: Impact summary ─────────────────────────────────────────────────
   console.log("[Final] Summary");
+  await FX.fadeToBlack(page, 300);
   await page.goto(`${SRV}/title-card.html`, { waitUntil: "load" });
+  await FX.initCursor(page);
+  await FX.particles(page, true);
+  await fadeFromBlackOnLoad(page, 300);
   await sleep(3200);
+
+  await FX.fadeToBlack(page, 300);
   await page.goto(`${SRV}/full-video.html`, { waitUntil: "load" });
+  await fadeFromBlackOnLoad(page, 300);
+  await FX.initCursor(page);
   await chip(page, "Aurevix", "exec");
   await nav(page, `${SRV}/app/teach`);
   await show(page, "sumA", "right"); await sleep(3400);
@@ -459,9 +541,11 @@ async function main() {
 
   const webm = fs.readdirSync(TMP).find((file) => file.endsWith(".webm"));
   if (!webm) throw new Error("No WebM recording found.");
+
+  // Encode with sharpening only — no color grading, keeps screen natural
   console.log("Encoding H.264...");
   execSync(
-    `ffmpeg -y -i "${path.join(TMP, webm)}" -vf "scale=${W}:${H},fps=30" -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p "${OUT}"`,
+    `ffmpeg -y -i "${path.join(TMP, webm)}" -vf "scale=${W}:${H},fps=30,${FX.grades.sharpen}" -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -movflags +faststart "${OUT}"`,
     { stdio: "inherit" },
   );
   if (fs.existsSync(AUDIO)) {
