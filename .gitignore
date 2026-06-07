@@ -26,6 +26,7 @@ LLM provider/.build/
 
 # ─── Next.js ─────────────────────────
 apps/web/.next/
+apps/web/.aurevix-data/
 apps/web/out/
 apps/web/video-tmp-raw/
 apps/web/Aurevix_Demo_Video.mp4

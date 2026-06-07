@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import Anthropic from "@anthropic-ai/sdk";
 import { getTask, updateTask } from "@/lib/task-store-db";
 import { processPolicyPipeline } from "@/lib/policy-pipeline";
 import type { GripperState, RobotAction, TaskPolicy, TaskStep, Waypoint } from "@/lib/types";
 
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
 const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "gemma4:latest";
 
@@ -368,10 +371,6 @@ export async function POST(
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 
       try {
-        const collected: TaskStep[] = [];
-        const parser = new StreamingJSONParser();
-        let fullText = "";
-
         const userPrompt = [
           `## Task to plan`,
           `Title: "${task.title}"`,
@@ -385,8 +384,100 @@ export async function POST(
           .filter(Boolean)
           .join("\n");
 
-        let usedFallback = false;
-        let fallbackReason = "";
+        // Each provider attempt gets fresh accumulator state so a partial
+        // failure from one provider can't bleed step numbering into the next.
+        const newSession = () => ({
+          collected: [] as TaskStep[],
+          parser: new StreamingJSONParser(),
+          fullText: "",
+        });
+
+        const feedChunk = (session: ReturnType<typeof newSession>, text: string) => {
+          session.fullText += text;
+          const { objects, remaining } = session.parser.feed(text);
+          for (const raw of objects) {
+            const step = normalizeStep(raw, session.collected.length + 1);
+            if (!session.collected.find((s) => s.order === step.order)) {
+              session.collected.push(step);
+              session.collected.sort((a, b) => a.order - b.order);
+              send({ type: "step", step });
+            }
+          }
+          session.parser.feed(remaining);
+        };
+
+        const finalizeAndRespond = async (session: ReturnType<typeof newSession>) => {
+          let finalSteps = session.collected;
+          try {
+            const start = session.fullText.indexOf("[");
+            const end = session.fullText.lastIndexOf("]") + 1;
+            if (start >= 0 && end > start) {
+              const parsed = JSON.parse(session.fullText.slice(start, end)) as RawStep[];
+              const remapped = parsed.map((raw, i) => {
+                const existing = session.collected.find((s) => s.order === raw.order);
+                const normalized = normalizeStep(raw, i + 1);
+                return existing ? { ...normalized, id: existing.id } : normalized;
+              });
+              if (remapped.length) finalSteps = remapped.sort((a, b) => a.order - b.order);
+            }
+          } catch {
+            // keep collected
+          }
+
+          const rawPolicy = buildPolicy(finalSteps);
+          const { policy, warnings, errors } = processPolicyPipeline(rawPolicy);
+
+          if (errors.length > 0) {
+            send({ type: "warning", message: `Policy validation errors: ${errors.join("; ")}` });
+          }
+
+          await updateTask(id, { steps: policy.steps, policy, status: "done" });
+          send({ type: "done", steps: policy.steps, policy, warnings });
+        };
+
+        const runDeterministicFallback = async (reason: string) => {
+          const rawPolicy = buildPolicy(buildDeterministicSteps(task.title, task.transcript));
+          const { policy, warnings, errors } = processPolicyPipeline(rawPolicy);
+          await updateTask(id, { steps: policy.steps, policy, status: "done" });
+          send({
+            type: "warning",
+            message: `No LLM provider available; deterministic interpreter used. ${reason}`,
+          });
+          for (const step of policy.steps) send({ type: "step", step });
+          send({ type: "done", steps: policy.steps, policy, warnings, errors, fallback: "deterministic" });
+        };
+
+        // ── 1. Try Claude (Anthropic) — primary provider ───────────────────
+        if (ANTHROPIC_API_KEY) {
+          const session = newSession();
+          try {
+            const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+            const claudeStream = anthropic.messages.stream({
+              model: ANTHROPIC_MODEL,
+              max_tokens: 4096,
+              system: SYSTEM_PROMPT,
+              messages: [{ role: "user", content: userPrompt }],
+            });
+
+            for await (const event of claudeStream) {
+              if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+                feedChunk(session, event.delta.text);
+              }
+            }
+
+            await finalizeAndRespond(session);
+            return;
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : "Claude API request failed";
+            send({ type: "warning", message: `Claude API unavailable, trying local Ollama. ${reason}` });
+          }
+        }
+
+        // ── 2. Try Ollama — local fallback ──────────────────────────────────
+        let usedOllamaFallback = false;
+        let ollamaFallbackReason = ANTHROPIC_API_KEY
+          ? "" // Claude already attempted and failed; reason was sent above
+          : "ANTHROPIC_API_KEY is not configured.";
         const ollamaRes = await fetch(`${OLLAMA_URL}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -399,33 +490,26 @@ export async function POST(
             ],
           }),
         }).catch((error: unknown) => {
-          usedFallback = true;
-          fallbackReason = error instanceof Error ? error.message : "Ollama request failed";
+          usedOllamaFallback = true;
+          ollamaFallbackReason = error instanceof Error ? error.message : "Ollama request failed";
           return null;
         });
 
         if (!ollamaRes || !ollamaRes.ok || !ollamaRes.body) {
           const errText = ollamaRes ? await ollamaRes.text().catch(() => "unknown error") : "no response";
-          usedFallback = true;
-          fallbackReason = ollamaRes ? `Ollama error ${ollamaRes.status}: ${errText}` : fallbackReason;
+          usedOllamaFallback = true;
+          ollamaFallbackReason = ollamaRes ? `Ollama error ${ollamaRes.status}: ${errText}` : ollamaFallbackReason;
         }
 
-        if (usedFallback) {
-          const rawPolicy = buildPolicy(buildDeterministicSteps(task.title, task.transcript));
-          const { policy, warnings, errors } = processPolicyPipeline(rawPolicy);
-          await updateTask(id, { steps: policy.steps, policy, status: "done" });
-          send({
-            type: "warning",
-            message: `Local LLM unavailable; deterministic interpreter used. ${fallbackReason}`,
-          });
-          for (const step of policy.steps) send({ type: "step", step });
-          send({ type: "done", steps: policy.steps, policy, warnings, errors, fallback: "deterministic" });
+        if (usedOllamaFallback) {
+          await runDeterministicFallback(ollamaFallbackReason);
           return;
         }
 
         if (!ollamaRes?.body) {
           throw new Error("Ollama stream was unavailable after fallback check");
         }
+        const ollamaSession = newSession();
         const ollamaBody = ollamaRes.body;
         const reader = ollamaBody.getReader();
         const dec = new TextDecoder();
@@ -449,57 +533,14 @@ export async function POST(
                 done?: boolean;
               };
               const text = msg.message?.content ?? "";
-              if (text) {
-                fullText += text;
-                const { objects, remaining } = parser.feed(text);
-
-                for (const raw of objects) {
-                  const step = normalizeStep(raw, collected.length + 1);
-                  if (!collected.find((s) => s.order === step.order)) {
-                    collected.push(step);
-                    collected.sort((a, b) => a.order - b.order);
-                    send({ type: "step", step });
-                  }
-                }
-
-                parser.feed(remaining);
-              }
+              if (text) feedChunk(ollamaSession, text);
             } catch {
               // skip malformed NDJSON line
             }
           }
         }
 
-        // Final reconciliation
-        let finalSteps = collected;
-        try {
-          const start = fullText.indexOf("[");
-          const end = fullText.lastIndexOf("]") + 1;
-          if (start >= 0 && end > start) {
-            const parsed = JSON.parse(fullText.slice(start, end)) as RawStep[];
-            const remapped = parsed.map((raw, i) => {
-              const existing = collected.find((s) => s.order === raw.order);
-              const normalized = normalizeStep(raw, i + 1);
-              return existing ? { ...normalized, id: existing.id } : normalized;
-            });
-            if (remapped.length) finalSteps = remapped.sort((a, b) => a.order - b.order);
-          }
-        } catch {
-          // keep collected
-        }
-
-        const rawPolicy = buildPolicy(finalSteps);
-        const { policy, warnings, errors } = processPolicyPipeline(rawPolicy);
-
-        if (errors.length > 0) {
-          send({
-            type: "warning",
-            message: `Policy validation errors: ${errors.join("; ")}`,
-          });
-        }
-
-        await updateTask(id, { steps: policy.steps, policy, status: "done" });
-        send({ type: "done", steps: policy.steps, policy, warnings });
+        await finalizeAndRespond(ollamaSession);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Interpretation failed";
         await updateTask(id, { status: "error", errorMessage: msg });
