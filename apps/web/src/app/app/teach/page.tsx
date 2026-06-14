@@ -21,11 +21,11 @@ import { DEFAULT_TOOL_CHANGER_CONFIG, getToolStation, readToolChangerConfig, typ
 
 type Modal = "deploy" | "export" | "roi" | null;
 type DemoRobot = "ur5e" | "abb_gofa" | "techman_tm12" | "kuka_kr6" | "fanuc_lr_mate" | "yaskawa_gp12";
-type SequenceStepType = "MOTION" | "WAIT_FOR_SIGNAL" | "GRIPPER_ACTUATE" | "TOOL_CHANGE" | "INSPECTION" | "USER_CONFIRM";
+export type SequenceStepType = "MOTION" | "WAIT_FOR_SIGNAL" | "GRIPPER_ACTUATE" | "TOOL_CHANGE" | "INSPECTION" | "USER_CONFIRM";
 type SequenceStatus = "pending" | "analysing" | "complete" | "error";
-type ConditionType = "signal_high" | "inspection_pass" | "retry_or_abort";
+export type ConditionType = "signal_high" | "inspection_pass" | "retry_or_abort";
 
-interface SequenceGate {
+export interface SequenceGate {
   type: ConditionType;
   signalPort: number;
   passStepId?: string;
@@ -33,7 +33,7 @@ interface SequenceGate {
   elseAction: "wait" | "retry" | "abort";
 }
 
-interface SequenceStep {
+export interface SequenceStep {
   id: string;
   label: string;
   type: SequenceStepType;
@@ -543,11 +543,11 @@ function Code({ code, language, filename, type }: { code: string; language: stri
 
 const fmt = (value: number, precision = 4) => Number(value.toFixed(precision)).toString();
 
-function sanitizeIdentifier(value: string) {
+export function sanitizeIdentifier(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "aurevix_skill";
 }
 
-function policyFingerprint(policy: TaskPolicy) {
+export function policyFingerprint(policy: TaskPolicy) {
   const source = JSON.stringify(policy.steps);
   let hash = 0;
   for (let i = 0; i < source.length; i += 1) {
@@ -605,9 +605,9 @@ function gripperCloseUr(config: WorkcellConfig) {
   ];
 }
 
-const AUREVIX_MAX_RETRIES = 3;
+export const AUREVIX_MAX_RETRIES = 3;
 
-function gateFailLabel(type: ConditionType) {
+export function gateFailLabel(type: ConditionType) {
   return type === "inspection_pass" ? "Inspection failed" : "Condition failed";
 }
 
@@ -615,7 +615,7 @@ function gateFailLabel(type: ConditionType) {
  * Emits the post-step gate check. `retryFnName` is the URScript function for this
  * sequence step, re-invoked when elseAction is "retry" (bounded by AUREVIX_MAX_RETRIES).
  */
-function emitGateUr(step: SequenceStep, retryFnName: string) {
+export function emitGateUr(step: SequenceStep, retryFnName: string) {
   if (!step.gateAfter) return [];
   const gate = step.gateAfter;
   const lines = [`  # Gate after ${step.label}: ${gate.type} on port ${gate.signalPort}, else ${gate.elseAction}`];
@@ -659,7 +659,7 @@ function emitGateUr(step: SequenceStep, retryFnName: string) {
  * Builds the URScript move/IO sequence for an automatic tool change: return the
  * current tool to its dock, unlock it, then dock and lock the target tool.
  */
-function emitToolChangeUr(from: ToolStation, to: ToolStation, label: string) {
+export function emitToolChangeUr(from: ToolStation, to: ToolStation, label: string) {
   const lines: string[] = [`  # Tool change "${label}": return ${from.name} (${from.toolType}) -> pick up ${to.name} (${to.toolType})`];
 
   if (from.id === to.id) {
@@ -693,7 +693,7 @@ function emitToolChangeUr(from: ToolStation, to: ToolStation, label: string) {
 /**
  * ROS 2 equivalent of emitToolChangeUr, expressed as self.move_linear/self.set_digital_output calls.
  */
-function emitToolChangeRos(from: ToolStation, to: ToolStation, label: string) {
+export function emitToolChangeRos(from: ToolStation, to: ToolStation, label: string) {
   const lines: string[] = [`        self.get_logger().info("Tool change ${label}: return ${from.name} (${from.toolType}) -> pick up ${to.name} (${to.toolType})")`];
 
   if (from.id === to.id) {
@@ -726,7 +726,7 @@ function emitToolChangeRos(from: ToolStation, to: ToolStation, label: string) {
  * Emits the gate_N() method body for ROS targets, mirroring emitGateUr's branching.
  * `retryMethodName` is re-invoked on the node when elseAction is "retry".
  */
-function emitGateRos(seq: SequenceStep, index: number, retryMethodName: string): string[] {
+export function emitGateRos(seq: SequenceStep, index: number, retryMethodName: string): string[] {
   const gate = seq.gateAfter!;
   const lines: string[] = [
     `    def gate_${index + 1}(self) -> None:`,
@@ -764,7 +764,7 @@ function emitGateRos(seq: SequenceStep, index: number, retryMethodName: string):
   return lines;
 }
 
-function generateUr(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig: WorkcellConfig, toolChangerConfig: ToolChangerConfig, robotLabel: string) {
+export function generateUr(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig: WorkcellConfig, toolChangerConfig: ToolChangerConfig, robotLabel: string) {
   const programName = sanitizeIdentifier("Assemble Bracket Sequence");
   const policyId = policyFingerprint(policy);
   const initialTool = getToolStation(toolChangerConfig, toolChangerConfig.activeStationId);
@@ -865,11 +865,11 @@ function generateUr(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig
   return lines.join("\n");
 }
 
-function stateMethodName(seq: SequenceStep, index: number) {
+export function stateMethodName(seq: SequenceStep, index: number) {
   return seq.type === "TOOL_CHANGE" ? `tool_change_${index + 1}` : `state_${index + 1}_${sanitizeIdentifier(seq.label)}`;
 }
 
-function generateRos(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig: WorkcellConfig, toolChangerConfig: ToolChangerConfig, robotLabel: string) {
+export function generateRos(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig: WorkcellConfig, toolChangerConfig: ToolChangerConfig, robotLabel: string) {
   const policyId = policyFingerprint(policy);
   const stepRows = policy.steps
     .map((step) => {
