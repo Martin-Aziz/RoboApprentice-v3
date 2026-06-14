@@ -60,6 +60,31 @@ export const DEMO_ROBOTS: Robot[] = [
     current_skill_id: "skl-inspect-pcb",
     metrics: { uptime_24h: 97.1, cycles_today: 2105, mean_cycle_ms: 1800 },
   },
+  {
+    id: "rbt-fanuc-001",
+    facility_id: "fac-production-001",
+    name: "Machine Tend Cell 2",
+    brand: "FANUC",
+    model: "LR Mate 200iD",
+    status: "running",
+    ip_address: "10.42.0.55",
+    last_seen_at: new Date(Date.now() - 2 * 60_000).toISOString(),
+    created_at: "2025-12-08T07:45:00Z",
+    current_skill_id: "skl-pack-tray",
+    metrics: { uptime_24h: 96.8, cycles_today: 1583, mean_cycle_ms: 2600 },
+  },
+  {
+    id: "rbt-yaskawa-001",
+    facility_id: "fac-production-001",
+    name: "Palletizing Cell 4",
+    brand: "Yaskawa",
+    model: "Motoman GP12",
+    status: "offline",
+    ip_address: "10.42.0.61",
+    last_seen_at: new Date(Date.now() - 45 * 60_000).toISOString(),
+    created_at: "2026-01-12T16:20:00Z",
+    metrics: { uptime_24h: 91.5, cycles_today: 0, mean_cycle_ms: 4100 },
+  },
 ];
 
 export const DEMO_SKILLS: Skill[] = [

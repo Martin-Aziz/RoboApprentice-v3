@@ -1,7 +1,7 @@
 import type { TaskPolicy, TaskStep } from "./types";
 import { createHash } from "crypto";
 
-export type CodegenTarget = "urscript" | "ros2_python" | "pseudocode";
+export type CodegenTarget = "urscript" | "ros2_python" | "pseudocode" | "rapid" | "fanuc_karel";
 
 const fmt = (n: number, p = 4) => Number(n.toFixed(p)).toString();
 
@@ -174,6 +174,138 @@ export function toRos2Python(policy: TaskPolicy, taskTitle: string): string {
   ];
 
   return [...header, ...body, ...footer].join("\n");
+}
+
+/**
+ * Rotation about Z (rz) expressed as a RAPID quaternion [q1, q2, q3, q4] = [w, x, y, z].
+ * rx/ry are not encoded; integrators should confirm tool orientation before deployment.
+ */
+function quaternionFromRz(rz: number): [number, number, number, number] {
+  const half = rz / 2;
+  return [Math.cos(half), 0, 0, Math.sin(half)];
+}
+
+export function toRapid(policy: TaskPolicy, taskTitle: string): string {
+  const policyId = policyHash(policy);
+  const timestamp = new Date().toISOString();
+
+  const declarations: string[] = [
+    `    CONST robtarget pHome:=[[0,0,600,0],[1,0,0,0],[0,0,0,0],[9E9,9E9,9E9,9E9,9E9,9E9]];`,
+    `    PERS bool doGripperClose:=FALSE;`,
+  ];
+  const body: string[] = [];
+
+  policy.steps.forEach((step, index) => {
+    const { x, y, z, rz = 0 } = step.target;
+    const [q1, q2, q3, q4] = quaternionFromRz(rz);
+    const targetName = `pTarget${index + 1}`;
+    declarations.push(
+      `    CONST robtarget ${targetName}:=[[${fmt(x * 1000, 2)},${fmt(y * 1000, 2)},${fmt(z * 1000, 2)}],[${fmt(q1)},${fmt(q2)},${fmt(q3)},${fmt(q4)}],[0,0,0,0],[9E9,9E9,9E9,9E9,9E9,9E9]];`,
+    );
+
+    body.push(`        ! ${step.order}. ${escapeForString(step.description)} [${step.action}]`);
+    const speedMmS = Math.max(1, Math.round(step.speed * 1000));
+
+    if (step.action === "home") {
+      body.push(`        MoveJ pHome, v500, fine, tool0;`);
+    } else if (step.action === "grip") {
+      body.push(`        MoveL ${targetName}, v${Math.min(speedMmS, 100)}, fine, tool0;`);
+      body.push(`        Set doGripperClose;`);
+      body.push(`        WaitTime 0.4;`);
+    } else if (step.action === "release") {
+      body.push(`        MoveL ${targetName}, v${Math.min(speedMmS, 100)}, fine, tool0;`);
+      body.push(`        Reset doGripperClose;`);
+      body.push(`        WaitTime 0.4;`);
+    } else if (step.action === "wait") {
+      body.push(`        WaitTime ${fmt(step.duration)};`);
+    } else {
+      body.push(`        MoveL ${targetName}, v${speedMmS}, z10, tool0;`);
+      if (step.action === "inspect" && step.requiresVision) {
+        body.push(`        ! vision check inserted by AUREVIX`);
+        body.push(`        TPWrite "inspect ${escapeForString(step.description)}";`);
+      }
+    }
+  });
+
+  return [
+    `MODULE AurevixSkill`,
+    `    ! AUREVIX // generated ABB RAPID program`,
+    `    ! Task: ${escapeForString(taskTitle)}`,
+    `    ! Generated: ${timestamp}`,
+    `    ! Policy ID: ${policyId}`,
+    `    ! Steps: ${policy.steps.length}  Cycle: ~${policy.estimatedCycleSeconds}s`,
+    `    ! Tool frame: ${policy.toolFrame}`,
+    `    ! Coordinates converted from meters (Aurevix) to millimeters (RAPID).`,
+    `    !`,
+    ...declarations,
+    ``,
+    `    PROC main()`,
+    ...body,
+    `        TPWrite "AUREVIX skill complete";`,
+    `    ENDPROC`,
+    `ENDMODULE`,
+  ].join("\n");
+}
+
+export function toFanucKarel(policy: TaskPolicy, taskTitle: string): string {
+  const policyId = policyHash(policy);
+  const timestamp = new Date().toISOString();
+  const programName = "aurevix_skill";
+  const toDeg = (rad: number) => (rad * 180) / Math.PI;
+
+  const declarations: string[] = [];
+  const body: string[] = [];
+
+  policy.steps.forEach((step, index) => {
+    const name = `p${index + 1}`;
+    declarations.push(`  ${name}: POSITION`);
+    const { x, y, z, rx = 0, ry = 0, rz = 0 } = step.target;
+
+    body.push(`  -- ${step.order}. ${escapeForString(step.description)} [${step.action}]`);
+    body.push(
+      `  ${name} := POS(${fmt(x * 1000, 1)}, ${fmt(y * 1000, 1)}, ${fmt(z * 1000, 1)}, ${fmt(toDeg(rx), 1)}, ${fmt(toDeg(ry), 1)}, ${fmt(toDeg(rz), 1)}, '')`,
+    );
+
+    if (step.action === "home") {
+      body.push(`  MOVE TO home`);
+    } else if (step.action === "grip") {
+      body.push(`  MOVE TO ${name} WITH $TERM_TYPE = FINE`);
+      body.push(`  DOUT[1] = ON`);
+      body.push(`  DELAY 400`);
+    } else if (step.action === "release") {
+      body.push(`  MOVE TO ${name} WITH $TERM_TYPE = FINE`);
+      body.push(`  DOUT[1] = OFF`);
+      body.push(`  DELAY 400`);
+    } else if (step.action === "wait") {
+      body.push(`  DELAY ${Math.round(step.duration * 1000)}`);
+    } else {
+      body.push(`  MOVE TO ${name}`);
+      if (step.action === "inspect" && step.requiresVision) {
+        body.push(`  -- vision check inserted by AUREVIX`);
+        body.push(`  WRITE('inspect ${escapeForString(step.description)}', CR)`);
+      }
+    }
+  });
+
+  return [
+    `PROGRAM ${programName}`,
+    `  -- AUREVIX // generated FANUC Karel program`,
+    `  -- Task: ${escapeForString(taskTitle)}`,
+    `  -- Generated: ${timestamp}`,
+    `  -- Policy ID: ${policyId}`,
+    `  -- Steps: ${policy.steps.length}  Cycle: ~${policy.estimatedCycleSeconds}s`,
+    `  -- Tool frame: ${policy.toolFrame}`,
+    `  -- Coordinates converted from meters (Aurevix) to millimeters (Karel); rotations in degrees.`,
+    `VAR`,
+    `  home: POSITION`,
+    ...declarations,
+    `BEGIN`,
+    `  home := POS(0, 0, 600, 0, 0, 0, '')`,
+    `  MOVE TO home`,
+    ...body,
+    `  WRITE('AUREVIX skill complete', CR)`,
+    `END ${programName}`,
+  ].join("\n");
 }
 
 export function toPseudocode(policy: TaskPolicy, taskTitle: string): string {

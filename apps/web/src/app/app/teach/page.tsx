@@ -16,9 +16,11 @@ import { useLocale } from "@/lib/i18n";
 import type { Skill, TaskPolicy, TaskStep } from "@/lib/types";
 import { readSafeDemoMode } from "@/lib/demo-mode";
 import { DEFAULT_WORKCELL_CONFIG, isPneumaticGripper, readWorkcellConfig, type WorkcellConfig } from "@/lib/workcell-config";
+import { toRapid, toFanucKarel } from "@/lib/codegen";
+import { DEFAULT_TOOL_CHANGER_CONFIG, getToolStation, readToolChangerConfig, type ToolChangerConfig, type ToolStation } from "@/lib/tool-changer";
 
 type Modal = "deploy" | "export" | "roi" | null;
-type DemoRobot = "ur5e" | "abb_gofa" | "techman_tm12";
+type DemoRobot = "ur5e" | "abb_gofa" | "techman_tm12" | "kuka_kr6" | "fanuc_lr_mate" | "yaskawa_gp12";
 type SequenceStepType = "MOTION" | "WAIT_FOR_SIGNAL" | "GRIPPER_ACTUATE" | "TOOL_CHANGE" | "INSPECTION" | "USER_CONFIRM";
 type SequenceStatus = "pending" | "analysing" | "complete" | "error";
 type ConditionType = "signal_high" | "inspection_pass" | "retry_or_abort";
@@ -37,12 +39,16 @@ interface SequenceStep {
   type: SequenceStepType;
   status: SequenceStatus;
   gateAfter?: SequenceGate;
+  toolStationId?: string;
 }
 
 const ROBOT_OPTIONS: Array<{ value: DemoRobot; label: string; codeLabel: string }> = [
   { value: "ur5e", label: "Universal Robots UR5e", codeLabel: "Universal Robots UR5e" },
   { value: "abb_gofa", label: "ABB GoFa CRB 15000", codeLabel: "ABB GoFa CRB 15000" },
+  { value: "kuka_kr6", label: "KUKA KR 6 R900", codeLabel: "KUKA KR 6 R900" },
   { value: "techman_tm12", label: "Techman TM12", codeLabel: "Techman TM12" },
+  { value: "fanuc_lr_mate", label: "FANUC LR Mate 200iD", codeLabel: "FANUC LR Mate 200iD" },
+  { value: "yaskawa_gp12", label: "Yaskawa Motoman GP12", codeLabel: "Yaskawa Motoman GP12" },
 ];
 
 const STEP_TYPES: SequenceStepType[] = ["MOTION", "WAIT_FOR_SIGNAL", "GRIPPER_ACTUATE", "TOOL_CHANGE", "INSPECTION", "USER_CONFIRM"];
@@ -50,7 +56,8 @@ const DEFAULT_SEQUENCE: SequenceStep[] = [
   { id: "seq-pick", label: "Pick bracket", type: "MOTION", status: "pending", gateAfter: { type: "signal_high", signalPort: 2, elseAction: "wait" } },
   { id: "seq-orient", label: "Orient bracket", type: "MOTION", status: "pending" },
   { id: "seq-place", label: "Place in fixture", type: "MOTION", status: "pending", gateAfter: { type: "inspection_pass", signalPort: 3, failStepId: "seq-orient", elseAction: "retry" } },
-  { id: "seq-machine", label: "Trigger machine", type: "WAIT_FOR_SIGNAL", status: "pending" },
+  { id: "seq-toolchange", label: "Switch to vacuum cup", type: "TOOL_CHANGE", status: "pending", toolStationId: "station-vacuum" },
+  { id: "seq-machine", label: "Trigger machine", type: "WAIT_FOR_SIGNAL", status: "pending", gateAfter: { type: "retry_or_abort", signalPort: 5, elseAction: "abort" } },
 ];
 
 const SEQUENCE_STORAGE_KEY = "aurevix_teach_sequence";
@@ -94,6 +101,7 @@ export default function TeachPage() {
   const [sequence, setSequence] = useState<SequenceStep[]>(DEFAULT_SEQUENCE);
   const [activeSequenceIndex, setActiveSequenceIndex] = useState(-1);
   const [workcellConfig, setWorkcellConfig] = useState<WorkcellConfig>(DEFAULT_WORKCELL_CONFIG);
+  const [toolChangerConfig, setToolChangerConfig] = useState<ToolChangerConfig>(DEFAULT_TOOL_CHANGER_CONFIG);
   const [safeDemoMode, setSafeDemoMode] = useState(true);
   const policy = useMemo<TaskPolicy>(() => ({ ...FALLBACK_POLICY, steps }), [steps]);
   const selectedRobot = ROBOT_OPTIONS.find((robot) => robot.value === robotType) ?? ROBOT_OPTIONS[0];
@@ -104,6 +112,7 @@ export default function TeachPage() {
   useEffect(() => {
     setSequence(readSequence());
     setWorkcellConfig(readWorkcellConfig());
+    setToolChangerConfig(readToolChangerConfig());
     setSafeDemoMode(readSafeDemoMode());
   }, []);
 
@@ -227,6 +236,7 @@ export default function TeachPage() {
           {uploadMessage && <p className="mt-2 rounded-md bg-[rgb(var(--signal-amber)/0.1)] p-2 text-sm text-[rgb(var(--bone-2))]">{uploadMessage}</p>}
           <TaskSequencePanel
             sequence={sequence}
+            toolStations={toolChangerConfig.stations}
             onAdd={addSequenceStep}
             onMove={moveSequenceStep}
             onUpdate={updateSequence}
@@ -307,7 +317,7 @@ export default function TeachPage() {
         </Modal>
       )}
 
-      {modal === "export" && <ExportModal policy={policy} sequence={sequence} workcellConfig={workcellConfig} robotLabel={selectedRobot.codeLabel} onClose={() => setModal(null)} />}
+      {modal === "export" && <ExportModal policy={policy} sequence={sequence} workcellConfig={workcellConfig} toolChangerConfig={toolChangerConfig} robotLabel={selectedRobot.codeLabel} onClose={() => setModal(null)} />}
       {modal === "roi" && <Modal title="Calculate ROI" wide onClose={() => setModal(null)}><RoiCalculator /></Modal>}
     </div>
   );
@@ -342,6 +352,7 @@ function SequenceProgress({ sequence, activeIndex, completedMotionSteps, totalMo
 
 function TaskSequencePanel({
   sequence,
+  toolStations,
   onAdd,
   onMove,
   onUpdate,
@@ -349,6 +360,7 @@ function TaskSequencePanel({
   onAddGate,
 }: {
   sequence: SequenceStep[];
+  toolStations: ToolStation[];
   onAdd: () => void;
   onMove: (index: number, direction: -1 | 1) => void;
   onUpdate: (id: string, patch: Partial<SequenceStep>) => void;
@@ -390,6 +402,19 @@ function TaskSequencePanel({
                   <Button variant="ghost" size="icon" onClick={() => onDelete(step.id)} title="Delete step"><Trash2 className="h-4 w-4" /></Button>
                 </div>
               </div>
+              {step.type === "TOOL_CHANGE" && (
+                <label className="mt-2 grid max-w-sm gap-1 text-xs">
+                  <span className="text-[rgb(var(--bone-2))]">Dock to tool station</span>
+                  <select
+                    aria-label={`Step ${index + 1} tool station`}
+                    className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] px-3 py-2 font-mono text-xs"
+                    value={step.toolStationId ?? toolStations[0]?.id ?? ""}
+                    onChange={(event) => onUpdate(step.id, { toolStationId: event.target.value })}
+                  >
+                    {toolStations.map((station) => <option key={station.id} value={station.id}>{station.name} ({station.toolType})</option>)}
+                  </select>
+                </label>
+              )}
             </div>
 
             {index < sequence.length - 1 && (
@@ -469,9 +494,11 @@ function downloadText(filename: string, code: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
-function ExportModal({ policy, sequence, workcellConfig, robotLabel, onClose }: { policy: TaskPolicy; sequence: SequenceStep[]; workcellConfig: WorkcellConfig; robotLabel: string; onClose: () => void }) {
-  const ur = generateUr(policy, sequence, workcellConfig, robotLabel);
-  const ros = generateRos(policy, sequence, workcellConfig, robotLabel);
+function ExportModal({ policy, sequence, workcellConfig, toolChangerConfig, robotLabel, onClose }: { policy: TaskPolicy; sequence: SequenceStep[]; workcellConfig: WorkcellConfig; toolChangerConfig: ToolChangerConfig; robotLabel: string; onClose: () => void }) {
+  const ur = generateUr(policy, sequence, workcellConfig, toolChangerConfig, robotLabel);
+  const ros = generateRos(policy, sequence, workcellConfig, toolChangerConfig, robotLabel);
+  const rapid = toRapid(policy, "Pick Bracket A");
+  const karel = toFanucKarel(policy, "Pick Bracket A");
   const downloadPdf = () => {
     const pdf = new jsPDF();
     pdf.setFontSize(20);
@@ -485,9 +512,17 @@ function ExportModal({ policy, sequence, workcellConfig, robotLabel, onClose }: 
   return (
     <Modal title="Export code" wide onClose={onClose}>
       <Tabs defaultValue="ur">
-        <TabsList><TabsTrigger value="ur">URScript</TabsTrigger><TabsTrigger value="ros">ROS 2 Python</TabsTrigger><TabsTrigger value="pdf">PDF Summary</TabsTrigger></TabsList>
+        <TabsList>
+          <TabsTrigger value="ur">URScript</TabsTrigger>
+          <TabsTrigger value="ros">ROS 2 Python</TabsTrigger>
+          <TabsTrigger value="rapid">RAPID (ABB)</TabsTrigger>
+          <TabsTrigger value="karel">FANUC Karel</TabsTrigger>
+          <TabsTrigger value="pdf">PDF Summary</TabsTrigger>
+        </TabsList>
         <TabsContent value="ur" className="mt-4"><Code code={ur} language="python" filename="assemble_bracket_sequence.urscript" type="text/plain;charset=utf-8" /></TabsContent>
         <TabsContent value="ros" className="mt-4"><Code code={ros} language="python" filename="assemble_bracket_sequence_ros2.py" type="text/x-python;charset=utf-8" /></TabsContent>
+        <TabsContent value="rapid" className="mt-4"><Code code={rapid} language="pascal" filename="aurevix_skill.mod" type="text/plain;charset=utf-8" /></TabsContent>
+        <TabsContent value="karel" className="mt-4"><Code code={karel} language="pascal" filename="aurevix_skill.kl" type="text/plain;charset=utf-8" /></TabsContent>
         <TabsContent value="pdf" className="mt-4"><Button onClick={downloadPdf} className="gap-2"><Download className="h-4 w-4" /> Download PDF Summary</Button></TabsContent>
       </Tabs>
     </Modal>
@@ -570,26 +605,169 @@ function gripperCloseUr(config: WorkcellConfig) {
   ];
 }
 
-function emitGateUr(step: SequenceStep) {
+const AUREVIX_MAX_RETRIES = 3;
+
+function gateFailLabel(type: ConditionType) {
+  return type === "inspection_pass" ? "Inspection failed" : "Condition failed";
+}
+
+/**
+ * Emits the post-step gate check. `retryFnName` is the URScript function for this
+ * sequence step, re-invoked when elseAction is "retry" (bounded by AUREVIX_MAX_RETRIES).
+ */
+function emitGateUr(step: SequenceStep, retryFnName: string) {
   if (!step.gateAfter) return [];
   const gate = step.gateAfter;
-  const lines = [`  # Gate after ${step.label}`];
+  const lines = [`  # Gate after ${step.label}: ${gate.type} on port ${gate.signalPort}, else ${gate.elseAction}`];
+
   if (gate.type === "signal_high") {
     lines.push(`  while get_digital_in(${gate.signalPort}) == False:`);
     lines.push(`    sleep(0.1)`);
     lines.push(`  end`);
-  } else if (gate.type === "inspection_pass") {
-    lines.push(`  if get_digital_in(${gate.signalPort}) == False:`);
-    if (gate.elseAction === "abort") lines.push(`    popup("Inspection failed after ${step.label}", error=True)`, `    halt`);
-    else lines.push(`    sleep(0.5)`);
+    return lines;
+  }
+
+  const passed = `get_digital_in(${gate.signalPort}) == True`;
+  const failLabel = gateFailLabel(gate.type);
+
+  if (gate.elseAction === "abort") {
+    lines.push(`  if not (${passed}):`);
+    lines.push(`    popup("${failLabel} after ${step.label}", error=True)`);
+    lines.push(`    halt`);
+    lines.push(`  end`);
+  } else if (gate.elseAction === "retry") {
+    const counter = `aurevix_retries_${sanitizeIdentifier(step.label)}`;
+    lines.push(`  ${counter} = 0`);
+    lines.push(`  while not (${passed}):`);
+    lines.push(`    ${counter} = ${counter} + 1`);
+    lines.push(`    if ${counter} > AUREVIX_MAX_RETRIES:`);
+    lines.push(`      popup("${failLabel} after ${step.label}: max retries exceeded", error=True)`);
+    lines.push(`      halt`);
+    lines.push(`    end`);
+    lines.push(`    textmsg("AUREVIX retry ${step.label} attempt " + to_str(${counter}))`);
+    lines.push(`    ${retryFnName}()`);
+    lines.push(`  end`);
+  } else {
+    lines.push(`  while not (${passed}):`);
+    lines.push(`    sleep(0.5)`);
     lines.push(`  end`);
   }
   return lines;
 }
 
-function generateUr(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig: WorkcellConfig, robotLabel: string) {
+/**
+ * Builds the URScript move/IO sequence for an automatic tool change: return the
+ * current tool to its dock, unlock it, then dock and lock the target tool.
+ */
+function emitToolChangeUr(from: ToolStation, to: ToolStation, label: string) {
+  const lines: string[] = [`  # Tool change "${label}": return ${from.name} (${from.toolType}) -> pick up ${to.name} (${to.toolType})`];
+
+  if (from.id === to.id) {
+    lines.push(`  textmsg("AUREVIX tool change skipped: ${to.name} already mounted")`);
+    return lines;
+  }
+
+  const retract = 0.05;
+  const fromAbove = `p[${fmt(from.dock.x)}, ${fmt(from.dock.y)}, ${fmt(from.dock.z + retract)}, 0, 0, ${fmt(from.dock.rz)}]`;
+  const fromAt = `p[${fmt(from.dock.x)}, ${fmt(from.dock.y)}, ${fmt(from.dock.z)}, 0, 0, ${fmt(from.dock.rz)}]`;
+  const toAbove = `p[${fmt(to.dock.x)}, ${fmt(to.dock.y)}, ${fmt(to.dock.z + retract)}, 0, 0, ${fmt(to.dock.rz)}]`;
+  const toAt = `p[${fmt(to.dock.x)}, ${fmt(to.dock.y)}, ${fmt(to.dock.z)}, 0, 0, ${fmt(to.dock.rz)}]`;
+  const unlockDelay = fmt(from.actuationDelayMs / 1000, 2);
+  const lockDelay = fmt(to.actuationDelayMs / 1000, 2);
+
+  lines.push(`  aurevix_guarded_movel(${fromAbove}, 0.25, AUREVIX_APPROACH_ACCEL, AUREVIX_BLEND_SAFE)`);
+  lines.push(`  aurevix_guarded_movel(${fromAt}, 0.05, AUREVIX_CONTACT_ACCEL, AUREVIX_BLEND_CONTACT)`);
+  lines.push(`  set_digital_out(${from.unlockPort}, True)`);
+  lines.push(`  sleep(${unlockDelay})`);
+  lines.push(`  set_digital_out(${from.unlockPort}, False)`);
+  lines.push(`  aurevix_guarded_movel(${fromAbove}, 0.05, AUREVIX_CONTACT_ACCEL, AUREVIX_BLEND_SAFE)`);
+  lines.push(`  aurevix_guarded_movel(${toAbove}, 0.25, AUREVIX_APPROACH_ACCEL, AUREVIX_BLEND_SAFE)`);
+  lines.push(`  aurevix_guarded_movel(${toAt}, 0.05, AUREVIX_CONTACT_ACCEL, AUREVIX_BLEND_CONTACT)`);
+  lines.push(`  set_digital_out(${to.lockPort}, True)`);
+  lines.push(`  sleep(${lockDelay})`);
+  lines.push(`  aurevix_guarded_movel(${toAbove}, 0.05, AUREVIX_CONTACT_ACCEL, AUREVIX_BLEND_SAFE)`);
+  lines.push(`  textmsg("AUREVIX tool change complete: ${to.name} mounted")`);
+  return lines;
+}
+
+/**
+ * ROS 2 equivalent of emitToolChangeUr, expressed as self.move_linear/self.set_digital_output calls.
+ */
+function emitToolChangeRos(from: ToolStation, to: ToolStation, label: string) {
+  const lines: string[] = [`        self.get_logger().info("Tool change ${label}: return ${from.name} (${from.toolType}) -> pick up ${to.name} (${to.toolType})")`];
+
+  if (from.id === to.id) {
+    lines.push(`        self.get_logger().info("Tool change skipped: ${to.name} already mounted")`);
+    return lines;
+  }
+
+  const retract = 0.05;
+  const fromPose = (z: number) => `(${fmt(from.dock.x)}, ${fmt(from.dock.y)}, ${fmt(z)}, 0.0, 0.0, ${fmt(from.dock.rz)})`;
+  const toPose = (z: number) => `(${fmt(to.dock.x)}, ${fmt(to.dock.y)}, ${fmt(z)}, 0.0, 0.0, ${fmt(to.dock.rz)})`;
+  const unlockDelay = fmt(from.actuationDelayMs / 1000, 2);
+  const lockDelay = fmt(to.actuationDelayMs / 1000, 2);
+
+  lines.push(`        self.move_linear(${fromPose(from.dock.z + retract)}, 0.25)`);
+  lines.push(`        self.move_linear(${fromPose(from.dock.z)}, 0.05, contact=True)`);
+  lines.push(`        self.set_digital_output(${from.unlockPort}, True)`);
+  lines.push(`        time.sleep(${unlockDelay})`);
+  lines.push(`        self.set_digital_output(${from.unlockPort}, False)`);
+  lines.push(`        self.move_linear(${fromPose(from.dock.z + retract)}, 0.05)`);
+  lines.push(`        self.move_linear(${toPose(to.dock.z + retract)}, 0.25)`);
+  lines.push(`        self.move_linear(${toPose(to.dock.z)}, 0.05, contact=True)`);
+  lines.push(`        self.set_digital_output(${to.lockPort}, True)`);
+  lines.push(`        time.sleep(${lockDelay})`);
+  lines.push(`        self.move_linear(${toPose(to.dock.z + retract)}, 0.05)`);
+  lines.push(`        self.get_logger().info("Tool change complete: ${to.name} mounted")`);
+  return lines;
+}
+
+/**
+ * Emits the gate_N() method body for ROS targets, mirroring emitGateUr's branching.
+ * `retryMethodName` is re-invoked on the node when elseAction is "retry".
+ */
+function emitGateRos(seq: SequenceStep, index: number, retryMethodName: string): string[] {
+  const gate = seq.gateAfter!;
+  const lines: string[] = [
+    `    def gate_${index + 1}(self) -> None:`,
+    `        self.get_logger().info("Gate after ${seq.label}: ${gate.type} on port ${gate.signalPort}")`,
+  ];
+
+  if (gate.type === "signal_high") {
+    lines.push(`        while not self.read_digital_input(${gate.signalPort}):`);
+    lines.push(`            time.sleep(0.1)`);
+    lines.push(``);
+    return lines;
+  }
+
+  const failLabel = gateFailLabel(gate.type);
+
+  if (gate.elseAction === "abort") {
+    lines.push(`        if not self.read_digital_input(${gate.signalPort}):`);
+    lines.push(`            self.get_logger().error("${failLabel} after ${seq.label}")`);
+    lines.push(`            raise RuntimeError("${failLabel} after ${seq.label}")`);
+    lines.push(``);
+  } else if (gate.elseAction === "retry") {
+    lines.push(`        attempts = 0`);
+    lines.push(`        while not self.read_digital_input(${gate.signalPort}):`);
+    lines.push(`            attempts += 1`);
+    lines.push(`            if attempts > self.AUREVIX_MAX_RETRIES:`);
+    lines.push(`                raise RuntimeError("${failLabel} after ${seq.label}: max retries exceeded")`);
+    lines.push(`            self.get_logger().info(f"Retrying ${seq.label} (attempt {attempts}/{self.AUREVIX_MAX_RETRIES})")`);
+    lines.push(`            self.${retryMethodName}()`);
+    lines.push(``);
+  } else {
+    lines.push(`        while not self.read_digital_input(${gate.signalPort}):`);
+    lines.push(`            time.sleep(0.5)`);
+    lines.push(``);
+  }
+  return lines;
+}
+
+function generateUr(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig: WorkcellConfig, toolChangerConfig: ToolChangerConfig, robotLabel: string) {
   const programName = sanitizeIdentifier("Assemble Bracket Sequence");
   const policyId = policyFingerprint(policy);
+  const initialTool = getToolStation(toolChangerConfig, toolChangerConfig.activeStationId);
   const lines = [
     `# AUREVIX generated URScript`,
     `# Program: ${programName}`,
@@ -598,11 +776,13 @@ function generateUr(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig
     `# Tool frame: ${policy.toolFrame}`,
     `# Coordinate convention: target XYZ is meters in the robot base frame; Z is height above table surface in the teaching UI.`,
     `# Review payload, TCP, and gripper IO mapping before production deployment.`,
+    ...(toolChangerConfig.enabled ? [`# Tool changer enabled. Initial tool: ${initialTool.name} (${initialTool.toolType})`] : []),
     ``,
     `global AUREVIX_APPROACH_ACCEL = 0.6`,
     `global AUREVIX_CONTACT_ACCEL = 0.25`,
     `global AUREVIX_BLEND_SAFE = 0.025`,
     `global AUREVIX_BLEND_CONTACT = 0.001`,
+    `global AUREVIX_MAX_RETRIES = ${AUREVIX_MAX_RETRIES}`,
     ``,
     ...gripperOpenUr(workcellConfig),
     ``,
@@ -644,6 +824,7 @@ function generateUr(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig
 
   const chunks = sequence.length ? sequence : DEFAULT_SEQUENCE;
   const perSequence = Math.max(1, Math.ceil(policy.steps.length / chunks.length));
+  let currentToolId = toolChangerConfig.activeStationId;
   chunks.forEach((seq, index) => {
     lines.push(``);
     lines.push(`def ${sanitizeIdentifier(seq.label)}():`);
@@ -654,6 +835,11 @@ function generateUr(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig
       lines.push(`  end`);
     } else if (seq.type === "USER_CONFIRM") {
       lines.push(`  popup("Confirm ${seq.label} complete", blocking=True)`);
+    } else if (seq.type === "TOOL_CHANGE") {
+      const fromStation = getToolStation(toolChangerConfig, currentToolId);
+      const toStation = getToolStation(toolChangerConfig, seq.toolStationId);
+      lines.push(...emitToolChangeUr(fromStation, toStation, seq.label));
+      currentToolId = toStation.id;
     } else {
       policy.steps.slice(index * perSequence, (index + 1) * perSequence).forEach(emitMotionStep);
     }
@@ -667,7 +853,7 @@ function generateUr(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig
   lines.push(`  aurevix_gripper_open()`);
   chunks.forEach((seq) => {
     lines.push(`  ${sanitizeIdentifier(seq.label)}()`);
-    lines.push(...emitGateUr(seq));
+    lines.push(...emitGateUr(seq, sanitizeIdentifier(seq.label)));
   });
 
   lines.push(``);
@@ -679,7 +865,11 @@ function generateUr(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig
   return lines.join("\n");
 }
 
-function generateRos(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig: WorkcellConfig, robotLabel: string) {
+function stateMethodName(seq: SequenceStep, index: number) {
+  return seq.type === "TOOL_CHANGE" ? `tool_change_${index + 1}` : `state_${index + 1}_${sanitizeIdentifier(seq.label)}`;
+}
+
+function generateRos(policy: TaskPolicy, sequence: SequenceStep[], workcellConfig: WorkcellConfig, toolChangerConfig: ToolChangerConfig, robotLabel: string) {
   const policyId = policyFingerprint(policy);
   const stepRows = policy.steps
     .map((step) => {
@@ -688,12 +878,24 @@ function generateRos(policy: TaskPolicy, sequence: SequenceStep[], workcellConfi
     })
     .join("\n");
 
+  const chunks = sequence.length ? sequence : DEFAULT_SEQUENCE;
+  let currentToolId = toolChangerConfig.activeStationId;
+  const toolChanges = chunks.map((seq) => {
+    if (seq.type !== "TOOL_CHANGE") return null;
+    const fromStation = getToolStation(toolChangerConfig, currentToolId);
+    const toStation = getToolStation(toolChangerConfig, seq.toolStationId);
+    currentToolId = toStation.id;
+    return { fromStation, toStation };
+  });
+  const initialTool = getToolStation(toolChangerConfig, toolChangerConfig.activeStationId);
+
   return [
     `# AUREVIX generated ROS 2 Python skill`,
     `# Policy ID: ${policyId}`,
     `# Robot: ${robotLabel}`,
     `# Intended integration: ROS 2 + MoveIt 2 + a parallel gripper driver.`,
     `# This file is production-structured but hardware adapters must be wired by the cell integrator.`,
+    ...(toolChangerConfig.enabled ? [`# Tool changer enabled. Initial tool: ${initialTool.name} (${initialTool.toolType})`] : []),
     ``,
     `from dataclasses import dataclass`,
     `from typing import Literal, Tuple`,
@@ -727,6 +929,7 @@ function generateRos(policy: TaskPolicy, sequence: SequenceStep[], workcellConfi
     `        self.gripper_open_pin = ${workcellConfig.openPort}`,
     `        self.gripper_close_pin = ${workcellConfig.closePort}`,
     `        self.actuation_delay = ${workcellConfig.actuationDelayMs / 1000}`,
+    `        self.AUREVIX_MAX_RETRIES = ${AUREVIX_MAX_RETRIES}`,
     `        self.steps = [`,
     stepRows,
     `        ]`,
@@ -756,6 +959,14 @@ function generateRos(policy: TaskPolicy, sequence: SequenceStep[], workcellConfi
     `    def verify_contact_or_vision(self, step: SkillStep) -> None:`,
     `        self.get_logger().info(f"Verification checkpoint after step {step.order}: {step.description}")`,
     ``,
+    `    def read_digital_input(self, port: int) -> bool:`,
+    `        # Integrator wires this to the cell PLC/vision I/O driver; True is a safe simulation default.`,
+    `        self.get_logger().info(f"Reading digital input {port}")`,
+    `        return True`,
+    ``,
+    `    def set_digital_output(self, port: int, state: bool) -> None:`,
+    `        self.get_logger().info(f"DigitalOutput port={port} state={state}")`,
+    ``,
     `    def execute_step(self, step: SkillStep) -> None:`,
     `        self.get_logger().info(f"Step {step.order}: {step.description}")`,
     `        if step.action == "home":`,
@@ -773,26 +984,32 @@ function generateRos(policy: TaskPolicy, sequence: SequenceStep[], workcellConfi
     ``,
     `    def execute(self) -> None:`,
     `        self.get_logger().info(f"Starting AUREVIX sequence policy {self.policy_id}")`,
-    ...(sequence.length ? sequence : DEFAULT_SEQUENCE).flatMap((seq, index) => [
-      `        self.state_${index + 1}_${sanitizeIdentifier(seq.label)}()`,
+    ...chunks.flatMap((seq, index) => [
+      `        self.${stateMethodName(seq, index)}()`,
       ...(seq.gateAfter ? [`        self.gate_${index + 1}()`] : []),
     ]),
     `        self.set_gripper("open")`,
     `        self.get_logger().info(f"Completed AUREVIX policy {self.policy_id}")`,
     ``,
-    ...(sequence.length ? sequence : DEFAULT_SEQUENCE).flatMap((seq, index) => [
-      `    def state_${index + 1}_${sanitizeIdentifier(seq.label)}(self) -> None:`,
-      `        self.get_logger().info("State ${index + 1}: ${seq.label}")`,
-      `        for step in self.steps[${index}::${Math.max(sequence.length, 1)}]:`,
-      `            self.execute_step(step)`,
-      ``,
-      ...(seq.gateAfter ? [
-        `    def gate_${index + 1}(self) -> None:`,
-        `        self.get_logger().info("Gate after ${seq.label}: ${seq.gateAfter.type} on port ${seq.gateAfter.signalPort}")`,
-        `        # Integrator maps this transition to PLC/vision result before production.`,
+    ...chunks.flatMap((seq, index) => {
+      if (seq.type === "TOOL_CHANGE") {
+        const { fromStation, toStation } = toolChanges[index]!;
+        return [
+          `    def tool_change_${index + 1}(self) -> None:`,
+          ...emitToolChangeRos(fromStation, toStation, seq.label),
+          ``,
+          ...(seq.gateAfter ? emitGateRos(seq, index, stateMethodName(seq, index)) : []),
+        ];
+      }
+      return [
+        `    def state_${index + 1}_${sanitizeIdentifier(seq.label)}(self) -> None:`,
+        `        self.get_logger().info("State ${index + 1}: ${seq.label}")`,
+        `        for step in self.steps[${index}::${chunks.length}]:`,
+        `            self.execute_step(step)`,
         ``,
-      ] : []),
-    ]),
+        ...(seq.gateAfter ? emitGateRos(seq, index, stateMethodName(seq, index)) : []),
+      ];
+    }),
     ``,
     ``,
     `def main(args=None):`,

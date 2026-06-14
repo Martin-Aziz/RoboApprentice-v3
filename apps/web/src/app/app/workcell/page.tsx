@@ -18,6 +18,15 @@ import {
   type GripperType,
   type WorkcellConfig,
 } from "@/lib/workcell-config";
+import {
+  DEFAULT_TOOL_CHANGER_CONFIG,
+  TOOL_TYPES,
+  readToolChangerConfig,
+  saveToolChangerConfig,
+  type ToolChangerConfig,
+  type ToolStation,
+  type ToolType,
+} from "@/lib/tool-changer";
 
 function clampDelay(value: number) {
   if (!Number.isFinite(value)) return DEFAULT_WORKCELL_CONFIG.actuationDelayMs;
@@ -27,6 +36,7 @@ function clampDelay(value: number) {
 export default function WorkcellPage() {
   const { skills } = useDemoData();
   const [config, setConfig] = useState<WorkcellConfig>(DEFAULT_WORKCELL_CONFIG);
+  const [toolChangerConfig, setToolChangerConfig] = useState<ToolChangerConfig>(DEFAULT_TOOL_CHANGER_CONFIG);
   const selectedModel = useMemo(() => getGripperModel(config.gripperModelId), [config.gripperModelId]);
   const matchingModels = useMemo(
     () => GRIPPER_MODELS.filter((model) => config.gripperType === "custom" || model.type === config.gripperType || model.id === "custom"),
@@ -36,11 +46,30 @@ export default function WorkcellPage() {
 
   useEffect(() => {
     setConfig(readWorkcellConfig());
+    setToolChangerConfig(readToolChangerConfig());
   }, []);
 
   useEffect(() => {
     saveWorkcellConfig(config);
   }, [config]);
+
+  useEffect(() => {
+    saveToolChangerConfig(toolChangerConfig);
+  }, [toolChangerConfig]);
+
+  const updateStation = (id: string, patch: Partial<ToolStation>) => {
+    setToolChangerConfig((current) => ({
+      ...current,
+      stations: current.stations.map((station) => (station.id === id ? { ...station, ...patch } : station)),
+    }));
+  };
+
+  const updateStationDock = (id: string, key: keyof ToolStation["dock"], value: number) => {
+    setToolChangerConfig((current) => ({
+      ...current,
+      stations: current.stations.map((station) => (station.id === id ? { ...station, dock: { ...station.dock, [key]: value } } : station)),
+    }));
+  };
 
   const update = <K extends keyof WorkcellConfig>(key: K, value: WorkcellConfig[K]) => {
     setConfig((current) => ({ ...current, [key]: value }));
@@ -169,6 +198,115 @@ export default function WorkcellPage() {
               </span>
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-[rgb(var(--signal-cyan))]">Automatic tool changer</p>
+            <h2 className="mt-2 text-2xl font-semibold">Tool stations</h2>
+            <p className="mt-2 max-w-2xl text-sm text-[rgb(var(--bone-2))]">
+              Configure dock waypoints and lock/unlock I/O for each tool. TOOL_CHANGE steps in the teach sequence reference these stations to generate automatic dock/undock code.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-3 py-2 text-sm">
+            <input
+              type="checkbox"
+              checked={toolChangerConfig.enabled}
+              onChange={(event) => setToolChangerConfig((current) => ({ ...current, enabled: event.target.checked }))}
+            />
+            <span>Enable tool changer</span>
+          </label>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {toolChangerConfig.stations.map((station) => {
+            const active = station.id === toolChangerConfig.activeStationId;
+            return (
+              <div
+                key={station.id}
+                className={`rounded-md border p-3 text-sm ${active ? "border-[rgb(var(--signal-cyan)/0.5)] bg-[rgb(var(--signal-cyan)/0.06)]" : "border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))]"}`}
+              >
+                <div className="grid gap-2">
+                  <input
+                    aria-label={`${station.name} name`}
+                    className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] px-2 py-1.5 text-sm font-medium"
+                    value={station.name}
+                    onChange={(event) => updateStation(station.id, { name: event.target.value })}
+                  />
+                  <select
+                    aria-label={`${station.name} tool type`}
+                    className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] px-2 py-1.5 font-mono text-xs"
+                    value={station.toolType}
+                    onChange={(event) => updateStation(station.id, { toolType: event.target.value as ToolType })}
+                  >
+                    {TOOL_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+                  </select>
+
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(["x", "y", "z"] as const).map((axis) => (
+                      <label key={axis} className="grid gap-0.5 text-[11px]">
+                        <span className="text-[rgb(var(--bone-2))]">Dock {axis} (m)</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] px-2 py-1 font-mono text-xs tabular"
+                          value={station.dock[axis]}
+                          onChange={(event) => updateStationDock(station.id, axis, Number(event.target.value))}
+                        />
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <label className="grid gap-0.5 text-[11px]">
+                      <span className="text-[rgb(var(--bone-2))]">Lock DO port</span>
+                      <input
+                        type="number"
+                        min={0}
+                        className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] px-2 py-1 font-mono text-xs tabular"
+                        value={station.lockPort}
+                        onChange={(event) => updateStation(station.id, { lockPort: Math.max(0, Number(event.target.value)) })}
+                      />
+                    </label>
+                    <label className="grid gap-0.5 text-[11px]">
+                      <span className="text-[rgb(var(--bone-2))]">Unlock DO port</span>
+                      <input
+                        type="number"
+                        min={0}
+                        className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] px-2 py-1 font-mono text-xs tabular"
+                        value={station.unlockPort}
+                        onChange={(event) => updateStation(station.id, { unlockPort: Math.max(0, Number(event.target.value)) })}
+                      />
+                    </label>
+                  </div>
+
+                  <label className="grid gap-0.5 text-[11px]">
+                    <span className="text-[rgb(var(--bone-2))]">Actuation delay (ms)</span>
+                    <input
+                      type="number"
+                      min={100}
+                      max={2000}
+                      className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] px-2 py-1 font-mono text-xs tabular"
+                      value={station.actuationDelayMs}
+                      onChange={(event) => updateStation(station.id, { actuationDelayMs: Math.min(2000, Math.max(100, Math.round(Number(event.target.value)))) })}
+                    />
+                  </label>
+
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="radio"
+                      name="active-tool-station"
+                      checked={active}
+                      onChange={() => setToolChangerConfig((current) => ({ ...current, activeStationId: station.id }))}
+                    />
+                    <span>{active ? "Currently mounted" : "Set as currently mounted"}</span>
+                  </label>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 

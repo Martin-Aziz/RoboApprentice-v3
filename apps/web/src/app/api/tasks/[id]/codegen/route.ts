@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTask } from "@/lib/task-store-db";
-import { toUrscript, toRos2Python, toPseudocode } from "@/lib/codegen";
+import { toUrscript, toRos2Python, toPseudocode, toRapid, toFanucKarel } from "@/lib/codegen";
 
 export async function GET(
   req: NextRequest,
@@ -54,10 +54,38 @@ export async function GET(
     });
   }
 
+  if (target === "rapid") {
+    const code = toRapid(policy, title);
+    return new NextResponse(code, {
+      status: 200,
+      headers: download
+        ? {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Content-Disposition": `attachment; filename="aurevix_skill.mod"`,
+          }
+        : { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  if (target === "fanuc_karel") {
+    const code = toFanucKarel(policy, title);
+    return new NextResponse(code, {
+      status: 200,
+      headers: download
+        ? {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Content-Disposition": `attachment; filename="aurevix_skill.kl"`,
+          }
+        : { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
   return NextResponse.json({
     urscript: toUrscript(policy, title),
     ros2_python: toRos2Python(policy, title),
     pseudocode: toPseudocode(policy, title),
+    rapid: toRapid(policy, title),
+    fanuc_karel: toFanucKarel(policy, title),
     estimated_cycle_seconds: policy.estimatedCycleSeconds,
     step_count: policy.steps.length,
   });

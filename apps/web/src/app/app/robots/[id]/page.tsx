@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDemoData } from "@/lib/use-demo-data";
 import { formatDate, formatDuration } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
-import { RobotViewport } from "@/components/robot-viewport";
+import { RobotViewport, robotTypeForModel } from "@/components/robot-viewport";
 import { FALLBACK_POLICY } from "@/lib/demo-seed";
 
 export default function RobotDetailPage() {
@@ -47,7 +47,7 @@ export default function RobotDetailPage() {
           <Metric label="Mean cycle" value={formatDuration(robot.metrics?.mean_cycle_ms ?? 0, locale)} />
         </TabsContent>
         <TabsContent value="visualization" className="mt-4">
-          <RobotViewport robotType={robot.model.includes("KUKA") ? "kuka_kr6" : robot.model.includes("TM") ? "techman_tm12" : "ur5e"} policy={FALLBACK_POLICY} playbackState={robot.status === "running" ? "playing" : "paused"} />
+          <RobotViewport robotType={robotTypeForModel(robot.brand, robot.model)} policy={FALLBACK_POLICY} playbackState={robot.status === "running" ? "playing" : "paused"} />
         </TabsContent>
         <TabsContent value="skills" className="mt-4 rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))]">
           {deployed.map((skill) => <Row key={skill.id} left={skill.name} mid={`${Math.round(skill.confidence * 100)}% confidence`} right={skill.status} />)}

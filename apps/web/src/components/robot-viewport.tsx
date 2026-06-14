@@ -11,7 +11,7 @@ import type { GripperType } from "@/lib/workcell-config";
 import type { Pose } from "@/lib/robot-viewport-types";
 import type { TaskPolicy } from "@/lib/types";
 
-type RobotType = "ur5e" | "abb_gofa" | "kuka_kr6" | "techman_tm12";
+type RobotType = "ur5e" | "abb_gofa" | "kuka_kr6" | "techman_tm12" | "fanuc_lr_mate" | "yaskawa_gp12";
 
 interface RobotViewportProps {
   robotType: RobotType;
@@ -46,7 +46,23 @@ const ROBOTS: Record<RobotType, { label: string }> = {
   abb_gofa: { label: "ABB GoFa CRB 15000" },
   kuka_kr6: { label: "KUKA KR 6 R900" },
   techman_tm12: { label: "Techman TM12" },
+  fanuc_lr_mate: { label: "FANUC LR Mate 200iD" },
+  yaskawa_gp12: { label: "Yaskawa Motoman GP12" },
 };
+
+/**
+ * Maps a fleet robot's brand/model string to a viewport visual profile.
+ * Falls back to the UR5e rig for any unrecognised brand.
+ */
+export function robotTypeForModel(brand: string, model: string): RobotType {
+  const text = `${brand} ${model}`.toLowerCase();
+  if (text.includes("kuka")) return "kuka_kr6";
+  if (text.includes("techman") || /\btm\d/.test(text)) return "techman_tm12";
+  if (text.includes("abb") || text.includes("gofa")) return "abb_gofa";
+  if (text.includes("fanuc")) return "fanuc_lr_mate";
+  if (text.includes("yaskawa") || text.includes("motoman")) return "yaskawa_gp12";
+  return "ur5e";
+}
 
 const GRIPPER_BADGES: Record<GripperType, { label: string; className: string }> = {
   electric_parallel: { label: "Electric", className: "border-[rgb(var(--signal-cyan)/0.35)] bg-[rgb(var(--signal-cyan)/0.1)] text-[rgb(var(--signal-cyan))]" },
@@ -123,6 +139,32 @@ const ROBOT_VISUALS: Record<RobotType, RobotVisualProfile> = {
     linkScale: 1.18,
     baseRadius: 0.1,
     gripperStyle: "pneumatic",
+  },
+  fanuc_lr_mate: {
+    body: 0xfbbf24,
+    joint: 0x1c1c1c,
+    accent: 0x18181b,
+    gripper: 0x27272a,
+    upperLen: 0.33,
+    foreLen: 0.3,
+    shoulderHeight: 0.16,
+    wristLift: 0.14,
+    linkScale: 0.8,
+    baseRadius: 0.07,
+    gripperStyle: "compact",
+  },
+  yaskawa_gp12: {
+    body: 0x0033a0,
+    joint: 0x1e293b,
+    accent: 0xf1f5f9,
+    gripper: 0x334155,
+    upperLen: 0.48,
+    foreLen: 0.44,
+    shoulderHeight: 0.24,
+    wristLift: 0.2,
+    linkScale: 1.15,
+    baseRadius: 0.105,
+    gripperStyle: "parallel",
   },
 };
 
