@@ -139,6 +139,7 @@ export default function TeachPage() {
         for (let i = 0; i < stepCount; i += 1) {
           if (cancelled) return;
           await new Promise((resolve) => setTimeout(resolve, 360));
+          if (cancelled) return;
           const template = FALLBACK_STEPS[i % FALLBACK_STEPS.length];
           setSteps((current) => [...current, { ...template, id: `${activeSequence[sequenceIndex].id}-${i}`, order: globalIndex + 1, description: `${activeSequence[sequenceIndex].label}: ${template.description}` }]);
           setActiveStep(globalIndex);

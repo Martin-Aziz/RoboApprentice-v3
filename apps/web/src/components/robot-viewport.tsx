@@ -3,13 +3,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 import { Box, Maximize2, Pause, Play, RotateCcw, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { solveCcdIk, type IKJoint } from "@/lib/ik-solver";
 import type { GripperType } from "@/lib/workcell-config";
 import type { Pose } from "@/lib/robot-viewport-types";
-import type { TaskPolicy } from "@/lib/types";
+import type { GripperState, TaskPolicy } from "@/lib/types";
+import {
+  createBrushedMetalTexture,
+  createContactShadow,
+  createContactShadowTexture,
+  createSceneComposer,
+  createStudioBackground,
+  createStudioEnvironment,
+  type SceneComposer,
+} from "@/lib/three-scene-kit";
 
 type RobotType = "ur5e" | "abb_gofa" | "kuka_kr6" | "techman_tm12" | "fanuc_lr_mate" | "yaskawa_gp12";
 
@@ -39,6 +50,16 @@ interface WorkcellGeometry {
   tableTop: number;
   tableBox: THREE.Box3;
   floorY: number;
+}
+
+/** In-flight playback animation: persisted on the runtime ref so effect re-runs (e.g. when
+ * `policy` gets a new reference mid-stream) resume the current segment instead of restarting it. */
+interface PlaybackAnim {
+  fromPose: Pose;
+  toPose: Pose;
+  toIndex: number;
+  segmentSeconds: number;
+  segmentElapsed: number;
 }
 
 const ROBOTS: Record<RobotType, { label: string }> = {
@@ -204,30 +225,98 @@ function poseForIk(pose: Pose): Pose {
   return pose;
 }
 
+/** Smallest signed angular difference from `from` to `to`, wrapped to [-PI, PI]. */
+function shortestAngleDelta(from: number, to: number) {
+  let delta = (to - from) % (Math.PI * 2);
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  else if (delta < -Math.PI) delta += Math.PI * 2;
+  return delta;
+}
+
+/** Maps a step's gripper state to a finger-spread fraction: 1 = fully open, 0 = closed around a part. */
+function gripperOpenAmount(state: GripperState | undefined) {
+  return state === "closed" ? 0 : 1;
+}
+
+/** Eases t in [0,1] with a smoothstep curve so motion accelerates then decelerates. */
+function smoothstep(t: number) {
+  const clamped = Math.min(Math.max(t, 0), 1);
+  return clamped * clamped * (3 - 2 * clamped);
+}
+
+/** Interpolates between two poses, taking the shortest path for each rotation axis. */
+function lerpPose(from: Pose, to: Pose, t: number): Pose {
+  return {
+    position: {
+      x: from.position.x + (to.position.x - from.position.x) * t,
+      y: from.position.y + (to.position.y - from.position.y) * t,
+      z: from.position.z + (to.position.z - from.position.z) * t,
+    },
+    rotation: {
+      x: from.rotation.x + shortestAngleDelta(from.rotation.x, to.rotation.x) * t,
+      y: from.rotation.y + shortestAngleDelta(from.rotation.y, to.rotation.y) * t,
+      z: from.rotation.z + shortestAngleDelta(from.rotation.z, to.rotation.z) * t,
+    },
+  };
+}
+
+/**
+ * How long an in-between motion should take, based on the travel distance and the
+ * destination step's programmed speed -- so careful approach/grip moves play out
+ * slower than fast free-space transit, like the real demonstration.
+ */
+function segmentDurationSeconds(from: Pose, to: Pose, policy: TaskPolicy | undefined, toIndex: number, playbackSpeed: number) {
+  const dx = to.position.x - from.position.x;
+  const dy = to.position.y - from.position.y;
+  const dz = to.position.z - from.position.z;
+  const linear = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  const angular =
+    Math.abs(shortestAngleDelta(from.rotation.x, to.rotation.x)) +
+    Math.abs(shortestAngleDelta(from.rotation.y, to.rotation.y)) +
+    Math.abs(shortestAngleDelta(from.rotation.z, to.rotation.z));
+  const speed = Math.max(policy?.steps[toIndex]?.speed ?? 0.15, 0.03);
+  const seconds = Math.max(linear / speed, angular / (speed * 4));
+  return clamp(seconds, 0.5, 3.5) / Math.max(playbackSpeed, 0.1);
+}
+
 function buildRobotArm(robotType: RobotType): THREE.Group {
   const profile = ROBOT_VISUALS[robotType];
   const arm = new THREE.Group();
   arm.userData.visualProfile = profile;
 
-  const bodyMat = new THREE.MeshStandardMaterial({
+  const brushedMetal = createBrushedMetalTexture();
+
+  const bodyMat = new THREE.MeshPhysicalMaterial({
     color: profile.body,
-    metalness: 0.4,
-    roughness: 0.5,
+    metalness: 0.25,
+    roughness: 0.42,
+    clearcoat: 0.5,
+    clearcoatRoughness: 0.2,
+    envMapIntensity: 1.1,
   });
   const jointMat = new THREE.MeshStandardMaterial({
     color: profile.joint,
-    metalness: 0.7,
-    roughness: 0.3,
+    metalness: 0.88,
+    roughness: 0.35,
+    roughnessMap: brushedMetal,
+    envMapIntensity: 1.2,
   });
-  const accentMat = new THREE.MeshStandardMaterial({
+  const accentMat = new THREE.MeshPhysicalMaterial({
     color: profile.accent,
-    metalness: 0.3,
-    roughness: 0.6,
+    metalness: 0.2,
+    roughness: 0.28,
+    clearcoat: 0.75,
+    clearcoatRoughness: 0.12,
+    emissive: profile.accent,
+    emissiveIntensity: 0.1,
+    envMapIntensity: 1.1,
   });
   const gripperMat = new THREE.MeshStandardMaterial({
     color: profile.gripper,
-    metalness: 0.8,
-    roughness: 0.2,
+    metalness: 0.85,
+    roughness: 0.3,
+    roughnessMap: brushedMetal,
+    envMapIntensity: 1.0,
   });
 
   const baseOuter = new THREE.Mesh(new THREE.CylinderGeometry(profile.baseRadius * 0.92, profile.baseRadius, 0.06, 32), bodyMat);
@@ -339,7 +428,7 @@ function buildRobotArm(robotType: RobotType): THREE.Group {
   finger2.position.set(-0.022, 0, 0.0952 + 0.04 + 0.0275);
   j5Housing.add(finger2);
 
-  const tipMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9, metalness: 0.1 });
+  const tipMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.95, metalness: 0.02 });
   const tip1 = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.012, 0.01), tipMat);
   tip1.position.set(0.022, 0, 0.0952 + 0.04 + 0.055 + 0.005);
   j5Housing.add(tip1);
@@ -393,7 +482,7 @@ function buildRobotArm(robotType: RobotType): THREE.Group {
   makeJoint("targetElbowJoint", 0.05 * profile.linkScale, jointMat);
   makeJoint("targetWristJoint", 0.04 * profile.linkScale, jointMat);
 
-  const brandBand = new THREE.Mesh(new THREE.BoxGeometry(0.13 * profile.linkScale, 0.012, 0.034), accentMat);
+  const brandBand = new THREE.Mesh(new RoundedBoxGeometry(0.13 * profile.linkScale, 0.012, 0.034, 3, 0.0035), accentMat);
   brandBand.name = "targetBrandBand";
   brandBand.position.set(0.16, profile.shoulderHeight + 0.035, 0);
   targetRig.add(brandBand);
@@ -405,23 +494,28 @@ function buildRobotArm(robotType: RobotType): THREE.Group {
   wristCover.rotation.x = Math.PI / 2;
   gripper.add(wristCover);
   const palmDepth = profile.gripperStyle === "compact" ? 0.046 : profile.gripperStyle === "pneumatic" ? 0.086 : 0.062;
-  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.078 * profile.linkScale, 0.036, palmDepth), gripperMat);
+  const palm = new THREE.Mesh(new RoundedBoxGeometry(0.078 * profile.linkScale, 0.036, palmDepth, 3, 0.006), gripperMat);
   palm.position.y = -0.04;
   gripper.add(palm);
   const fingerLength = profile.gripperStyle === "compact" ? 0.055 : profile.gripperStyle === "pneumatic" ? 0.095 : 0.08;
   const fingerSpread = profile.gripperStyle === "pneumatic" ? 0.034 : 0.026;
   const leftFinger = new THREE.Mesh(new THREE.BoxGeometry(0.014, fingerLength, 0.014), gripperMat);
+  leftFinger.name = "targetLeftFinger";
   leftFinger.position.set(fingerSpread, -0.058 - fingerLength / 2, 0);
   gripper.add(leftFinger);
   const rightFinger = leftFinger.clone();
+  rightFinger.name = "targetRightFinger";
   rightFinger.position.x = -fingerSpread;
   gripper.add(rightFinger);
   const leftTip = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.012, 0.018), tipMat);
+  leftTip.name = "targetLeftTip";
   leftTip.position.set(fingerSpread, -0.064 - fingerLength, 0);
   gripper.add(leftTip);
   const rightTip = leftTip.clone();
+  rightTip.name = "targetRightTip";
   rightTip.position.x = -fingerSpread;
   gripper.add(rightTip);
+  arm.userData.fingerSpread = fingerSpread;
 
   if (profile.gripperStyle === "pneumatic") {
     const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.11, 20), accentMat);
@@ -449,7 +543,7 @@ function setSegment(mesh: THREE.Mesh, from: THREE.Vector3, to: THREE.Vector3) {
   mesh.scale.set(1, length, 1);
 }
 
-function updateTargetDrivenArm(armGroup: THREE.Group, pose: Pose) {
+function updateTargetDrivenArm(armGroup: THREE.Group, pose: Pose, gripOpen = 1) {
   const profile = (armGroup.userData.visualProfile ?? ROBOT_VISUALS.ur5e) as RobotVisualProfile;
   const shoulder = new THREE.Vector3(0, profile.shoulderHeight, 0);
   const target = new THREE.Vector3(pose.position.x, pose.position.z, -pose.position.y);
@@ -490,6 +584,19 @@ function updateTargetDrivenArm(armGroup: THREE.Group, pose: Pose) {
     gripper.position.copy(gripperRoot);
     gripper.rotation.set(0, -(pose.rotation.z ?? 0), 0);
   }
+
+  // Fingers slide together toward the centerline as the gripper closes (gripOpen -> 0)
+  // and spread back out to their rest width when open (gripOpen -> 1).
+  const restSpread = (armGroup.userData.fingerSpread as number | undefined) ?? 0.026;
+  const spread = restSpread * (0.2 + 0.8 * clamp(gripOpen, 0, 1));
+  const leftFinger = armGroup.getObjectByName("targetLeftFinger");
+  const rightFinger = armGroup.getObjectByName("targetRightFinger");
+  const leftTip = armGroup.getObjectByName("targetLeftTip");
+  const rightTip = armGroup.getObjectByName("targetRightTip");
+  if (leftFinger) leftFinger.position.x = spread;
+  if (rightFinger) rightFinger.position.x = -spread;
+  if (leftTip) leftTip.position.x = spread;
+  if (rightTip) rightTip.position.x = -spread;
 }
 
 function applyJointAngles(armGroup: THREE.Group, angles: number[]) {
@@ -682,6 +789,10 @@ export function RobotViewport({
     workcell: WorkcellGeometry;
     frame: number;
     step: number;
+    anim: PlaybackAnim | null;
+    carryObject: THREE.Mesh | null;
+    carryHome: THREE.Vector3 | null;
+    carrying: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [webglUnavailable, setWebglUnavailable] = useState(false);
@@ -689,6 +800,24 @@ export function RobotViewport({
   const [pose, setPose] = useState<Pose>(() => waypointToPose(policy, 0));
   const [collision, setCollision] = useState<string | null>(null);
   const trajectory = useMemo(() => policy?.steps.map((_, index) => sceneVector(waypointToPose(policy, index))) ?? [], [policy]);
+
+  // Mirrors of fast-changing props, read fresh inside the rAF loop below so the
+  // playback effect doesn't need to depend on them (and tear down/restart every
+  // time `policy` gets a new object reference, e.g. while interpretation streams).
+  const policyRef = useRef(policy);
+  useEffect(() => {
+    policyRef.current = policy;
+  }, [policy]);
+
+  const playbackSpeedRef = useRef(playbackSpeed);
+  useEffect(() => {
+    playbackSpeedRef.current = playbackSpeed;
+  }, [playbackSpeed]);
+
+  const onEndEffectorMoveRef = useRef(onEndEffectorMove);
+  useEffect(() => {
+    onEndEffectorMoveRef.current = onEndEffectorMove;
+  }, [onEndEffectorMove]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -706,27 +835,30 @@ export function RobotViewport({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf8fafc);
+    scene.background = createStudioBackground();
+    const environment = createStudioEnvironment(renderer);
+    scene.environment = environment.texture;
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.03, 30);
     camera.position.set(1.6, 1.45, 1.7);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.target.set(0.35, 0.92, 0);
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.25);
     scene.add(ambient);
 
-    const keyLight = new THREE.DirectionalLight(0xfff5e0, 1.2);
+    const keyLight = new THREE.DirectionalLight(0xfff5e0, 1.4);
     keyLight.position.set(-2, 4, 2);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.radius = 3;
     keyLight.shadow.camera.near = 0.1;
     keyLight.shadow.camera.far = 20;
     keyLight.shadow.camera.left = -2;
@@ -736,19 +868,38 @@ export function RobotViewport({
     keyLight.shadow.bias = -0.001;
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xe8f0ff, 0.5);
+    const fillLight = new THREE.DirectionalLight(0xe8f0ff, 0.45);
     fillLight.position.set(3, 2, -1);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.35);
     rimLight.position.set(0, 1, -4);
     scene.add(rimLight);
 
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.8 }));
+    RectAreaLightUniformsLib.init();
+    const softbox = new THREE.RectAreaLight(0xffffff, 5, 1.1, 0.7);
+    softbox.position.set(0.1, TABLE_TOP_Y + 1.3, 0.55);
+    softbox.lookAt(TABLE_CENTER.x, TABLE_TOP_Y + 0.25, 0);
+    scene.add(softbox);
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(6, 6),
+      new THREE.MeshPhysicalMaterial({ color: 0xe7ecf2, roughness: 0.4, metalness: 0.05, clearcoat: 0.12, clearcoatRoughness: 0.6, envMapIntensity: 0.6 }),
+    );
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
-    scene.add(new THREE.GridHelper(4, 40, 0x0284c7, 0x94a3b8));
+
+    const grid = new THREE.GridHelper(6, 60, 0x0284c7, 0x94a3b8);
+    const gridMaterial = grid.material as THREE.LineBasicMaterial;
+    gridMaterial.transparent = true;
+    gridMaterial.opacity = 0.16;
+    scene.add(grid);
+
+    const contactShadowTexture = createContactShadowTexture();
+    const groundShadow = createContactShadow(0.85, contactShadowTexture);
+    groundShadow.position.set(TABLE_CENTER.x, FLOOR_Y + 0.002, TABLE_CENTER.z);
+    scene.add(groundShadow);
 
     const tableBox = new THREE.Box3(
       new THREE.Vector3(TABLE_CENTER.x - TABLE_SIZE.x / 2, TABLE_TOP_Y - TABLE_THICKNESS, TABLE_CENTER.z - TABLE_SIZE.z / 2),
@@ -756,18 +907,36 @@ export function RobotViewport({
     );
     const workcell = { tableTop: TABLE_TOP_Y, tableBox, floorY: FLOOR_Y };
 
+    let carryObject: THREE.Mesh | null = null;
     if (showWorkcell) {
-      const table = new THREE.Mesh(new THREE.BoxGeometry(TABLE_SIZE.x, TABLE_THICKNESS, TABLE_SIZE.z), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.65 }));
+      const tableMat = new THREE.MeshPhysicalMaterial({
+        color: 0xf4f6f9,
+        roughness: 0.3,
+        metalness: 0.04,
+        clearcoat: 0.4,
+        clearcoatRoughness: 0.25,
+        envMapIntensity: 0.9,
+      });
+      const table = new THREE.Mesh(new RoundedBoxGeometry(TABLE_SIZE.x, TABLE_THICKNESS, TABLE_SIZE.z, 4, 0.012), tableMat);
       table.position.set(TABLE_CENTER.x, TABLE_TOP_Y - TABLE_THICKNESS / 2, TABLE_CENTER.z);
       table.castShadow = true;
       table.receiveShadow = true;
       scene.add(table);
-      const mountPlate = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.018, 40), new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.35, roughness: 0.45 }));
+
+      const tableShadow = createContactShadow(0.42, contactShadowTexture);
+      tableShadow.position.set(0, TABLE_TOP_Y + 0.001, 0);
+      scene.add(tableShadow);
+
+      const aluminumTexture = createBrushedMetalTexture();
+      const mountPlate = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.13, 0.14, 0.018, 40),
+        new THREE.MeshStandardMaterial({ color: 0x6b7888, metalness: 0.75, roughness: 0.32, roughnessMap: aluminumTexture, envMapIntensity: 1 }),
+      );
       mountPlate.position.set(0, TABLE_TOP_Y + 0.009, 0);
       mountPlate.castShadow = true;
       mountPlate.receiveShadow = true;
       scene.add(mountPlate);
-      const legMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.25, roughness: 0.55 });
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x9aa6b5, metalness: 0.65, roughness: 0.35, roughnessMap: aluminumTexture, envMapIntensity: 1 });
       const legPositions = [
         [TABLE_CENTER.x - TABLE_SIZE.x / 2 + 0.06, TABLE_CENTER.z - TABLE_SIZE.z / 2 + 0.06],
         [TABLE_CENTER.x + TABLE_SIZE.x / 2 - 0.06, TABLE_CENTER.z - TABLE_SIZE.z / 2 + 0.06],
@@ -781,16 +950,20 @@ export function RobotViewport({
         leg.receiveShadow = true;
         scene.add(leg);
       });
-      const blueBin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
+      const binMaterial = (color: number) =>
+        new THREE.MeshPhysicalMaterial({ color, roughness: 0.32, metalness: 0.05, clearcoat: 0.5, clearcoatRoughness: 0.2, envMapIntensity: 1 });
+      const blueBin = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.1, 0.1, 3, 0.008), binMaterial(0x0284c7));
       blueBin.position.set(0.38, TABLE_TOP_Y + 0.05, 0.16);
       blueBin.castShadow = true;
       blueBin.receiveShadow = true;
-      const greenBin = blueBin.clone();
-      (greenBin.material as THREE.MeshStandardMaterial) = new THREE.MeshStandardMaterial({ color: 0x059669 });
+      const greenBin = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.1, 0.1, 3, 0.008), binMaterial(0x059669));
       greenBin.position.set(0.12, TABLE_TOP_Y + 0.05, -0.24);
       greenBin.castShadow = true;
       greenBin.receiveShadow = true;
       scene.add(blueBin, greenBin);
+      // The "bracket" the policy's grip/release steps pick up and transfer --
+      // its rest position lines up with the blue bin (the pickup target).
+      carryObject = blueBin;
     }
 
     const robot = buildRobotArm(robotType);
@@ -807,8 +980,27 @@ export function RobotViewport({
     const trail = new THREE.Group();
     scene.add(trail);
 
+    const composer: SceneComposer = createSceneComposer(renderer, scene, camera, width, height);
+
     const parsed = UR5E_JOINTS.map((joint) => ({ ...joint }));
-    runtime.current = { renderer, scene, camera, controls, robot, joints: parsed, ee, marker, trail, workcell, frame: 0, step: 0 };
+    runtime.current = {
+      renderer,
+      scene,
+      camera,
+      controls,
+      robot,
+      joints: parsed,
+      ee,
+      marker,
+      trail,
+      workcell,
+      frame: 0,
+      step: 0,
+      anim: null,
+      carryObject,
+      carryHome: carryObject ? carryObject.position.clone() : null,
+      carrying: false,
+    };
     setJoints(parsed);
     setLoading(false);
 
@@ -816,6 +1008,7 @@ export function RobotViewport({
       const nextWidth = mount.clientWidth || width;
       const nextHeight = mount.clientHeight || height;
       renderer.setSize(nextWidth, nextHeight);
+      composer.setSize(nextWidth, nextHeight);
       camera.aspect = nextWidth / nextHeight;
       camera.updateProjectionMatrix();
     };
@@ -825,7 +1018,7 @@ export function RobotViewport({
     const animate = () => {
       if (!live || !runtime.current) return;
       runtime.current.controls.update();
-      runtime.current.renderer.render(runtime.current.scene, runtime.current.camera);
+      composer.render();
       requestAnimationFrame(animate);
     };
     animate();
@@ -833,6 +1026,10 @@ export function RobotViewport({
     return () => {
       live = false;
       window.removeEventListener("resize", onResize);
+      composer.dispose();
+      environment.dispose();
+      const background = scene.background;
+      if (background instanceof THREE.Texture) background.dispose();
       renderer.dispose();
       mount.removeChild(renderer.domElement);
     };
@@ -841,6 +1038,11 @@ export function RobotViewport({
   useEffect(() => {
     const state = runtime.current;
     if (!state) return;
+    // While the rAF playback loop below owns the pose, let it drive the scene --
+    // re-snapping here on every `policy` reference change (e.g. each appended
+    // step while interpretation streams) would fight the loop's interpolation
+    // and show a one-frame jump back to the current waypoint.
+    if (playbackState === "playing" && !jointValues) return;
     const nextPose = waypointToPose(policy, state.step);
     const solution = solveCcdIk(state.joints, poseForIk(nextPose));
     const angles: number[] = [];
@@ -852,7 +1054,7 @@ export function RobotViewport({
     }
     applyJointAngles(state.robot, angles);
     const vector = sceneVector(nextPose);
-    updateTargetDrivenArm(state.robot, nextPose);
+    updateTargetDrivenArm(state.robot, nextPose, gripperOpenAmount(policy?.steps[state.step]?.gripper));
     state.ee.position.copy(vector);
     state.marker.position.copy(vector);
     setPose(nextPose);
@@ -860,16 +1062,58 @@ export function RobotViewport({
     onEndEffectorMove?.(nextPose);
     const collisionResult = checkCollision(getJointWorldPositions(state.robot), state.workcell, angles, nextPose);
     setCollision(collisionResult.detected ? `Collision detected at waypoint ${state.step + 1}: ${collisionResult.description}` : null);
-  }, [jointValues, onEndEffectorMove, policy]);
+  }, [jointValues, onEndEffectorMove, playbackState, policy, robotType, showWorkcell]);
 
   useEffect(() => {
-    if (!trajectory.length || playbackState !== "playing") return;
-    const timer = window.setInterval(() => {
-      const state = runtime.current;
-      if (!state) return;
-      state.step = (state.step + 1) % trajectory.length;
-      const nextPose = waypointToPose(policy, state.step);
-      const solution = solveCcdIk(state.joints, poseForIk(nextPose));
+    const state = runtime.current;
+    if (!state || playbackState !== "playing") return;
+
+    let frameId = 0;
+    let lastTime: number | null = null;
+    let hudElapsed = 0;
+
+    const tick = (now: number) => {
+      const currentPolicy = policyRef.current;
+      const length = currentPolicy?.steps.length ?? 0;
+      if (length < 1) {
+        frameId = requestAnimationFrame(tick);
+        return;
+      }
+
+      // Lazily (re)establish the in-flight segment so resuming after a pause --
+      // or `policy` simply changing reference mid-stream -- continues smoothly
+      // instead of snapping back to the start of the current segment.
+      let anim = state.anim;
+      if (!anim) {
+        const fromPose = waypointToPose(currentPolicy, state.step);
+        const toIndex = (state.step + 1) % length;
+        const toPose = waypointToPose(currentPolicy, toIndex);
+        anim = {
+          fromPose,
+          toPose,
+          toIndex,
+          segmentSeconds: segmentDurationSeconds(fromPose, toPose, currentPolicy, toIndex, playbackSpeedRef.current),
+          segmentElapsed: 0,
+        };
+        state.anim = anim;
+      }
+
+      if (lastTime === null) lastTime = now;
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      anim.segmentElapsed += dt;
+      hudElapsed += dt;
+      const t = anim.segmentSeconds > 0 ? Math.min(anim.segmentElapsed / anim.segmentSeconds, 1) : 1;
+      const reachedEnd = t >= 1;
+      const currentPose = lerpPose(anim.fromPose, anim.toPose, smoothstep(t));
+      const fromGripper = currentPolicy?.steps[state.step]?.gripper;
+      const toGripper = currentPolicy?.steps[anim.toIndex]?.gripper;
+      const gripOpen = fromGripper === toGripper
+        ? gripperOpenAmount(toGripper)
+        : gripperOpenAmount(fromGripper) + (gripperOpenAmount(toGripper) - gripperOpenAmount(fromGripper)) * smoothstep(t);
+
+      const solution = solveCcdIk(state.joints, poseForIk(currentPose));
       const angles: number[] = [];
       for (const joint of state.joints) {
         const next = clamp(solution.joints[joint.name] ?? joint.value, joint.lower, joint.upper);
@@ -877,19 +1121,61 @@ export function RobotViewport({
         angles.push(next);
       }
       applyJointAngles(state.robot, angles);
-      const vector = sceneVector(nextPose);
-      updateTargetDrivenArm(state.robot, nextPose);
+      const vector = sceneVector(currentPose);
+      updateTargetDrivenArm(state.robot, currentPose, gripOpen);
       state.ee.position.copy(vector);
       state.marker.position.copy(vector);
-      updateGhostTrail(state.trail, vector);
-      setPose(nextPose);
-      setJoints([...state.joints]);
-      const collisionResult = checkCollision(getJointWorldPositions(state.robot), state.workcell, angles, nextPose);
-      setCollision(collisionResult.detected ? `Collision detected at waypoint ${state.step + 1}: ${collisionResult.description}` : null);
-      onEndEffectorMove?.(nextPose);
-    }, Math.max(250, 900 / playbackSpeed));
-    return () => window.clearInterval(timer);
-  }, [onEndEffectorMove, playbackSpeed, playbackState, policy, trajectory.length]);
+
+      // Carry the gripped part with the gripper: pick it up the instant the
+      // gripper finishes closing on it, and set it back down once it opens again.
+      const gripperGroup = state.robot.getObjectByName("targetGripper") as THREE.Group | null;
+      if (gripperGroup && state.carryObject && state.carryHome) {
+        if (toGripper === "closed" && !state.carrying && reachedEnd) {
+          state.carryObject.position.copy(state.carryHome);
+          gripperGroup.attach(state.carryObject);
+          state.carrying = true;
+        } else if (toGripper === "open" && state.carrying && reachedEnd) {
+          state.scene.attach(state.carryObject);
+          state.carryObject.position.y = state.carryHome.y;
+          state.carrying = false;
+        }
+      }
+
+      if (reachedEnd || hudElapsed >= 0.08) {
+        hudElapsed = 0;
+        updateGhostTrail(state.trail, vector);
+        setPose(currentPose);
+        setJoints([...state.joints]);
+        const collisionResult = checkCollision(getJointWorldPositions(state.robot), state.workcell, angles, currentPose);
+        setCollision(collisionResult.detected ? `Collision detected at waypoint ${anim.toIndex + 1}: ${collisionResult.description}` : null);
+        onEndEffectorMoveRef.current?.(currentPose);
+      }
+
+      if (reachedEnd) {
+        state.step = anim.toIndex;
+        const nextPolicy = policyRef.current;
+        const nextLength = Math.max(nextPolicy?.steps.length ?? length, 1);
+        const nextToIndex = (state.step + 1) % nextLength;
+        const nextToPose = waypointToPose(nextPolicy, nextToIndex);
+        state.anim = {
+          fromPose: anim.toPose,
+          toPose: nextToPose,
+          toIndex: nextToIndex,
+          segmentSeconds: segmentDurationSeconds(anim.toPose, nextToPose, nextPolicy, nextToIndex, playbackSpeedRef.current),
+          segmentElapsed: 0,
+        };
+      }
+
+      frameId = requestAnimationFrame(tick);
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+    // robotType/showWorkcell are included because the mount effect above rebuilds
+    // `runtime.current` (new robot, new scene) whenever either changes -- without
+    // rebinding here, this loop keeps animating the disposed old robot while the
+    // freshly built one sits frozen in its unposed, just-constructed state.
+  }, [playbackState, robotType, showWorkcell]);
 
   useEffect(() => {
     const state = runtime.current;
@@ -938,7 +1224,7 @@ export function RobotViewport({
     const nextPose = getEndEffectorPose(state.robot);
     if (nextPose) {
       const vector = sceneVector(nextPose);
-      updateTargetDrivenArm(state.robot, nextPose);
+      updateTargetDrivenArm(state.robot, nextPose, gripperOpenAmount(policy?.steps[state.step]?.gripper));
       state.ee.position.copy(vector);
       state.marker.position.copy(vector);
       setPose(nextPose);
