@@ -98,6 +98,7 @@ export default function TeachPage() {
   const [deployed, setDeployed] = useState(false);
   const [robotType, setRobotType] = useState<DemoRobot>("ur5e");
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [sequence, setSequence] = useState<SequenceStep[]>(DEFAULT_SEQUENCE);
   const [activeSequenceIndex, setActiveSequenceIndex] = useState(-1);
   const [workcellConfig, setWorkcellConfig] = useState<WorkcellConfig>(DEFAULT_WORKCELL_CONFIG);
@@ -123,12 +124,75 @@ export default function TeachPage() {
   useEffect(() => {
     if (!started) return;
     let cancelled = false;
-    const run = async () => {
-      setDone(false);
-      setSteps([]);
-      setActiveStep(-1);
-      setActiveSequenceIndex(0);
-      setSequence((current) => current.map((step) => ({ ...step, status: "pending" })));
+
+    // Map streaming progress onto the sequence timeline (cosmetic) so the left
+    // panel animates while the real interpretation arrives.
+    const markSequenceProgress = (fraction: number) => {
+      const count = sequence.length || 1;
+      setSequence((current) => current.map((step, index) => {
+        if (fraction >= (index + 1) / count) return { ...step, status: "complete" };
+        if (fraction >= index / count) return { ...step, status: "analysing" };
+        return { ...step, status: "pending" };
+      }));
+      setActiveSequenceIndex(Math.min(Math.floor(fraction * count), count - 1));
+    };
+
+    // Real pipeline: create a task for the bundled demo video, then consume the
+    // SSE interpretation stream (Claude vision on extracted frames, server-side).
+    const runReal = async () => {
+      const createRes = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Bench pick-rotate-place demonstration", videoUrl: DEMO_VIDEO_URL }),
+      });
+      if (!createRes.ok) throw new Error(`task create failed: ${createRes.status}`);
+      const task = (await createRes.json()) as { id: string };
+
+      const res = await fetch(`/api/tasks/${task.id}/interpret`, { method: "POST" });
+      if (!res.ok || !res.body) throw new Error(`interpret failed: ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      const collected: TaskStep[] = [];
+      let sawDone = false;
+
+      type StreamEvent = { type: string; message?: string; step?: TaskStep; steps?: TaskStep[]; policy?: TaskPolicy };
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (cancelled) { await reader.cancel(); return; }
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        for (const evt of events) {
+          const dataLine = evt.split("\n").find((l) => l.startsWith("data: "));
+          if (!dataLine) continue;
+          let payload: StreamEvent;
+          try { payload = JSON.parse(dataLine.slice(6)) as StreamEvent; } catch { continue; }
+          if (payload.type === "status" || payload.type === "warning") {
+            setStatusMessage(payload.message ?? null);
+          } else if (payload.type === "step" && payload.step) {
+            collected.push(payload.step);
+            setSteps([...collected]);
+            setActiveStep(collected.length - 1);
+            markSequenceProgress(Math.min(collected.length / 10, 0.95));
+          } else if (payload.type === "done") {
+            sawDone = true;
+            const finalSteps = payload.policy?.steps ?? payload.steps ?? collected;
+            setSteps(finalSteps);
+            setActiveStep(finalSteps.length - 1);
+          } else if (payload.type === "error") {
+            throw new Error(payload.message ?? "interpretation error");
+          }
+        }
+      }
+      if (!sawDone && collected.length === 0) throw new Error("no steps produced");
+    };
+
+    // Offline safety net: the scripted walkthrough, so the demo always plays
+    // even if the API route or network is unavailable.
+    const runScripted = async () => {
       const activeSequence = sequence.length ? sequence : DEFAULT_SEQUENCE;
       let globalIndex = 0;
       for (let sequenceIndex = 0; sequenceIndex < activeSequence.length; sequenceIndex += 1) {
@@ -147,11 +211,35 @@ export default function TeachPage() {
         }
         setSequence((current) => current.map((step, index) => index === sequenceIndex ? { ...step, status: "complete" } : step));
       }
+    };
+
+    const run = async () => {
+      setDone(false);
+      setSteps([]);
+      setActiveStep(-1);
+      setActiveSequenceIndex(0);
+      setStatusMessage(null);
+      setSequence((current) => current.map((step) => ({ ...step, status: "pending" })));
+
+      try {
+        await runReal();
+      } catch (err) {
+        if (cancelled) return;
+        console.warn("[teach] live analysis failed, using built-in walkthrough", err);
+        setStatusMessage((prev) => prev ?? "Live analysis unavailable — playing the built-in walkthrough.");
+        setSteps([]);
+        setActiveStep(-1);
+        setSequence((current) => current.map((step) => ({ ...step, status: "pending" })));
+        await runScripted();
+      }
+
       if (!cancelled) {
         setActiveSequenceIndex(-1);
+        setSequence((current) => current.map((step) => ({ ...step, status: "complete" })));
         setDone(true);
       }
     };
+
     run();
     return () => {
       cancelled = true;
@@ -252,7 +340,7 @@ export default function TeachPage() {
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-[rgb(var(--signal-cyan))]">3D robot view</p>
               <h2 className="mt-2 text-2xl font-semibold">Replay policy</h2>
             </div>
-            <span className="font-mono text-sm tabular">{activeStep + 1}/{FALLBACK_STEPS.length}</span>
+            <span className="font-mono text-sm tabular">{activeStep + 1}/{steps.length || FALLBACK_STEPS.length}</span>
           </div>
           <label className="mb-3 grid max-w-sm gap-1 text-sm">
             <span className="text-[rgb(var(--bone-2))]">Robot model</span>
@@ -281,6 +369,11 @@ export default function TeachPage() {
           <h2 className="font-semibold">Interpretation</h2>
           <span className="font-mono text-xs text-[rgb(var(--bone-2))]">{started ? done ? "complete" : "streaming" : "waiting"}</span>
         </div>
+        {statusMessage && (
+          <p data-testid="analysis-status" className="mt-2 rounded-md border border-[rgb(var(--signal-cyan)/0.3)] bg-[rgb(var(--signal-cyan)/0.06)] p-2 font-mono text-xs text-[rgb(var(--bone-2))]">
+            {statusMessage}
+          </p>
+        )}
         <div className="mt-4 grid gap-2 md:grid-cols-2">
           {(steps.length ? steps : FALLBACK_STEPS.slice(0, 3)).map((step, index) => (
             <div key={step.id} className={`rounded-md border p-3 text-sm ${index <= activeStep ? "border-[rgb(var(--signal-cyan)/0.45)] bg-[rgb(var(--signal-cyan)/0.06)]" : "border-[rgb(var(--steel))] opacity-45"}`}>

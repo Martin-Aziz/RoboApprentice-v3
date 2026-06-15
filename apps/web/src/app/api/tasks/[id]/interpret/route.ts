@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { spawn } from "child_process";
 import Anthropic from "@anthropic-ai/sdk";
 import { getTask, updateTask } from "@/lib/task-store-db";
 import { processPolicyPipeline } from "@/lib/policy-pipeline";
+import { extractVideoFrames } from "@/lib/video-frames";
 import type { GripperState, RobotAction, TaskPolicy, TaskStep, Waypoint } from "@/lib/types";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
 const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "gemma4:latest";
+// Use the local Claude Code CLI as a provider (its own subscription auth, no
+// API key). Disabled with CLAUDE_CODE_CLI=0. Uses a model alias the CLI accepts.
+const CLAUDE_CODE_CLI_ENABLED = process.env.CLAUDE_CODE_CLI !== "0";
+const CLAUDE_CODE_MODEL = process.env.CLAUDE_CODE_MODEL ?? "sonnet";
+const CLAUDE_CODE_TIMEOUT_MS = 120_000;
 
 interface RawStep {
   order: number;
@@ -269,6 +276,9 @@ class StreamingJSONParser {
 
 const SYSTEM_PROMPT = `You are an expert industrial robotics motion planner with deep knowledge of 6-DOF manipulator kinematics, trajectory planning, and manufacturing automation. Your task is to analyze a robot teaching demonstration and produce a precise, executable motion policy.
 
+## EVIDENCE
+If still frames sampled from the demonstration video are provided, they are your PRIMARY source of truth. Read them in order and infer the actual motion: which object is grasped, the direction it travels, any rotation/reorientation, and where it is set down. Ground every waypoint coordinate and step description in what the frames actually show. Use the title/narration only to fill gaps the frames leave ambiguous.
+
 ## THINKING PROCESS
 Before generating output, reason through these questions mentally:
 1. What is the primary pick-and-place or manipulation goal?
@@ -353,6 +363,81 @@ Robot base frame. Origin at robot base center.
 ✓ Descriptions are precise and action-oriented
 ✓ Output is valid JSON array only — no surrounding text`;
 
+/**
+ * Run the interpretation through the locally-installed Claude Code CLI, which
+ * authenticates with the user's own Claude Code subscription (no API key). The
+ * demonstration frames are passed inline as image blocks via stream-json input,
+ * so the model sees the actual video without any Read-tool round-trips. Returns
+ * the model's final text (a JSON array of steps, possibly fenced).
+ */
+function runClaudeCodeCli(opts: {
+  systemPrompt: string;
+  userText: string;
+  frames: string[];
+  mediaType: string;
+}): Promise<string> {
+  const content: Anthropic.ContentBlockParam[] = [
+    { type: "text", text: opts.userText },
+    ...opts.frames.map(
+      (data): Anthropic.ImageBlockParam => ({
+        type: "image",
+        source: { type: "base64", media_type: opts.mediaType as "image/jpeg", data },
+      }),
+    ),
+  ];
+  const message = { type: "user", message: { role: "user", content } };
+
+  return new Promise<string>((resolve, reject) => {
+    const child = spawn(
+      "claude",
+      [
+        "-p",
+        "--input-format", "stream-json",
+        "--output-format", "stream-json",
+        "--verbose",
+        "--model", CLAUDE_CODE_MODEL,
+        "--append-system-prompt", opts.systemPrompt,
+      ],
+      { stdio: ["pipe", "pipe", "pipe"] },
+    );
+
+    let stdout = "";
+    let stderr = "";
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error(`Claude Code CLI timed out after ${CLAUDE_CODE_TIMEOUT_MS}ms`));
+    }, CLAUDE_CODE_TIMEOUT_MS);
+
+    child.stdout.on("data", (d) => { stdout += d.toString(); });
+    child.stderr.on("data", (d) => { stderr += d.toString(); });
+    child.on("error", (err) => { clearTimeout(timer); reject(err); });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (code !== 0) {
+        reject(new Error(`Claude Code CLI exited ${code}: ${stderr.slice(0, 200)}`));
+        return;
+      }
+      let resultText = "";
+      for (const line of stdout.trim().split("\n")) {
+        try {
+          const evt = JSON.parse(line) as { type?: string; result?: string };
+          if (evt.type === "result" && typeof evt.result === "string") resultText = evt.result;
+        } catch {
+          // ignore non-JSON lines
+        }
+      }
+      if (!resultText) {
+        reject(new Error("Claude Code CLI produced no result"));
+        return;
+      }
+      resolve(resultText);
+    });
+
+    child.stdin.write(JSON.stringify(message) + "\n");
+    child.stdin.end();
+  });
+}
+
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -371,18 +456,45 @@ export async function POST(
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 
       try {
+        // Pull still frames from the demonstration video so Claude can derive
+        // the policy from what actually happens on screen. Degrades to
+        // text-only when the video isn't server-readable or ffmpeg is absent.
+        const extracted = await extractVideoFrames(task.videoUrl, { maxFrames: 8 });
+        if (extracted.frames.length > 0) {
+          send({ type: "status", message: `Analyzing ${extracted.frames.length} frames sampled from the demonstration video.` });
+        } else if (extracted.note) {
+          send({ type: "status", message: `Vision analysis skipped — interpreting from text. ${extracted.note}` });
+        }
+
         const userPrompt = [
           `## Task to plan`,
           `Title: "${task.title}"`,
           `Video source: ${task.videoUrl}`,
+          extracted.frames.length > 0
+            ? `\n## Demonstration frames\n${extracted.frames.length} still frames from the video are attached below, in chronological order. Read the actual manipulation from them.`
+            : "",
           task.transcript
-            ? `\n## Operator description\n"${task.transcript}"\n\nUse this narration as the primary source of truth for the task steps, contact points, and spatial positions.`
-            : `\n## Note\nNo operator narration provided. Infer a plausible pick-and-place policy from the task title alone. Use conservative speeds and add vision checks where part position is uncertain.`,
+            ? `\n## Operator description\n"${task.transcript}"\n\nUse this narration alongside the frames to resolve any ambiguity in contact points and spatial positions.`
+            : extracted.frames.length > 0
+              ? `\n## Note\nNo operator narration provided. Derive the steps from the frames.`
+              : `\n## Note\nNo operator narration or readable video frames available. Infer a plausible pick-and-place policy from the task title alone. Use conservative speeds and add vision checks where part position is uncertain.`,
           `\n## Output`,
           `Generate the JSON array of motion steps now. Follow all rules in the system prompt exactly.`,
         ]
           .filter(Boolean)
           .join("\n");
+
+        // Multimodal content for Claude: the prompt text interleaved with the
+        // sampled frames as image blocks. Other providers receive text only.
+        const claudeContent: Anthropic.MessageParam["content"] = [
+          { type: "text", text: userPrompt },
+          ...extracted.frames.map(
+            (data): Anthropic.ImageBlockParam => ({
+              type: "image",
+              source: { type: "base64", media_type: extracted.mediaType, data },
+            }),
+          ),
+        ];
 
         // Each provider attempt gets fresh accumulator state so a partial
         // failure from one provider can't bleed step numbering into the next.
@@ -456,7 +568,7 @@ export async function POST(
               model: ANTHROPIC_MODEL,
               max_tokens: 4096,
               system: SYSTEM_PROMPT,
-              messages: [{ role: "user", content: userPrompt }],
+              messages: [{ role: "user", content: claudeContent }],
             });
 
             for await (const event of claudeStream) {
@@ -473,7 +585,35 @@ export async function POST(
           }
         }
 
-        // ── 2. Try Ollama — local fallback ──────────────────────────────────
+        // ── 2. Try the Claude Code CLI — uses local subscription, no API key ─
+        if (CLAUDE_CODE_CLI_ENABLED) {
+          const session = newSession();
+          try {
+            send({
+              type: "status",
+              message: extracted.frames.length
+                ? `Sending ${extracted.frames.length} frames to Claude Code for analysis…`
+                : "Interpreting with Claude Code…",
+            });
+            const resultText = await runClaudeCodeCli({
+              systemPrompt: SYSTEM_PROMPT,
+              userText: userPrompt,
+              frames: extracted.frames,
+              mediaType: extracted.mediaType,
+            });
+            feedChunk(session, resultText);
+            if (session.collected.length === 0) {
+              throw new Error("Claude Code CLI returned no parseable steps");
+            }
+            await finalizeAndRespond(session);
+            return;
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : "Claude Code CLI request failed";
+            send({ type: "warning", message: `Claude Code CLI unavailable, trying local Ollama. ${reason}` });
+          }
+        }
+
+        // ── 3. Try Ollama — local fallback ──────────────────────────────────
         let usedOllamaFallback = false;
         let ollamaFallbackReason = ANTHROPIC_API_KEY
           ? "" // Claude already attempted and failed; reason was sent above

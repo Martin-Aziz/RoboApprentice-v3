@@ -323,6 +323,76 @@ interface CarrySlot {
 /** Pool of distinctly-coloured props available to represent simultaneous/sequential pick-and-place pairs. */
 const CARRY_PROP_COLORS = [0x0284c7, 0xd97706, 0x7c3aed];
 
+/** Height of a carried workpiece, so callers can rest it on a surface. */
+const WORKPIECE_HEIGHT = 0.07;
+/** Height of a fixture block's base, so the part can be dropped to rest in its cradle. */
+const FIXTURE_BASE_HEIGHT = 0.028;
+
+/**
+ * A small machined workpiece: a brushed-metal block with a coloured locating
+ * boss on top. The boss makes the part's orientation legible while it is
+ * carried and rotated, and distinguishes one part from another in a multi-part
+ * demonstration. Its origin sits at the part's centre, like a plain mesh, so it
+ * drops in for the existing pick/carry/place attach logic unchanged.
+ */
+function buildWorkpiece(accent: number, metalTexture: THREE.Texture): THREE.Group {
+  const part = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xb9c2cc, metalness: 0.78, roughness: 0.34, roughnessMap: metalTexture, envMapIntensity: 1.1 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.074, WORKPIECE_HEIGHT, 0.05), bodyMat);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  part.add(body);
+
+  // Chamfered shoulder so it reads as a machined part rather than a plain cube.
+  const shoulder = new THREE.Mesh(new THREE.BoxGeometry(0.082, 0.014, 0.058), bodyMat);
+  shoulder.position.y = -WORKPIECE_HEIGHT / 2 + 0.007;
+  shoulder.castShadow = true;
+  shoulder.receiveShadow = true;
+  part.add(shoulder);
+
+  const boss = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.013, 0.013, 0.016, 24),
+    new THREE.MeshStandardMaterial({ color: accent, metalness: 0.2, roughness: 0.5, emissive: accent, emissiveIntensity: 0.18 }),
+  );
+  boss.position.y = WORKPIECE_HEIGHT / 2 + 0.008;
+  boss.castShadow = true;
+  part.add(boss);
+  return part;
+}
+
+/**
+ * A slotted fixture block: a metal base with two raised rails forming a cradle
+ * that a carried workpiece is set down into, with an accent inlay matching the
+ * part it receives. Origin sits at the block's footprint centre on the table.
+ */
+function buildFixtureBlock(accent: number, metalTexture: THREE.Texture): THREE.Group {
+  const fixture = new THREE.Group();
+  const steelMat = new THREE.MeshStandardMaterial({ color: 0x7c8896, metalness: 0.72, roughness: 0.4, roughnessMap: metalTexture, envMapIntensity: 1 });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.12, FIXTURE_BASE_HEIGHT, 0.13), steelMat);
+  base.position.y = FIXTURE_BASE_HEIGHT / 2;
+  base.castShadow = true;
+  base.receiveShadow = true;
+  fixture.add(base);
+
+  const railGeo = new THREE.BoxGeometry(0.12, 0.05, 0.022);
+  for (const sign of [-1, 1]) {
+    const rail = new THREE.Mesh(railGeo, steelMat);
+    rail.position.set(0, FIXTURE_BASE_HEIGHT + 0.025, sign * 0.044);
+    rail.castShadow = true;
+    rail.receiveShadow = true;
+    fixture.add(rail);
+  }
+
+  const inlay = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 0.004, 0.05),
+    new THREE.MeshStandardMaterial({ color: accent, metalness: 0.2, roughness: 0.55, emissive: accent, emissiveIntensity: 0.12 }),
+  );
+  inlay.position.y = FIXTURE_BASE_HEIGHT + 0.002;
+  inlay.receiveShadow = true;
+  fixture.add(inlay);
+  return fixture;
+}
+
 function buildRobotArm(robotType: RobotType): THREE.Group {
   const profile = ROBOT_VISUALS[robotType];
   const arm = new THREE.Group();
@@ -834,7 +904,8 @@ export function RobotViewport({
     frame: number;
     step: number;
     anim: PlaybackAnim | null;
-    props: THREE.Mesh[];
+    props: THREE.Object3D[];
+    fixtures: THREE.Object3D[];
     carrySlots: CarrySlot[];
     scanRing: THREE.Mesh | null;
   } | null>(null);
@@ -952,7 +1023,8 @@ export function RobotViewport({
     );
     const workcell = { tableTop: TABLE_TOP_Y, tableBox, floorY: FLOOR_Y };
 
-    let props: THREE.Mesh[] = [];
+    let props: THREE.Object3D[] = [];
+    let fixtures: THREE.Object3D[] = [];
     let scanRing: THREE.Mesh | null = null;
     if (showWorkcell) {
       const tableMat = new THREE.MeshPhysicalMaterial({
@@ -996,18 +1068,26 @@ export function RobotViewport({
         leg.receiveShadow = true;
         scene.add(leg);
       });
-      const propMaterial = (color: number) =>
-        new THREE.MeshPhysicalMaterial({ color, roughness: 0.32, metalness: 0.05, clearcoat: 0.5, clearcoatRoughness: 0.2, envMapIntensity: 1 });
-      // A small pool of differently-coloured props -- a later effect assigns one
-      // per pick-and-place pair found in the policy and positions/reveals them
-      // at that pair's actual pickup/drop-off waypoints.
-      props = CARRY_PROP_COLORS.map((color) => {
-        const prop = new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.08, 0.08, 3, 0.006), propMaterial(color));
-        prop.castShadow = true;
-        prop.receiveShadow = true;
+      // A small pool of machined parts -- a later effect assigns one per
+      // pick-and-place pair found in the policy and positions/reveals them at
+      // that pair's actual pickup/drop-off waypoints. Each part is a brushed
+      // metal block with a coloured locating boss on top (so the operator can
+      // tell distinct parts apart and read its orientation as it is rotated),
+      // mirroring the kind of small workpiece seen in the demonstration video.
+      props = CARRY_PROP_COLORS.map((color) => buildWorkpiece(color, aluminumTexture));
+      props.forEach((prop) => {
         prop.visible = false;
         scene.add(prop);
-        return prop;
+      });
+
+      // A matching pool of slotted fixture blocks -- the destination each part
+      // is set into. A later effect parks one on the table under each pair's
+      // drop-off point, so the placement visibly "lands" into a cradle that
+      // resembles the fixture in the demonstration rather than into thin air.
+      fixtures = CARRY_PROP_COLORS.map((color) => buildFixtureBlock(color, aluminumTexture));
+      fixtures.forEach((fixture) => {
+        fixture.visible = false;
+        scene.add(fixture);
       });
 
       // Pulsing ring shown under the gripper during "inspect" steps, to
@@ -1053,6 +1133,7 @@ export function RobotViewport({
       step: 0,
       anim: null,
       props,
+      fixtures,
       carrySlots: [],
       scanRing,
     };
@@ -1099,11 +1180,20 @@ export function RobotViewport({
     const state = runtime.current;
     if (!state || state.props.length === 0) return;
 
+    const tableTop = state.workcell.tableTop;
+    // Height at which a placed part rests inside a fixture cradle, and the
+    // height of a part sitting directly on the table before pickup.
+    const cradleRestY = tableTop + FIXTURE_BASE_HEIGHT + WORKPIECE_HEIGHT / 2 + 0.001;
+    const tableRestY = tableTop + WORKPIECE_HEIGHT / 2;
+
     const pairs = extractCarryPairs(policy);
     const signatureToProp = new Map<string, number>();
     const slots: CarrySlot[] = pairs.map((pair) => {
       const home = sceneVector(waypointToPose(policy, pair.pickIndex));
       const place = sceneVector(waypointToPose(policy, pair.placeIndex));
+      // Land the part to rest inside its fixture cradle rather than at the bare
+      // drop-off waypoint height (which is just where the gripper releases).
+      place.y = cradleRestY;
       const signature = `${home.toArray().map((n) => n.toFixed(3)).join(",")}|${place.toArray().map((n) => n.toFixed(3)).join(",")}`;
       let propIndex = signatureToProp.get(signature);
       if (propIndex === undefined) {
@@ -1125,8 +1215,22 @@ export function RobotViewport({
       }
       prop.visible = true;
       if (!slot.carrying && prop.parent === state.scene) {
-        prop.position.copy(slot.home);
+        // At rest before pickup the part sits on the table at its pickup spot.
+        prop.position.set(slot.home.x, tableRestY, slot.home.z);
+        prop.rotation.set(0, 0, 0);
       }
+    });
+
+    // Park each used fixture block on the table directly under its part's
+    // drop-off point; hide the rest.
+    state.fixtures.forEach((fixture, index) => {
+      const slot = usedProps.get(index);
+      if (!slot) {
+        fixture.visible = false;
+        return;
+      }
+      fixture.visible = true;
+      fixture.position.set(slot.place.x, tableTop, slot.place.z);
     });
   }, [policy, robotType, showWorkcell]);
 
@@ -1238,6 +1342,10 @@ export function RobotViewport({
           } else if (slot.placeIndex === anim.toIndex && slot.carrying) {
             state.scene.attach(prop);
             prop.position.copy(slot.place);
+            // Seat the part flat in the cradle, preserving only the net yaw it
+            // was rotated through while carried (so a 90deg reorient still reads).
+            const yaw = prop.rotation.y;
+            prop.rotation.set(0, yaw, 0);
             slot.carrying = false;
           }
         }

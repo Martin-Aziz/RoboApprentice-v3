@@ -184,6 +184,8 @@ export interface CloudTaskLibrary {
   facility_id: string;
   title: string;
   description?: string;
+  videoUrl?: string;
+  transcript?: string;
   status: TaskStatus;
   current_version: number;
   total_versions: number;
