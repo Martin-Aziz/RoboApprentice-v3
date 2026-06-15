@@ -263,9 +263,15 @@ function lerpPose(from: Pose, to: Pose, t: number): Pose {
 /**
  * How long an in-between motion should take, based on the travel distance and the
  * destination step's programmed speed -- so careful approach/grip moves play out
- * slower than fast free-space transit, like the real demonstration.
+ * slower than fast free-space transit, like the real demonstration. "wait" and
+ * "inspect" steps instead dwell for their own programmed duration, since they
+ * represent the robot holding position rather than travelling somewhere.
  */
 function segmentDurationSeconds(from: Pose, to: Pose, policy: TaskPolicy | undefined, toIndex: number, playbackSpeed: number) {
+  const step = policy?.steps[toIndex];
+  if (step?.action === "wait" || step?.action === "inspect") {
+    return clamp(step.duration, 1, 6) / Math.max(playbackSpeed, 0.1);
+  }
   const dx = to.position.x - from.position.x;
   const dy = to.position.y - from.position.y;
   const dz = to.position.z - from.position.z;
@@ -278,6 +284,44 @@ function segmentDurationSeconds(from: Pose, to: Pose, policy: TaskPolicy | undef
   const seconds = Math.max(linear / speed, angular / (speed * 4));
   return clamp(seconds, 0.5, 3.5) / Math.max(playbackSpeed, 0.1);
 }
+
+/** One pick-and-place operation: gripper closes at `pickIndex` and re-opens at `placeIndex`. */
+interface CarryPair {
+  pickIndex: number;
+  placeIndex: number;
+}
+
+/**
+ * Scans the policy for grip(close) -> release(open) pairs. Each pair represents one
+ * part being picked up somewhere and carried to somewhere else -- the policy's own
+ * gripper-discipline rules guarantee these never nest or overlap.
+ */
+function extractCarryPairs(policy: TaskPolicy | undefined): CarryPair[] {
+  const pairs: CarryPair[] = [];
+  let openPick: number | null = null;
+  policy?.steps.forEach((step, index) => {
+    if (step.gripper === "closed" && openPick === null) {
+      openPick = index;
+    } else if (step.gripper === "open" && openPick !== null) {
+      pairs.push({ pickIndex: openPick, placeIndex: index });
+      openPick = null;
+    }
+  });
+  return pairs;
+}
+
+/** A prop mesh assigned to one pick-and-place pair, tracking its pickup/drop-off points. */
+interface CarrySlot {
+  pickIndex: number;
+  placeIndex: number;
+  propIndex: number;
+  home: THREE.Vector3;
+  place: THREE.Vector3;
+  carrying: boolean;
+}
+
+/** Pool of distinctly-coloured props available to represent simultaneous/sequential pick-and-place pairs. */
+const CARRY_PROP_COLORS = [0x0284c7, 0xd97706, 0x7c3aed];
 
 function buildRobotArm(robotType: RobotType): THREE.Group {
   const profile = ROBOT_VISUALS[robotType];
@@ -790,15 +834,16 @@ export function RobotViewport({
     frame: number;
     step: number;
     anim: PlaybackAnim | null;
-    carryObject: THREE.Mesh | null;
-    carryHome: THREE.Vector3 | null;
-    carrying: boolean;
+    props: THREE.Mesh[];
+    carrySlots: CarrySlot[];
+    scanRing: THREE.Mesh | null;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [webglUnavailable, setWebglUnavailable] = useState(false);
   const [joints, setJoints] = useState<IKJoint[]>(() => UR5E_JOINTS.map((joint) => ({ ...joint })));
   const [pose, setPose] = useState<Pose>(() => waypointToPose(policy, 0));
   const [collision, setCollision] = useState<string | null>(null);
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
   const trajectory = useMemo(() => policy?.steps.map((_, index) => sceneVector(waypointToPose(policy, index))) ?? [], [policy]);
 
   // Mirrors of fast-changing props, read fresh inside the rAF loop below so the
@@ -907,7 +952,8 @@ export function RobotViewport({
     );
     const workcell = { tableTop: TABLE_TOP_Y, tableBox, floorY: FLOOR_Y };
 
-    let carryObject: THREE.Mesh | null = null;
+    let props: THREE.Mesh[] = [];
+    let scanRing: THREE.Mesh | null = null;
     if (showWorkcell) {
       const tableMat = new THREE.MeshPhysicalMaterial({
         color: 0xf4f6f9,
@@ -950,20 +996,29 @@ export function RobotViewport({
         leg.receiveShadow = true;
         scene.add(leg);
       });
-      const binMaterial = (color: number) =>
+      const propMaterial = (color: number) =>
         new THREE.MeshPhysicalMaterial({ color, roughness: 0.32, metalness: 0.05, clearcoat: 0.5, clearcoatRoughness: 0.2, envMapIntensity: 1 });
-      const blueBin = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.1, 0.1, 3, 0.008), binMaterial(0x0284c7));
-      blueBin.position.set(0.38, TABLE_TOP_Y + 0.05, 0.16);
-      blueBin.castShadow = true;
-      blueBin.receiveShadow = true;
-      const greenBin = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.1, 0.1, 3, 0.008), binMaterial(0x059669));
-      greenBin.position.set(0.12, TABLE_TOP_Y + 0.05, -0.24);
-      greenBin.castShadow = true;
-      greenBin.receiveShadow = true;
-      scene.add(blueBin, greenBin);
-      // The "bracket" the policy's grip/release steps pick up and transfer --
-      // its rest position lines up with the blue bin (the pickup target).
-      carryObject = blueBin;
+      // A small pool of differently-coloured props -- a later effect assigns one
+      // per pick-and-place pair found in the policy and positions/reveals them
+      // at that pair's actual pickup/drop-off waypoints.
+      props = CARRY_PROP_COLORS.map((color) => {
+        const prop = new THREE.Mesh(new RoundedBoxGeometry(0.08, 0.08, 0.08, 3, 0.006), propMaterial(color));
+        prop.castShadow = true;
+        prop.receiveShadow = true;
+        prop.visible = false;
+        scene.add(prop);
+        return prop;
+      });
+
+      // Pulsing ring shown under the gripper during "inspect" steps, to
+      // visually distinguish a vision/inspection dwell from a plain move.
+      scanRing = new THREE.Mesh(
+        new THREE.RingGeometry(0.045, 0.065, 32),
+        new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }),
+      );
+      scanRing.rotation.x = -Math.PI / 2;
+      scanRing.visible = false;
+      scene.add(scanRing);
     }
 
     const robot = buildRobotArm(robotType);
@@ -997,9 +1052,9 @@ export function RobotViewport({
       frame: 0,
       step: 0,
       anim: null,
-      carryObject,
-      carryHome: carryObject ? carryObject.position.clone() : null,
-      carrying: false,
+      props,
+      carrySlots: [],
+      scanRing,
     };
     setJoints(parsed);
     setLoading(false);
@@ -1035,6 +1090,46 @@ export function RobotViewport({
     };
   }, [robotType, showWorkcell]);
 
+  // Re-derive which props represent which pick-and-place pair whenever the policy
+  // changes (e.g. as interpretation streams in new steps). Pairs with identical
+  // pickup/drop-off coordinates share a prop (the common "same part, repeating
+  // cycle" case); pairs at distinct locations each get their own prop, so a
+  // multi-step demo visibly moves multiple different things to multiple places.
+  useEffect(() => {
+    const state = runtime.current;
+    if (!state || state.props.length === 0) return;
+
+    const pairs = extractCarryPairs(policy);
+    const signatureToProp = new Map<string, number>();
+    const slots: CarrySlot[] = pairs.map((pair) => {
+      const home = sceneVector(waypointToPose(policy, pair.pickIndex));
+      const place = sceneVector(waypointToPose(policy, pair.placeIndex));
+      const signature = `${home.toArray().map((n) => n.toFixed(3)).join(",")}|${place.toArray().map((n) => n.toFixed(3)).join(",")}`;
+      let propIndex = signatureToProp.get(signature);
+      if (propIndex === undefined) {
+        propIndex = signatureToProp.size % state.props.length;
+        signatureToProp.set(signature, propIndex);
+      }
+      const previous = state.carrySlots.find((s) => s.propIndex === propIndex && s.carrying);
+      return { pickIndex: pair.pickIndex, placeIndex: pair.placeIndex, propIndex, home, place, carrying: Boolean(previous) };
+    });
+    state.carrySlots = slots;
+
+    const usedProps = new Map(slots.map((slot) => [slot.propIndex, slot]));
+    state.props.forEach((prop, index) => {
+      const slot = usedProps.get(index);
+      if (!slot) {
+        prop.visible = false;
+        if (prop.parent && prop.parent !== state.scene) state.scene.attach(prop);
+        return;
+      }
+      prop.visible = true;
+      if (!slot.carrying && prop.parent === state.scene) {
+        prop.position.copy(slot.home);
+      }
+    });
+  }, [policy, robotType, showWorkcell]);
+
   useEffect(() => {
     const state = runtime.current;
     if (!state) return;
@@ -1062,6 +1157,7 @@ export function RobotViewport({
     onEndEffectorMove?.(nextPose);
     const collisionResult = checkCollision(getJointWorldPositions(state.robot), state.workcell, angles, nextPose);
     setCollision(collisionResult.detected ? `Collision detected at waypoint ${state.step + 1}: ${collisionResult.description}` : null);
+    setActiveStepIndex(state.step);
   }, [jointValues, onEndEffectorMove, playbackState, policy, robotType, showWorkcell]);
 
   useEffect(() => {
@@ -1126,18 +1222,38 @@ export function RobotViewport({
       state.ee.position.copy(vector);
       state.marker.position.copy(vector);
 
-      // Carry the gripped part with the gripper: pick it up the instant the
-      // gripper finishes closing on it, and set it back down once it opens again.
+      // Carry parts with the gripper: for each pick-and-place pair, pick up the
+      // prop the instant the gripper finishes closing at its pickup waypoint,
+      // and set it down the instant the gripper finishes opening at its
+      // drop-off waypoint.
       const gripperGroup = state.robot.getObjectByName("targetGripper") as THREE.Group | null;
-      if (gripperGroup && state.carryObject && state.carryHome) {
-        if (toGripper === "closed" && !state.carrying && reachedEnd) {
-          state.carryObject.position.copy(state.carryHome);
-          gripperGroup.attach(state.carryObject);
-          state.carrying = true;
-        } else if (toGripper === "open" && state.carrying && reachedEnd) {
-          state.scene.attach(state.carryObject);
-          state.carryObject.position.y = state.carryHome.y;
-          state.carrying = false;
+      if (gripperGroup && reachedEnd) {
+        for (const slot of state.carrySlots) {
+          const prop = state.props[slot.propIndex];
+          if (!prop) continue;
+          if (slot.pickIndex === anim.toIndex && !slot.carrying) {
+            prop.position.copy(slot.home);
+            gripperGroup.attach(prop);
+            slot.carrying = true;
+          } else if (slot.placeIndex === anim.toIndex && slot.carrying) {
+            state.scene.attach(prop);
+            prop.position.copy(slot.place);
+            slot.carrying = false;
+          }
+        }
+      }
+
+      // Pulse a scan ring under the gripper while the current/just-departed
+      // waypoint is an "inspect" step -- visually distinct from moving, gripping,
+      // or releasing.
+      const toAction = currentPolicy?.steps[anim.toIndex]?.action;
+      const fromAction = currentPolicy?.steps[state.step]?.action;
+      const inspecting = toAction === "inspect" ? t > 0.5 : fromAction === "inspect" && t <= 0.5;
+      if (state.scanRing) {
+        state.scanRing.visible = inspecting;
+        if (inspecting) {
+          state.scanRing.position.set(vector.x, state.workcell.tableTop + 0.002, vector.z);
+          state.scanRing.scale.setScalar(1 + 0.2 * Math.sin(now / 200));
         }
       }
 
@@ -1149,6 +1265,7 @@ export function RobotViewport({
         const collisionResult = checkCollision(getJointWorldPositions(state.robot), state.workcell, angles, currentPose);
         setCollision(collisionResult.detected ? `Collision detected at waypoint ${anim.toIndex + 1}: ${collisionResult.description}` : null);
         onEndEffectorMoveRef.current?.(currentPose);
+        setActiveStepIndex(anim.toIndex);
       }
 
       if (reachedEnd) {
@@ -1316,6 +1433,46 @@ export function RobotViewport({
           </div>
         </aside>
       </div>
+      {policy && policy.steps.length > 0 && (() => {
+        const stepCount = policy.steps.length;
+        const safeIndex = Math.min(activeStepIndex, stepCount - 1);
+        const step = policy.steps[safeIndex];
+        return (
+          <div data-testid="step-intent" className="border-t border-[rgb(var(--steel))] px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[rgb(var(--signal-cyan))]">
+                Interpreted intent · step {safeIndex + 1} / {stepCount}
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em]">
+                  {step.action}
+                </span>
+                {step.gripper !== "unchanged" && (
+                  <span className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em]">
+                    gripper {step.gripper}
+                  </span>
+                )}
+                {step.requiresVision && (
+                  <span className="rounded-md border border-[rgb(var(--signal-cyan))] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[rgb(var(--signal-cyan))]">
+                    vision check
+                  </span>
+                )}
+              </div>
+            </div>
+            <p data-testid="step-intent-description" className="mt-2 text-sm">
+              {step.description}
+            </p>
+            {step.notes && <p className="mt-1 text-xs text-[rgb(var(--bone-2))]">Note: {step.notes}</p>}
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] tabular text-[rgb(var(--bone-2))]">
+              <span>target x {step.target.x.toFixed(3)} m</span>
+              <span>y {step.target.y.toFixed(3)} m</span>
+              <span>z {step.target.z.toFixed(3)} m</span>
+              <span>speed {step.speed.toFixed(2)} m/s</span>
+              <span>duration {step.duration}s</span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

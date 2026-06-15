@@ -197,14 +197,14 @@ export const DEMO_EXECUTIONS = generateExecutionHistory();
 export const DEMO_VIDEO_URL = "/demos/multitask.mp4";
 
 export const FALLBACK_STEPS: TaskStep[] = [
-  { id: "step-1", order: 1, description: "Move to home position above the fixture", action: "home", target: { x: 0.25, y: 0, z: 0.34 }, gripper: "open", speed: 0.25, duration: 2 },
-  { id: "step-2", order: 2, description: "Approach pickup zone at controlled speed", action: "approach", target: { x: 0.38, y: -0.16, z: 0.18 }, gripper: "open", speed: 0.2, duration: 3 },
-  { id: "step-3", order: 3, description: "Open gripper to 60 mm width", action: "grip", target: { x: 0.38, y: -0.16, z: 0.11 }, gripper: "open", speed: 0.08, duration: 1 },
-  { id: "step-4", order: 4, description: "Close gripper on bracket and verify contact", action: "grip", target: { x: 0.38, y: -0.16, z: 0.08 }, gripper: "closed", speed: 0.06, duration: 2, requiresVision: true },
-  { id: "step-5", order: 5, description: "Lift bracket clear of conveyor", action: "move", target: { x: 0.34, y: -0.12, z: 0.24 }, gripper: "closed", speed: 0.22, duration: 2 },
-  { id: "step-6", order: 6, description: "Rotate tool 18 degrees for fixture alignment", action: "rotate", target: { x: 0.16, y: 0.19, z: 0.24, rz: 0.31 }, gripper: "closed", speed: 0.18, duration: 2 },
-  { id: "step-7", order: 7, description: "Place bracket into assembly fixture", action: "release", target: { x: 0.12, y: 0.24, z: 0.1, rz: 0.31 }, gripper: "open", speed: 0.1, duration: 3 },
-  { id: "step-8", order: 8, description: "Retract to safe observation point", action: "move", target: { x: 0.2, y: 0.12, z: 0.32 }, gripper: "open", speed: 0.24, duration: 2 },
+  { id: "step-1", order: 1, description: "Move to home position above the workbench", action: "home", target: { x: 0.25, y: 0, z: 0.34 }, gripper: "open", speed: 0.25, duration: 2 },
+  { id: "step-2", order: 2, description: "Approach the component on the right side of the table", action: "approach", target: { x: 0.38, y: -0.16, z: 0.18 }, gripper: "open", speed: 0.2, duration: 3 },
+  { id: "step-3", order: 3, description: "Open gripper around the component", action: "grip", target: { x: 0.38, y: -0.16, z: 0.11 }, gripper: "open", speed: 0.08, duration: 1 },
+  { id: "step-4", order: 4, description: "Close gripper on the component and verify grip", action: "grip", target: { x: 0.38, y: -0.16, z: 0.08 }, gripper: "closed", speed: 0.06, duration: 2, requiresVision: true },
+  { id: "step-5", order: 5, description: "Lift the component clear of the table", action: "move", target: { x: 0.34, y: -0.12, z: 0.24 }, gripper: "closed", speed: 0.22, duration: 2 },
+  { id: "step-6", order: 6, description: "Rotate the component 90 degrees while carrying it toward the fixture block", action: "rotate", target: { x: 0.16, y: 0.19, z: 0.24, rz: 1.5708 }, gripper: "closed", speed: 0.18, duration: 2 },
+  { id: "step-7", order: 7, description: "Set the component down beside the fixture block", action: "release", target: { x: 0.12, y: 0.24, z: 0.1, rz: 1.5708 }, gripper: "open", speed: 0.1, duration: 3 },
+  { id: "step-8", order: 8, description: "Retract clear of the workpiece", action: "move", target: { x: 0.2, y: 0.12, z: 0.32 }, gripper: "open", speed: 0.24, duration: 2 },
 ];
 
 export const FALLBACK_POLICY: TaskPolicy = {

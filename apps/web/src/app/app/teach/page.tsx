@@ -53,9 +53,9 @@ const ROBOT_OPTIONS: Array<{ value: DemoRobot; label: string; codeLabel: string 
 
 const STEP_TYPES: SequenceStepType[] = ["MOTION", "WAIT_FOR_SIGNAL", "GRIPPER_ACTUATE", "TOOL_CHANGE", "INSPECTION", "USER_CONFIRM"];
 const DEFAULT_SEQUENCE: SequenceStep[] = [
-  { id: "seq-pick", label: "Pick bracket", type: "MOTION", status: "pending", gateAfter: { type: "signal_high", signalPort: 2, elseAction: "wait" } },
-  { id: "seq-orient", label: "Orient bracket", type: "MOTION", status: "pending" },
-  { id: "seq-place", label: "Place in fixture", type: "MOTION", status: "pending", gateAfter: { type: "inspection_pass", signalPort: 3, failStepId: "seq-orient", elseAction: "retry" } },
+  { id: "seq-pick", label: "Pick component", type: "MOTION", status: "pending", gateAfter: { type: "signal_high", signalPort: 2, elseAction: "wait" } },
+  { id: "seq-orient", label: "Rotate component", type: "MOTION", status: "pending" },
+  { id: "seq-place", label: "Place beside fixture", type: "MOTION", status: "pending", gateAfter: { type: "inspection_pass", signalPort: 3, failStepId: "seq-orient", elseAction: "retry" } },
   { id: "seq-toolchange", label: "Switch to vacuum cup", type: "TOOL_CHANGE", status: "pending", toolStationId: "station-vacuum" },
   { id: "seq-machine", label: "Trigger machine", type: "WAIT_FOR_SIGNAL", status: "pending", gateAfter: { type: "retry_or_abort", signalPort: 5, elseAction: "abort" } },
 ];
