@@ -147,6 +147,14 @@ export interface TaskIntent {
   requiredGripForceNewtons?: { min: number; max: number };
   cycleTimeSeconds?: number;
   robotModel?: string;
+  partGeometry?: PartGeometry;
+  pickPosition?: {
+    face: RequiredPickFace | "UNKNOWN";
+    offsetMm: { x: number; y: number; z: number };
+  };
+  requiredPartOrientation?: { rx: number; ry: number; rz: number };
+  requiredRepeatabilityMm?: number;
+  environmentTemperatureC?: number;
 }
 
 export interface WorkcellDimensions {
@@ -162,12 +170,63 @@ export interface PassportWorkcellConfig {
   toolFrame?: string;
 }
 
+export interface PartBoundingBox {
+  length_mm: number;
+  width_mm: number;
+  height_mm: number;
+}
+
+export type PartShape = "RECTANGULAR" | "CYLINDRICAL" | "IRREGULAR" | "UNKNOWN";
+export interface PartGeometry {
+  shape: PartShape;
+  boundingBox: PartBoundingBox;
+}
+
+export type RequiredPickFace = "TOP" | "SIDE" | "BOTTOM";
+export type FixtureMaterial =
+  | "PLA_3DPRINT"
+  | "ABS_3DPRINT"
+  | "ALUMINIUM"
+  | "STEEL";
+export type FixtureType = "NEST" | "V-BLOCK" | "RAIL" | "CUSTOM";
+
+export interface FixtureRequirement {
+  part_bounding_box: PartBoundingBox;
+  required_pick_face: RequiredPickFace;
+  required_repeatability_mm: number;
+  max_cycle_force_n: number;
+  material_recommendation: FixtureMaterial;
+  environment_temperature_c: number;
+}
+
+export interface DimensionWithTolerance {
+  nominal_mm: number;
+  tolerance_mm: number;
+}
+
+export interface FixtureSpecDocument {
+  dimensions: Record<string, DimensionWithTolerance>;
+  general_tolerance_mm: number;
+  surface_finish_requirements: string;
+  mounting_method: string;
+}
+
 export interface FixtureDesignOutput {
   fixture_id: string;
   name: string;
   interface_points: Waypoint[];
   tolerance_mm?: number;
   notes?: string;
+  fixture_type?: FixtureType;
+  material_recommendation?: FixtureMaterial;
+  specification?: FixtureSpecDocument;
+  geometry_file?: string | null;
+  geometry_download_url?: string | null;
+  specification_pdf_url?: string;
+  manufacturing_notes?: string;
+  confidence?: IntentConfidence;
+  human_review_required?: boolean;
+  disclaimer?: string;
 }
 
 export interface QualityParameters {

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { RiskAssessmentDraftAction } from "@/components/risk-assessment-draft";
 import { GripperRecommendations } from "@/components/gripper-recommendations";
 import { AutomationPassportExport } from "@/components/automation-passport-export";
+import { FixtureDesignerPanel } from "@/components/fixture-designer";
 import type { Task } from "@/lib/types";
 
 export default function TaskDetailPage() {
@@ -74,6 +75,7 @@ export default function TaskDetailPage() {
       </section>
 
       <GripperRecommendations task={task} />
+      <FixtureDesignerPanel task={task} />
     </div>
   );
 }

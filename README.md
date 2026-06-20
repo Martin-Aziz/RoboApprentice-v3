@@ -52,6 +52,10 @@ Task detail pages can rank sourced end-effectors using robot compatibility, a 30
 
 Deployed robot processes can be exported as privacy-stripped, robot-agnostic passports and re-planned for supported robots and target workcells. Imports preserve immutable lineage and block deployment when any translated waypoint is unreachable. See [docs/AUTOMATION_PASSPORT.md](docs/AUTOMATION_PASSPORT.md).
 
+## Fixture and Jig Designer
+
+Task detail pages can generate tolerance-controlled fixture specifications and manifold STL files for simple nests and V-blocks. Irregular and uncertain geometry receives a written brief only and mandatory qualified review. See [docs/FIXTURE_DESIGNER.md](docs/FIXTURE_DESIGNER.md).
+
 ## License
 
 See `LICENSE`.
