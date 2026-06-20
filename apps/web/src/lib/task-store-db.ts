@@ -24,6 +24,8 @@ import type {
   TaskStep,
   CloudTaskLibrary,
   TaskVersion,
+  QualityParameters,
+  TaskIntent,
 } from "@/lib/types";
 
 const DEFAULT_FACILITY_ID = "fac-production-001";
@@ -105,6 +107,14 @@ function taskFromLibrary(lib: CloudTaskLibrary, version: TaskVersion): Task {
     archivedAt: lib.archivedAt,
     targetRobotModels: lib.targetRobotModels,
     gripperConfig: lib.gripperConfig,
+    robotModel: version.robotModel ?? lib.robotModel ?? lib.targetRobotModels?.[0],
+    controllerProgram: version.controllerProgram,
+    controllerProgramTarget: version.controllerProgramTarget ?? lib.controllerProgramTarget,
+    taskIntent: version.taskIntent,
+    qualityParameters: version.qualityParameters,
+    originPassportId: version.originPassportId ?? lib.originPassportId ?? null,
+    parentTaskId: version.parentTaskId ?? lib.parentTaskId ?? null,
+    organisationId: lib.organisationId,
   };
 }
 
@@ -188,6 +198,11 @@ export async function updateTask(
     transcript?: string;
     errorMessage?: string;
     description?: string;
+    robotModel?: string;
+    controllerProgram?: string;
+    controllerProgramTarget?: string;
+    taskIntent?: TaskIntent;
+    qualityParameters?: QualityParameters;
   },
 ): Promise<Task | undefined> {
   const store = await getStore();
@@ -210,6 +225,13 @@ export async function updateTask(
     policy: patch.policy ?? latest?.policy,
     created_at: now,
     status: "active",
+    robotModel: patch.robotModel ?? latest?.robotModel,
+    controllerProgram: patch.controllerProgram ?? latest?.controllerProgram,
+    controllerProgramTarget: patch.controllerProgramTarget ?? latest?.controllerProgramTarget,
+    taskIntent: patch.taskIntent ?? latest?.taskIntent,
+    qualityParameters: patch.qualityParameters ?? latest?.qualityParameters,
+    originPassportId: latest?.originPassportId ?? lib.originPassportId ?? null,
+    parentTaskId: latest?.parentTaskId ?? lib.parentTaskId ?? null,
   };
 
   const updatedLib: CloudTaskLibrary = {
@@ -220,6 +242,8 @@ export async function updateTask(
     current_version: nextVersionNumber,
     total_versions: nextVersionNumber,
     updated_at: now,
+    robotModel: patch.robotModel ?? lib.robotModel,
+    controllerProgramTarget: patch.controllerProgramTarget ?? lib.controllerProgramTarget,
   };
 
   store.tasks[id] = updatedLib;
@@ -227,6 +251,66 @@ export async function updateTask(
   persist(store);
 
   return taskFromLibrary(updatedLib, version);
+}
+
+export async function createImportedTask(input: {
+  title: string;
+  description?: string;
+  facilityId: string;
+  organisationId: string;
+  robotModel: string;
+  steps: TaskStep[];
+  policy: TaskPolicy;
+  taskIntent: TaskIntent;
+  controllerProgram: string;
+  controllerProgramTarget: string;
+  qualityParameters: QualityParameters;
+  originPassportId: string;
+  parentTaskId: string;
+}): Promise<Task> {
+  const store = await getStore();
+  const taskId = randomUUID();
+  const now = new Date().toISOString();
+  const lib: CloudTaskLibrary = {
+    task_id: taskId,
+    facility_id: input.facilityId,
+    organisationId: input.organisationId,
+    title: input.title,
+    description: input.description,
+    status: "done",
+    current_version: 1,
+    total_versions: 1,
+    created_at: now,
+    updated_at: now,
+    targetRobotModels: [input.robotModel],
+    robotModel: input.robotModel,
+    controllerProgramTarget: input.controllerProgramTarget,
+    originPassportId: input.originPassportId,
+    parentTaskId: input.parentTaskId,
+  };
+  const version: TaskVersion = {
+    version_id: randomUUID(),
+    task_id: taskId,
+    version_number: 1,
+    facility_id: input.facilityId,
+    title: input.title,
+    description: input.description,
+    steps: input.steps,
+    policy: input.policy,
+    robotModel: input.robotModel,
+    controllerProgram: input.controllerProgram,
+    controllerProgramTarget: input.controllerProgramTarget,
+    taskIntent: input.taskIntent,
+    qualityParameters: input.qualityParameters,
+    originPassportId: input.originPassportId,
+    parentTaskId: input.parentTaskId,
+    created_at: now,
+    status: "active",
+  };
+  store.tasks[taskId] = lib;
+  store.versions[taskId] = [version];
+  persist(store);
+  return taskFromLibrary(lib, version);
 }
 
 export async function appendFeedback(

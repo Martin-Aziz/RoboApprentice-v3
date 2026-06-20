@@ -113,6 +113,228 @@ export interface Waypoint {
   rz?: number;
 }
 
+export type RobotModel =
+  | "UR5e"
+  | "UR10e"
+  | "UR16e"
+  | "ABB GoFa CRB 15000"
+  | "FANUC CRX-10iA";
+
+export type IntentConfidence = "LOW" | "MEDIUM" | "HIGH";
+
+export interface TaskIntent {
+  waypoints: Waypoint[];
+  intentSteps?: Array<{
+    id: string;
+    order: number;
+    description: string;
+    action: RobotAction;
+    target: Waypoint;
+    gripper: GripperState;
+    speed: number;
+    duration: number;
+    requiresVision?: boolean;
+    notes?: string;
+  }>;
+  approximateSpeeds?: number[];
+  confidence: IntentConfidence;
+  operationDelaysSeconds?: number;
+  taskCategory?: TaskCategory;
+  payloadKg?: number;
+  partMaterial?: PartMaterial;
+  partSurface?: PartSurface;
+  pickType?: PickType;
+  requiredGripForceNewtons?: { min: number; max: number };
+  cycleTimeSeconds?: number;
+  robotModel?: string;
+}
+
+export interface WorkcellDimensions {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface PassportWorkcellConfig {
+  dimensions: WorkcellDimensions;
+  origin: Waypoint;
+  fixtureOffset?: Waypoint;
+  toolFrame?: string;
+}
+
+export interface FixtureDesignOutput {
+  fixture_id: string;
+  name: string;
+  interface_points: Waypoint[];
+  tolerance_mm?: number;
+  notes?: string;
+}
+
+export interface QualityParameters {
+  cycle_time_target_seconds: number;
+  acceptable_tolerance_mm: number;
+  success_rate_baseline: number;
+}
+
+export type PassportSharingScope = "PRIVATE" | "ORGANISATION" | "SHARED_LINK";
+
+export interface PassportExport {
+  passport_id: string;
+  source_task_id: string;
+  source_robot_model: string;
+  source_org_id: string;
+  task_intent: TaskIntent;
+  fixture_spec: FixtureDesignOutput | null;
+  gripper_recommendation: GripperRecommendation[] | null;
+  quality_parameters: QualityParameters;
+  created_at: string;
+  created_by: string;
+  sharing_scope: PassportSharingScope;
+  recipient_org_id: string | null;
+  share_token: string | null;
+}
+
+export interface UnreachableWaypoint {
+  waypoint_index: number;
+  description: string;
+  reason: string;
+  distance_from_base_m: number;
+  robot_reach_m: number;
+}
+
+export interface PassportImportResult {
+  passport_id: string;
+  source_task_id: string;
+  source_robot_model: string;
+  target_robot_model: string;
+  new_task_id: string | null;
+  adjusted_waypoint_count: number;
+  unreachable_waypoints: UnreachableWaypoint[];
+  deployment_blocked: boolean;
+  controller_program_target: string | null;
+  message: string;
+}
+
+export interface Organisation {
+  org_id: string;
+  name: string;
+}
+
+export interface OrganisationLink {
+  link_id: string;
+  organisation_a_id: string;
+  organisation_b_id: string;
+  created_at: string;
+  created_by: string;
+}
+
+export interface SimulationRequest {
+  task_intent: TaskIntent;
+  robot_model: RobotModel;
+  payload_kg: number;
+  workcell_dimensions?: WorkcellDimensions;
+}
+
+export type FeasibilityVerdict = "FEASIBLE" | "MARGINAL" | "NOT_FEASIBLE";
+
+export interface FeasibilityResult {
+  verdict: FeasibilityVerdict;
+  blocking_reason: string | null;
+  estimated_cycle_time_seconds: number;
+  estimated_throughput_per_hour: number;
+  recommended_robot: RobotModel | null;
+  confidence: IntentConfidence;
+  guidance: string | null;
+}
+
+export type TaskCategory =
+  | "pick-place"
+  | "machine-tend"
+  | "assembly"
+  | "palletising";
+
+export type PartMaterial =
+  | "metal"
+  | "plastic"
+  | "glass"
+  | "cardboard"
+  | "unknown";
+
+export type PartSurface = "smooth" | "rough" | "porous" | "unknown";
+export type PickType = "top-pick" | "side-pick" | "unknown";
+
+export type CatalogueGripperType =
+  | "PARALLEL_JAW"
+  | "THREE_FINGER"
+  | "VACUUM_SINGLE"
+  | "VACUUM_MULTI"
+  | "MAGNETIC"
+  | "SOFT_FINGER";
+
+export interface GripperSpec {
+  id: string;
+  manufacturer: string;
+  model_name: string;
+  gripper_type: CatalogueGripperType;
+  max_payload_kg: number;
+  compatible_robot_models: string[];
+  suitable_materials: PartMaterial[];
+  suitable_surfaces: PartSurface[];
+  suitable_pick_types: PickType[];
+  min_cycle_time_seconds: number;
+  max_grip_force_n: number;
+  product_url: string;
+  enquiry_url: string;
+  image_url: string;
+  affiliate_tag: string | null;
+  source: string;
+  estimated_fields: string[];
+}
+
+export interface GripperRecommendation {
+  gripper: GripperSpec;
+  match_score: number;
+  plain_english_reason: string;
+  confidence: IntentConfidence;
+  confidence_reason: string;
+}
+
+export interface GripperRecommendationResponse {
+  recommendations: GripperRecommendation[];
+  explanation: string;
+  disclosure: string;
+}
+
+export interface TaskProgram {
+  taskId: string;
+  taskName: string;
+  taskSummary?: string;
+  robotModel: string;
+  taskCategory: TaskCategory;
+  waypoints: Array<Waypoint & { tcpSpeedMetersPerSecond: number }>;
+  gripperType: string;
+  gripperForceNewtons?: number;
+  workcellDimensions?: WorkcellDimensions;
+  operatorProximityMillimeters?: number;
+  siteName?: string;
+}
+
+export interface RiskSection {
+  section_number: string;
+  title: string;
+  auto_populated_content: string;
+  requires_human_review: boolean;
+  review_prompt: string;
+}
+
+export interface RiskAssessmentDraft {
+  task_id: string;
+  generated_at: string;
+  robot_model: string;
+  task_category: string;
+  sections: RiskSection[];
+}
+
 export interface TaskStep {
   id: string;
   order: number;
@@ -161,6 +383,14 @@ export interface Task {
   archivedAt?: string;
   targetRobotModels?: string[];
   gripperConfig?: string;
+  robotModel?: string;
+  controllerProgram?: string;
+  controllerProgramTarget?: string;
+  taskIntent?: TaskIntent;
+  qualityParameters?: QualityParameters;
+  originPassportId?: string | null;
+  parentTaskId?: string | null;
+  organisationId?: string;
 }
 
 export type TaskVersionStatus = "active" | "archived";
@@ -177,6 +407,13 @@ export interface TaskVersion {
   created_by?: string;
   created_at: string;
   status: TaskVersionStatus;
+  robotModel?: string;
+  controllerProgram?: string;
+  controllerProgramTarget?: string;
+  taskIntent?: TaskIntent;
+  qualityParameters?: QualityParameters;
+  originPassportId?: string | null;
+  parentTaskId?: string | null;
 }
 
 export interface CloudTaskLibrary {
@@ -197,6 +434,11 @@ export interface CloudTaskLibrary {
   gripperConfig?: string;
   confidence?: number;
   lastExecutedAt?: string;
+  robotModel?: string;
+  controllerProgramTarget?: string;
+  originPassportId?: string | null;
+  parentTaskId?: string | null;
+  organisationId?: string;
 }
 
 export interface SessionPreferences {
