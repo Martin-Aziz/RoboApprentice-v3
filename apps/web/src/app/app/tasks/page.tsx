@@ -8,6 +8,8 @@ import { formatDate } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import type { CloudTaskLibrary } from "@/lib/types";
 import { useState } from "react";
+import { Search } from "lucide-react";
+import { StatusBadge } from "@/components/status-badge";
 
 interface SharedPassportSummary {
   passport_id: string;
@@ -24,6 +26,8 @@ async function fetchTasks(): Promise<CloudTaskLibrary[]> {
 
 export default function TaskLibraryPage() {
   const [tab, setTab] = useState<"tasks" | "shared">("tasks");
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks"],
     queryFn: fetchTasks,
@@ -37,22 +41,44 @@ export default function TaskLibraryPage() {
       return response.json() as Promise<SharedPassportSummary[]>;
     },
   });
+  const groupedTasks = Object.values(tasks.reduce<Record<string, { task: CloudTaskLibrary; count: number }>>((groups, task) => {
+    const key = `${task.title.toLowerCase()}::${task.status}`;
+    const current = groups[key];
+    if (!current || new Date(task.created_at) > new Date(current.task.created_at)) groups[key] = { task, count: (current?.count ?? 0) + 1 };
+    else current.count += 1;
+    return groups;
+  }, {})).filter(({ task }) =>
+    (status === "all" || task.status === status) &&
+    `${task.title} ${task.description ?? ""}`.toLowerCase().includes(query.toLowerCase())
+  ).sort((a, b) => Number(Boolean(b.task.targetRobotModels?.length)) - Number(Boolean(a.task.targetRobotModels?.length)));
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-5 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-[rgb(var(--signal-cyan))]">
-            Cloud system-of-record
+            Automation records
           </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight">Task Library</h1>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight">Task Records</h1>
         </div>
         <Button asChild>
           <Link href="/app/teach">
-            <GraduationCap className="mr-2 h-4 w-4" /> Teach a new task
+            <GraduationCap className="mr-2 h-4 w-4" /> Teach from video
           </Link>
         </Button>
       </div>
+
+      {tab === "tasks" && (
+        <div className="grid gap-3 rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-4 sm:grid-cols-[1fr_auto]">
+          <label className="flex items-center gap-2 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink))] px-3">
+            <Search className="h-4 w-4 text-[rgb(var(--bone-2))]" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search task records" className="min-h-11 w-full bg-transparent text-sm outline-none" />
+          </label>
+          <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Filter by status" className="min-h-11 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink))] px-3 text-sm">
+            <option value="all">All statuses</option><option value="done">Ready</option><option value="processing">Processing</option><option value="pending">Pending</option><option value="error">Needs attention</option>
+          </select>
+        </div>
+      )}
 
       <div className="flex gap-2 border-b border-[rgb(var(--steel))]">
         <button onClick={() => setTab("tasks")} className={`border-b-2 px-4 py-2 text-sm ${tab === "tasks" ? "border-[rgb(var(--signal-cyan))] text-[rgb(var(--signal-cyan))]" : "border-transparent text-[rgb(var(--bone-2))]"}`}>My tasks</button>
@@ -76,8 +102,8 @@ export default function TaskLibraryPage() {
 
       {tab === "tasks" && !isLoading && tasks.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-2">
-          {tasks.map((task) => (
-            <TaskCard key={task.task_id} task={task} locale={locale} />
+          {groupedTasks.map(({ task, count }) => (
+            <TaskCard key={task.task_id} task={task} locale={locale} duplicateCount={count} />
           ))}
         </div>
       )}
@@ -91,14 +117,7 @@ export default function TaskLibraryPage() {
   );
 }
 
-function TaskCard({ task, locale }: { task: CloudTaskLibrary; locale: string }) {
-  const statusColor = {
-    pending: "bg-[rgb(var(--signal-amber)/0.12)] text-[rgb(var(--signal-amber))]",
-    processing: "bg-[rgb(var(--signal-cyan)/0.12)] text-[rgb(var(--signal-cyan))]",
-    done: "bg-[rgb(var(--signal-green)/0.12)] text-[rgb(var(--signal-green))]",
-    error: "bg-[rgb(var(--signal-red)/0.12)] text-[rgb(var(--signal-red))]",
-  }[task.status];
-
+function TaskCard({ task, locale, duplicateCount }: { task: CloudTaskLibrary; locale: string; duplicateCount: number }) {
   return (
     <Link
       href={`/app/tasks/${task.task_id}`}
@@ -112,13 +131,11 @@ function TaskCard({ task, locale }: { task: CloudTaskLibrary; locale: string }) 
             <p className="mt-1 text-sm text-[rgb(var(--bone-2))]">{task.description}</p>
           )}
         </div>
-        <span className={`rounded-full px-2 py-1 font-mono text-xs tabular ${statusColor}`}>
-          {task.status}
-        </span>
+        <StatusBadge status={task.status} />
       </div>
 
       <div className="mt-5 grid grid-cols-3 gap-3">
-        <Small label="Versions" value={String(task.total_versions ?? 1)} />
+        <Small label={duplicateCount > 1 ? "Similar records" : "Versions"} value={String(duplicateCount > 1 ? duplicateCount : task.total_versions ?? 1)} />
         <Small label="Status" value={task.status} />
         <Small label="Created" value={new Date(task.created_at).toLocaleDateString()} />
       </div>

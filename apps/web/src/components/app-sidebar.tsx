@@ -116,8 +116,8 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
               <AvatarFallback className="bg-[rgb(var(--ink-3))] font-mono text-[10px] text-[rgb(var(--signal-cyan))]">ID</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium">Anonymous workspace</p>
-              <p className="truncate font-mono text-[10px] text-[rgb(var(--bone-3))]">{shortSession}</p>
+              <p className="truncate text-[13px] font-medium">Martin</p>
+              <p className="truncate font-mono text-[10px] text-[rgb(var(--bone-3))]">Plant operator · {shortSession}</p>
             </div>
             <Button variant="ghost" size="icon" onClick={resetDemoData} className="h-7 w-7 shrink-0" title={t("action.resetDemo")}>
               <RotateCcw className="h-3.5 w-3.5" />

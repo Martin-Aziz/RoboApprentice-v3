@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { calculateRoi, defaultRoiInputs, encodeRoi, parseLocaleNumber, type RoiInputs } from "@/lib/roi";
 import { formatCurrency, formatNumber } from "@/lib/format";
@@ -86,9 +86,11 @@ export function RoiCalculator({ initial, readOnly = false }: { initial?: RoiInpu
             <BarChart data={chart}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
-              <YAxis />
+              <YAxis label={{ value: "Annual cost", angle: -90, position: "insideLeft" }} />
               <Tooltip formatter={(value: number) => formatCurrency(value, locale)} />
-              <Bar dataKey="cost" fill="rgb(var(--signal-cyan))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="cost" fill="rgb(var(--signal-cyan))" radius={[4, 4, 0, 0]}>
+                <LabelList dataKey="cost" position="top" formatter={(value: number) => formatCurrency(value, locale)} />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>

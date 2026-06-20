@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
-import { LanguageSelector } from "@/components/language-selector";
 import { useSessionStore } from "@/lib/store";
 import { useDemoData, resetDemoData } from "@/lib/use-demo-data";
 import { readSafeDemoMode, saveSafeDemoMode } from "@/lib/demo-mode";
@@ -49,15 +48,14 @@ export default function SettingsPage() {
       <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
         <h2 className="font-semibold">Session</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <Info label="Identity" value="Anonymous browser session" />
-          <Info label="Session ID" value={session_id?.slice(0, 12) ?? "initializing"} />
-          <Info label="Units" value={preferences.units} />
+          <Info label="Workspace" value="Local demo workspace" />
+          <Info label="Workspace reference" value={session_id?.slice(0, 8) ?? "initializing"} />
+          <Info label="Robot program units" value="Metric (mm, kg, °C)" />
         </div>
       </section>
       <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
         <h2 className="font-semibold">Preferences</h2>
         <div className="mt-4 flex flex-wrap gap-3">
-          <LanguageSelector />
           <Button variant="outline" onClick={toggleTheme}>{theme === "light" ? <Moon className="mr-2 h-4 w-4" /> : <Sun className="mr-2 h-4 w-4" />} {theme === "light" ? "Dark mode" : "Light mode"}</Button>
           <Button variant="outline" onClick={resetDemoData}>Reset workspace</Button>
         </div>
@@ -65,7 +63,7 @@ export default function SettingsPage() {
       <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-[rgb(var(--signal-cyan))]">Demo resilience</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-[rgb(var(--signal-cyan))]">Demo data &amp; recovery</p>
             <h2 className="mt-2 font-semibold">Safe Demo Mode</h2>
             <p className="mt-1 max-w-2xl text-sm text-[rgb(var(--bone-2))]">
               When enabled, the teaching workflow uses deterministic cached results while preserving streaming progress, robot replay, and exports.

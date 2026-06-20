@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RobotViewport } from "@/components/robot-viewport";
+import { DeployReadiness } from "@/components/deploy-readiness";
 import { RoiCalculator } from "@/components/roi-calculator";
 import { DEMO_VIDEO_URL, FALLBACK_POLICY, FALLBACK_STEPS } from "@/lib/demo-seed";
 import { useDemoData } from "@/lib/use-demo-data";
@@ -104,6 +105,7 @@ export default function TeachPage() {
   const [workcellConfig, setWorkcellConfig] = useState<WorkcellConfig>(DEFAULT_WORKCELL_CONFIG);
   const [toolChangerConfig, setToolChangerConfig] = useState<ToolChangerConfig>(DEFAULT_TOOL_CHANGER_CONFIG);
   const [safeDemoMode, setSafeDemoMode] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const policy = useMemo<TaskPolicy>(() => ({ ...FALLBACK_POLICY, steps }), [steps]);
   const selectedRobot = ROBOT_OPTIONS.find((robot) => robot.value === robotType) ?? ROBOT_OPTIONS[0];
   const totalMotionSteps = Math.max(sequence.length * FALLBACK_STEPS.length, FALLBACK_STEPS.length);
@@ -323,15 +325,21 @@ export default function TeachPage() {
             Try your own video
           </Button>
           {uploadMessage && <p className="mt-2 rounded-md bg-[rgb(var(--signal-amber)/0.1)] p-2 text-sm text-[rgb(var(--bone-2))]">{uploadMessage}</p>}
-          <TaskSequencePanel
-            sequence={sequence}
-            toolStations={toolChangerConfig.stations}
-            onAdd={addSequenceStep}
-            onMove={moveSequenceStep}
-            onUpdate={updateSequence}
-            onDelete={(id) => setSequence((current) => current.filter((step) => step.id !== id))}
-            onAddGate={addGate}
-          />
+          <div className="mt-4 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div><p className="font-semibold">Aurevix found {sequence.length} task stages</p><p className="text-sm text-[rgb(var(--bone-2))]">The guided workflow hides robot logic until you need to edit it.</p></div>
+              <Button variant="outline" size="sm" onClick={() => setShowAdvanced((value) => !value)}>{showAdvanced ? "Hide advanced controls" : "Edit advanced logic"}</Button>
+            </div>
+          </div>
+          {showAdvanced && <TaskSequencePanel
+              sequence={sequence}
+              toolStations={toolChangerConfig.stations}
+              onAdd={addSequenceStep}
+              onMove={moveSequenceStep}
+              onUpdate={updateSequence}
+              onDelete={(id) => setSequence((current) => current.filter((step) => step.id !== id))}
+              onAddGate={addGate}
+            />}
         </section>
 
         <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-4">
@@ -389,7 +397,8 @@ export default function TeachPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-2xl font-semibold"><CheckCircle2 className="h-6 w-6 text-[rgb(var(--signal-green))]" /> {t("teach.result")}</h2>
-              <p className="mt-2 font-mono text-sm text-[rgb(var(--bone-2))]">Cycle time: 4.2s • Confidence: 94% • {steps.length} waypoints • {sequence.length} sequence steps • {gripperMode} gripper</p>
+              <p className="mt-2 font-mono text-sm text-[rgb(var(--bone-2))]">Estimated cycle time: 4.2s • {steps.length} interpreted motions • {sequence.length} task stages • {gripperMode} gripper</p>
+              <div className="mt-3"><DeployReadiness confidence={0.94} /></div>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => setModal("deploy")} className="gap-2"><Rocket className="h-4 w-4" /> Deploy to robot</Button>

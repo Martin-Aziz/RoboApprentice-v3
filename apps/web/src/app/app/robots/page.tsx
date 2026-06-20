@@ -5,6 +5,7 @@ import { AlertTriangle, Activity, Bot, Clock, Gauge } from "lucide-react";
 import { useDemoData } from "@/lib/use-demo-data";
 import { formatDuration, formatNumber } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
+import { StatusBadge } from "@/components/status-badge";
 
 export default function RobotsPage() {
   const { robots, skills, metrics, highlightedRobotId } = useDemoData();
@@ -43,7 +44,7 @@ export default function RobotsPage() {
                     <p className="font-semibold">{robot.name}</p>
                     <p className="mt-1 text-sm text-[rgb(var(--bone-2))]">{robot.brand} {robot.model}</p>
                   </div>
-                  <Status status={robot.status} />
+                  <StatusBadge status={robot.status} />
                 </div>
                 <p className="mt-5 text-sm text-[rgb(var(--bone-2))]">Current skill</p>
                 <p className="mt-1 truncate font-medium">{skill?.name ?? "Standby"}</p>
@@ -72,7 +73,7 @@ export default function RobotsPage() {
         </div>
         <div className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-4">
           <h2 className="font-semibold">Live signal</h2>
-          <p className="mt-2 flex items-center gap-2 text-sm text-[rgb(var(--bone-2))]"><Clock className="h-4 w-4" /> Execution updates are persisted to the local workspace every few seconds.</p>
+          <p className="mt-2 flex items-center gap-2 text-sm text-[rgb(var(--bone-2))]"><Clock className="h-4 w-4" /> Demo updates are stored in this browser. Production workspaces use durable cloud records.</p>
         </div>
       </aside>
     </div>
@@ -85,11 +86,6 @@ function Kpi({ icon, label, value }: { icon: React.ReactElement; label: string; 
 
 function Small({ label, value }: { label: string; value: string }) {
   return <div><p className="font-mono text-sm tabular">{value}</p><p className="text-xs text-[rgb(var(--bone-2))]">{label}</p></div>;
-}
-
-function Status({ status }: { status: string }) {
-  const running = status === "running";
-  return <span className={`rounded-full px-2 py-1 font-mono text-[10px] uppercase ${running ? "bg-[rgb(var(--signal-green)/0.12)] text-[rgb(var(--signal-green))]" : "bg-[rgb(var(--signal-cyan)/0.12)] text-[rgb(var(--signal-cyan))]"}`}>{status}</span>;
 }
 
 function Spark({ values }: { values: number[] }) {

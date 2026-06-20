@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { notFound, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDemoData } from "@/lib/use-demo-data";
@@ -15,7 +15,21 @@ export default function RobotDetailPage() {
   const { robots, skills, executions } = useDemoData();
   const { locale } = useLocale();
   const robot = robots.find((item) => item.id === params.id);
-  if (!robot) notFound();
+  if (!robot) {
+    return (
+      <div className="mx-auto max-w-4xl p-8">
+        <Link href="/app/robots" className="inline-flex items-center gap-2 text-sm text-[rgb(var(--signal-cyan))]">
+          <ArrowLeft className="h-4 w-4" /> Back to robots
+        </Link>
+        <div className="mt-6 rounded-lg border border-[rgb(var(--signal-amber)/0.4)] bg-[rgb(var(--signal-amber)/0.08)] p-6">
+          <h1 className="font-display text-3xl">Robot details are loading</h1>
+          <p className="mt-2 text-[rgb(var(--bone-2))]">
+            This robot was not found in the current browser workspace. Return to the fleet and select an available robot.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const robotExecutions = executions.filter((item) => item.robot_id === robot.id);
   const deployed = skills.filter((skill) => skill.id === robot.current_skill_id || skill.status === "ready").slice(0, 4);

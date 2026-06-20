@@ -129,9 +129,9 @@
     color: rgb(var(--bone));
   }
 
-  /* Display/serif heading utility */
+  /* Unified display heading utility */
   .font-display {
-    font-family: var(--font-serif), Georgia, serif;
+    font-family: var(--font-sans), Arial, sans-serif;
     font-feature-settings: "liga" 1, "ss01" 1;
     letter-spacing: -0.02em;
   }

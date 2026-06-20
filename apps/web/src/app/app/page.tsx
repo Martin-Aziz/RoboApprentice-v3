@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useDemoData } from "@/lib/use-demo-data";
 import { formatDuration, formatNumber } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
+import { StatusBadge } from "@/components/status-badge";
 
 export default function DashboardPage() {
   const { robots, skills, metrics, executions } = useDemoData();
@@ -14,15 +15,21 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 p-5 md:p-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <section className="grid gap-6 rounded-xl border border-[rgb(var(--signal-cyan)/0.3)] bg-[linear-gradient(135deg,rgb(var(--ink-2)),rgb(var(--signal-cyan)/0.06))] p-6 md:grid-cols-[1fr_auto] md:items-center md:p-8">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[rgb(var(--signal-cyan))]">Production Facility</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight">Live automation overview</h1>
-          <p className="mt-2 text-[rgb(var(--bone-2))]">{t("regional.secondary")}</p>
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[rgb(var(--signal-cyan))]">Video to deployable robot skill</p>
+          <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight">See a manual task become robot-ready in 30 seconds</h1>
+          <p className="mt-3 max-w-2xl text-[rgb(var(--bone-2))]">Watch Aurevix interpret a demonstration, replay the motion, and prepare code—without connecting a physical robot.</p>
         </div>
-        <Button asChild className="gap-2">
-          <Link href="/app/teach">{t("nav.teach")} <ArrowRight className="h-4 w-4" /></Link>
+        <Button asChild size="lg" className="gap-2">
+          <Link href="/app/teach"><GraduationCap className="h-4 w-4" /> Run the 30-second workflow <ArrowRight className="h-4 w-4" /></Link>
         </Button>
+      </section>
+
+      <div className="grid gap-3 rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-4 text-sm md:grid-cols-3">
+        <p><strong>Cross-vendor:</strong> UR, ABB, FANUC and ROS 2 workflows</p>
+        <p><strong>Safety-aware:</strong> ISO 10218 and ISO/TS 15066 referenced</p>
+        <p><strong>Human verified:</strong> deployment remains gated for review</p>
       </div>
 
       {drift && (
@@ -51,7 +58,7 @@ export default function DashboardPage() {
                     <p className="font-medium">{robot.name}</p>
                     <p className="text-sm text-[rgb(var(--bone-2))]">{robot.brand} {robot.model}</p>
                   </div>
-                  <Status status={robot.status} />
+                  <StatusBadge status={robot.status} />
                 </div>
                 <div className="mt-5 grid grid-cols-2 gap-3">
                   <Small label="Cycles" value={formatNumber(robot.metrics?.cycles_today ?? 0, locale)} />
@@ -82,11 +89,11 @@ export default function DashboardPage() {
       <section className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Teach from demonstration</h2>
-            <p className="mt-1 text-sm text-[rgb(var(--bone-2))]">Start with the precision-gripper video, then export code and ROI in the same flow.</p>
+            <h2 className="text-xl font-semibold">Ready to inspect your automation records?</h2>
+            <p className="mt-1 text-sm text-[rgb(var(--bone-2))]">Review learned tasks, deployment readiness, and cross-site passports.</p>
           </div>
           <Button asChild variant="outline" className="gap-2">
-            <Link href="/app/teach"><GraduationCap className="h-4 w-4" /> Run the 30-second workflow</Link>
+            <Link href="/app/tasks">Open task records <ArrowRight className="h-4 w-4" /></Link>
           </Button>
         </div>
       </section>
@@ -115,14 +122,4 @@ function Metric({ icon, label, value, tone = "cyan" }: { icon: React.ReactElemen
 
 function Small({ label, value }: { label: string; value: string }) {
   return <div><p className="font-mono text-sm tabular">{value}</p><p className="text-xs text-[rgb(var(--bone-2))]">{label}</p></div>;
-}
-
-function Status({ status }: { status: string }) {
-  const classes =
-    status === "running"
-      ? "bg-[rgb(var(--signal-green)/0.12)] text-[rgb(var(--signal-green))]"
-      : status === "idle"
-        ? "bg-[rgb(var(--signal-cyan)/0.12)] text-[rgb(var(--signal-cyan))]"
-        : "bg-[rgb(var(--signal-amber)/0.12)] text-[rgb(var(--signal-amber))]";
-  return <span className={`rounded-full px-2 py-1 font-mono text-[10px] uppercase ${classes}`}>{status}</span>;
 }
