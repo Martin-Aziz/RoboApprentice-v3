@@ -56,6 +56,10 @@ Deployed robot processes can be exported as privacy-stripped, robot-agnostic pas
 
 Task detail pages can generate tolerance-controlled fixture specifications and manifold STL files for simple nests and V-blocks. Irregular and uncertain geometry receives a written brief only and mandatory qualified review. See [docs/FIXTURE_DESIGNER.md](docs/FIXTURE_DESIGNER.md).
 
+## Outcome-Based Pricing
+
+Customers may choose a non-retroactive outcome plan based on verified qualifying deployments, with a confirmed integration-cost baseline and clearly disclosed monthly floor and cap. See [docs/OUTCOME_BASED_PRICING.md](docs/OUTCOME_BASED_PRICING.md).
+
 ## License
 
 See `LICENSE`.

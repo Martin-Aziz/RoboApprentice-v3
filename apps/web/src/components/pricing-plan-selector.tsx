@@ -1,0 +1,13 @@
+"use client";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+export function PricingPlanSelector(){
+ const [baseline,setBaseline]=useState("8000"),[confirm,setConfirm]=useState(false),[message,setMessage]=useState("");
+ async function choose(type:"FLAT_SUBSCRIPTION"|"OUTCOME_BASED"){const r=await fetch("/api/v1/billing/plan",{method:"POST",headers:{"Content-Type":"application/json","x-aurevix-customer-id":"customer-demo"},body:JSON.stringify({plan_type:type,integrator_cost_baseline_usd:Number(baseline),baseline_confirmed:confirm,baseline_evidence_note:"Confirmed by customer in plan selection UI"})});const b=await r.json();setMessage(r.ok?`Plan active from today: ${b.plan_type}`:b.error)}
+ return <section className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5"><h2 className="font-display text-2xl">Choose how you pay</h2><p className="mt-1 text-sm text-[rgb(var(--bone-2))]">Outcome pricing is optional and starts only when selected. It is never retroactive.</p>
+ <div className="mt-4 grid gap-4 md:grid-cols-2"><div className="rounded-md border border-[rgb(var(--steel))] p-4"><h3 className="font-semibold">Flat subscription</h3><p className="mt-2 text-sm">Predictable recurring subscription independent of deployment volume.</p><Button variant="outline" className="mt-4" onClick={()=>choose("FLAT_SUBSCRIPTION")}>Select flat plan</Button></div>
+ <div className="rounded-md border border-[rgb(var(--signal-cyan)/.5)] bg-[rgb(var(--signal-cyan)/.05)] p-4"><h3 className="font-semibold">Outcome-based</h3><p className="mt-2 text-sm">15% of verified integration cost avoided. A task counts only after 10 successful cycles in the billing month.</p><ul className="mt-3 space-y-1 text-sm"><li>Monthly minimum: <b>$199</b></li><li>Monthly maximum: <b>$2,000</b></li><li>No billing for missing or estimated outcomes</li></ul>
+ <label className="mt-4 grid gap-1 text-sm"><span>Verified integrator cost per task change</span><input type="number" value={baseline} onChange={e=>setBaseline(e.target.value)} className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] px-3 py-2"/></label>
+ <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={confirm} onChange={e=>setConfirm(e.target.checked)}/><span>I confirm this baseline reflects our expected or invoiced integrator cost and understand it determines the outcome fee.</span></label>
+ <Button className="mt-4" disabled={!confirm} onClick={()=>choose("OUTCOME_BASED")}>Activate outcome-based plan</Button></div></div>{message&&<p className="mt-4 rounded-md bg-[rgb(var(--ink-3))] p-3 text-sm">{message}</p>}</section>
+}

@@ -90,6 +90,86 @@ export interface SkillExecution {
   quality_score?: number;
 }
 
+export type PricingPlanType = "FLAT_SUBSCRIPTION" | "OUTCOME_BASED";
+export type BillingCycle = "MONTHLY";
+
+export interface PricingPlan {
+  plan_id: string;
+  customer_id: string;
+  plan_type: PricingPlanType;
+  effective_from: string;
+  integrator_cost_baseline_usd: number;
+  baseline_confirmed_at: string | null;
+  baseline_evidence_note?: string;
+  outcome_share_pct: number;
+  min_monthly_fee_usd: number;
+  max_monthly_cap_usd: number;
+  billing_cycle: BillingCycle;
+  measurement_window_days: number;
+}
+
+export interface DeploymentOutcome {
+  task_id: string;
+  customer_id: string;
+  task_name: string;
+  deployment_date: string;
+  successful_cycles: number | null;
+  outcome_data_complete: boolean;
+}
+
+export interface DateRange {
+  start: string;
+  end: string;
+}
+
+export interface ValueStatementTask {
+  task_id: string;
+  task_name: string;
+  deployment_date: string;
+  cycle_count_at_billing: number;
+}
+
+export interface ManualReviewTask {
+  task_id: string;
+  task_name: string;
+  reason: string;
+}
+
+export interface ValueStatement {
+  statement_id: string;
+  customer_id: string;
+  billing_period: DateRange;
+  tasks_deployed: number;
+  integrator_cost_baseline_usd: number;
+  cost_avoided_usd: number;
+  outcome_fee_usd: number;
+  floor_applied: boolean;
+  cap_applied: boolean;
+  final_billable_usd: number;
+  task_breakdown: ValueStatementTask[];
+  excluded_for_manual_review: ManualReviewTask[];
+  closed_at: string;
+  immutable: true;
+  pdf_url?: string;
+}
+
+export interface CreditNote {
+  credit_note_id: string;
+  statement_id: string;
+  customer_id: string;
+  amount_usd: number;
+  reason: string;
+  created_at: string;
+  created_by: string;
+}
+
+export interface OutcomePricingConfig {
+  outcome_share_pct: number;
+  min_monthly_fee_usd: number;
+  max_monthly_cap_usd: number;
+  updated_at: string;
+}
+
 export type TaskStatus = "pending" | "processing" | "done" | "error";
 
 export type RobotAction =
