@@ -44,6 +44,10 @@ The virtual feasibility API estimates reach, payload fit, cycle time, and throug
 
 Deployed tasks can generate an editable collaborative-robot risk assessment draft with plain-language review prompts and mandatory qualified-person sign-off. It is never represented as complete or certified. See [docs/RISK_ASSESSMENT_ACCELERATOR.md](docs/RISK_ASSESSMENT_ACCELERATOR.md) for thresholds, disclaimer rationale, API details, and DOCX maintenance.
 
+## Deployment Trust Layer
+
+Every task can maintain a version-bound deployment gate with explicit system checks, qualified-reviewer evidence, approval or rejection, an append-only audit timeline, policy fingerprinting, and a downloadable evidence package. A task or policy change invalidates its prior approval. See [docs/DEPLOYMENT_TRUST_LAYER.md](docs/DEPLOYMENT_TRUST_LAYER.md).
+
 ## Gripper and Peripheral Recommender
 
 Task detail pages can rank sourced end-effectors using robot compatibility, a 30% payload margin, part properties, grip force, and cycle fit. Recommendations are technically ranked and always include the affiliate disclosure. See [docs/GRIPPER_RECOMMENDER.md](docs/GRIPPER_RECOMMENDER.md) for catalogue maintenance, estimated-field handling, scoring, and affiliate-tag updates.

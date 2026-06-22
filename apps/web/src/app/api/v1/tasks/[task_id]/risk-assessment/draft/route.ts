@@ -4,7 +4,8 @@ import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 import { NextRequest, NextResponse } from "next/server";
-import { getTask } from "@/lib/task-store-db";
+import { getTask, getTaskVersions } from "@/lib/task-store-db";
+import { markRiskDraftGenerated } from "@/lib/trust-store-db";
 import {
   RiskAssessmentGenerator,
   RISK_ASSESSMENT_DISCLAIMER,
@@ -123,6 +124,8 @@ export async function POST(
 
     const draft = new RiskAssessmentGenerator().generate(program);
     await saveRiskAssessmentDraft(draft);
+    const versions = await getTaskVersions(taskId);
+    await markRiskDraftGenerated(task, versions[0]?.version_number ?? 1);
 
     workDir = join(tmpdir(), `aurevix-risk-${randomUUID()}`);
     await mkdir(workDir, { recursive: true });

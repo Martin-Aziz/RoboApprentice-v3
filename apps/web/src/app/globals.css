@@ -33,6 +33,21 @@
   --font-serif: var(--font-serif), Georgia, serif;
 }
 
+.trust-input {
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--steel));
+  background: rgb(var(--ink-2));
+  padding: 0.625rem 0.75rem;
+  color: rgb(var(--bone));
+  outline: none;
+}
+
+.trust-input:focus {
+  border-color: rgb(var(--signal-cyan));
+  box-shadow: 0 0 0 2px rgb(var(--signal-cyan) / 0.12);
+}
+
 @layer base {
   :root {
     /* Surface (light palette) */

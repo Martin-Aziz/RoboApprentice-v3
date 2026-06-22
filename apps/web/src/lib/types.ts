@@ -555,6 +555,69 @@ export interface TaskVersion {
   parentTaskId?: string | null;
 }
 
+export type TrustCheckStatus = "passed" | "failed" | "pending";
+export type TrustCheckSource = "system" | "qualified-reviewer";
+export type DeploymentGateStatus = "blocked" | "review-required" | "approved";
+export type ApprovalDecisionStatus = "pending" | "approved" | "rejected";
+
+export interface TrustChecklistItem {
+  id: string;
+  label: string;
+  description: string;
+  status: TrustCheckStatus;
+  source: TrustCheckSource;
+  required: boolean;
+  weight: number;
+  evidence: string;
+  updated_at: string;
+  updated_by?: string;
+}
+
+export interface TaskApprovalDecision {
+  status: ApprovalDecisionStatus;
+  reviewer_name?: string;
+  reviewer_role?: string;
+  qualification?: string;
+  comments?: string;
+  decided_at?: string;
+  task_version?: number;
+  policy_hash?: string;
+}
+
+export type TrustAuditEventType =
+  | "record_created"
+  | "task_version_changed"
+  | "risk_draft_generated"
+  | "check_updated"
+  | "approval_granted"
+  | "approval_rejected";
+
+export interface TrustAuditEvent {
+  event_id: string;
+  event_type: TrustAuditEventType;
+  actor: string;
+  summary: string;
+  created_at: string;
+  task_version: number;
+  policy_hash: string;
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface TaskTrustRecord {
+  trust_record_id: string;
+  task_id: string;
+  current_task_version: number;
+  policy_hash: string;
+  readiness_score: number;
+  gate_status: DeploymentGateStatus;
+  gate_reason: string;
+  checklist: TrustChecklistItem[];
+  approval: TaskApprovalDecision;
+  audit_log: TrustAuditEvent[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CloudTaskLibrary {
   task_id: string;
   facility_id: string;

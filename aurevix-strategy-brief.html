@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aurevix · Robotics Opportunity & Strategy Brief — June 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F8FB;
+    --panel:#FFFFFF;
+    --ink:#0B1220;
+    --ink-2:#36404F;
+    --muted:#6A7486;
+    --faint:#9AA3B2;
+    --line:#E4E9F0;
+    --line-2:#EEF2F7;
+    --signal:#0B6BE3;        /* Aurevix blue */
+    --signal-ink:#0A52AE;
+    --teal:#0E9CA8;          /* eyebrow accent, echoes WORKSPACE ACTIVE */
+    --green:#1B9E6B;
+    --green-bg:#E7F6EF;
+    --amber:#D9870B;
+    --amber-bg:#FBF1DD;
+    --red:#D8434E;
+    --red-bg:#FBE9EA;
+    --shadow:0 1px 2px rgba(13,24,43,.05), 0 8px 30px rgba(13,24,43,.05);
+    --rail-w:264px;
+    --maxw:980px;
+    --r:12px;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --disp:"Space Grotesk","Inter",system-ui,sans-serif;
+    --body:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto} *{animation:none!important;transition:none!important}}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);
+    font-size:15.5px;line-height:1.62;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(var(--line) 1px, transparent 1px);
+    background-size:22px 22px;
+  }
+  a{color:var(--signal-ink);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:40;background:rgba(246,248,251,.86);
+    backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid var(--line);
+  }
+  .topbar-in{max-width:1320px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--disp);font-weight:700;letter-spacing:.16em;font-size:13px}
+  .brand .glyph{width:26px;height:26px;border-radius:7px;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:700;letter-spacing:0}
+  .brand small{font-weight:500;letter-spacing:.24em;color:var(--teal);font-family:var(--mono);font-size:10.5px}
+  .topmeta{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;text-align:right;line-height:1.5}
+  .topmeta b{color:var(--ink-2);font-weight:600}
+
+  /* ---------- shell ---------- */
+  .shell{max-width:1320px;margin:0 auto;display:flex;gap:0;align-items:flex-start}
+  .rail{
+    width:var(--rail-w);flex:0 0 var(--rail-w);position:sticky;top:62px;align-self:flex-start;
+    height:calc(100vh - 62px);overflow-y:auto;padding:24px 16px 60px 22px;
+  }
+  .rail-group{margin-bottom:20px}
+  .rail-group h4{
+    font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--faint);
+    text-transform:uppercase;margin:0 0 8px 8px;font-weight:600;
+  }
+  .tab{
+    display:flex;gap:10px;align-items:baseline;width:100%;text-align:left;border:0;background:transparent;
+    color:var(--ink-2);font-family:var(--body);font-size:14px;font-weight:500;cursor:pointer;
+    padding:8px 10px;border-radius:9px;line-height:1.3;
+  }
+  .tab .num{font-family:var(--mono);font-size:10.5px;color:var(--faint);min-width:18px}
+  .tab:hover{background:#EEF3FA;color:var(--ink)}
+  .tab[aria-selected="true"]{background:var(--ink);color:#fff}
+  .tab[aria-selected="true"] .num{color:#7FB2F0}
+  .tab:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  /* ---------- main ---------- */
+  .main{flex:1 1 auto;min-width:0;padding:30px 28px 120px;}
+  .wrap{max-width:var(--maxw)}
+  .panel{display:none;animation:fade .28s ease}
+  .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);font-weight:600;margin:0 0 10px}
+  h1.title{font-family:var(--disp);font-weight:700;font-size:clamp(27px,4vw,40px);line-height:1.06;letter-spacing:-.02em;margin:0 0 14px}
+  h2{font-family:var(--disp);font-weight:600;font-size:22px;letter-spacing:-.01em;margin:38px 0 12px;padding-top:10px}
+  h3{font-family:var(--disp);font-weight:600;font-size:16.5px;margin:26px 0 8px;letter-spacing:-.005em}
+  .lede{font-size:18px;line-height:1.55;color:var(--ink-2);max-width:62ch;margin:0 0 18px}
+  p{margin:0 0 14px;max-width:70ch}
+  ul,ol{max-width:70ch;margin:0 0 16px;padding-left:20px}
+  li{margin:5px 0}
+  strong{font-weight:600;color:var(--ink)}
+  .hr{height:1px;background:var(--line);border:0;margin:34px 0}
+
+  /* ---------- components ---------- */
+  .callout{border:1px solid var(--line);border-left-width:3px;border-radius:10px;padding:15px 17px;margin:18px 0;background:var(--panel);box-shadow:var(--shadow)}
+  .callout .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;display:block;margin-bottom:6px}
+  .callout p:last-child{margin-bottom:0}
+  .callout.insight{border-left-color:var(--signal)} .callout.insight .k{color:var(--signal-ink)}
+  .callout.warn{border-left-color:var(--amber);background:var(--amber-bg)} .callout.warn .k{color:var(--amber)}
+  .callout.avoid{border-left-color:var(--red);background:#FFF6F6} .callout.avoid .k{color:var(--red)}
+  .callout.principle{border-left-color:var(--teal)} .callout.principle .k{color:var(--teal)}
+  .callout.green{border-left-color:var(--green);background:var(--green-bg)} .callout.green .k{color:var(--green)}
+
+  .grid{display:grid;gap:14px;margin:18px 0}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:1fr 1fr 1fr}
+  @media (max-width:760px){.g2,.g3{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 17px;box-shadow:var(--shadow)}
+  .card h3{margin-top:0}
+  .card .meta{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+
+  .chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.04em;padding:3px 9px;border-radius:999px;border:1px solid transparent;text-transform:uppercase;white-space:nowrap}
+  .chip.blue{background:#E8F1FD;color:var(--signal-ink);border-color:#CFE2FA}
+  .chip.green{background:var(--green-bg);color:var(--green);border-color:#C7E9D8}
+  .chip.amber{background:var(--amber-bg);color:var(--amber);border-color:#F0DDB4}
+  .chip.red{background:var(--red-bg);color:var(--red);border-color:#F2C9CC}
+  .chip.ink{background:#EEF1F6;color:var(--ink-2);border-color:var(--line)}
+
+  /* score bar — the signature: deploy-readiness applied to strategy */
+  .score{margin:12px 0 2px}
+  .score .lab{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:5px;letter-spacing:.04em}
+  .score .lab b{color:var(--ink);font-weight:600}
+  .track{height:8px;border-radius:6px;background:#EDF1F6;position:relative;overflow:hidden}
+  .track .fill{height:100%;border-radius:6px}
+  .fill.exc{background:linear-gradient(90deg,#1B9E6B,#13B07A)}
+  .fill.vs{background:linear-gradient(90deg,#2C8E5E,#1B9E6B)}
+  .fill.st{background:linear-gradient(90deg,#0B6BE3,#3E8DEE)}
+  .fill.md{background:linear-gradient(90deg,#D9870B,#E5A23C)}
+  .fill.wk{background:linear-gradient(90deg,#C2545C,#D8434E)}
+
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:13.5px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
+  th{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;background:#FAFBFD}
+  tr:last-child td{border-bottom:0}
+  td b{font-weight:600}
+  .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r)}
+  .scroller table{margin:0;border-radius:0}
+  .nowrap{white-space:nowrap}
+
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+  .ref{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.7;border-top:1px dashed var(--line);padding-top:12px;margin-top:14px}
+  .ref b{color:var(--ink-2);font-weight:600}
+  .pill-row{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+
+  .kfacts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+  @media (max-width:760px){.kfacts{grid-template-columns:1fr 1fr}}
+  .kfacts .f{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px;box-shadow:var(--shadow)}
+  .kfacts .f .n{font-family:var(--disp);font-weight:700;font-size:23px;letter-spacing:-.02em;line-height:1.05}
+  .kfacts .f .l{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+
+  .tl{position:relative;margin:18px 0 8px;padding-left:22px}
+  .tl::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:var(--line)}
+  .tl .step{position:relative;margin-bottom:16px}
+  .tl .step::before{content:"";position:absolute;left:-22px;top:5px;width:11px;height:11px;border-radius:50%;background:#fff;border:2.5px solid var(--signal)}
+  .tl .step .h{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--signal-ink);text-transform:uppercase;font-weight:600}
+
+  .mobnav{display:none}
+  @media (max-width:1000px){
+    .rail{display:none}
+    .shell{display:block}
+    .main{padding:18px 16px 100px}
+    .mobnav{display:block;position:sticky;top:54px;z-index:30;background:var(--bg);padding:10px 16px;border-bottom:1px solid var(--line);margin:0 -16px 14px}
+    .mobnav select{width:100%;font-family:var(--body);font-size:14px;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:500}
+    .kfacts{grid-template-columns:1fr 1fr}
+    h2{font-size:20px}
+  }
+  .footnote{font-size:13px;color:var(--muted);margin-top:8px}
+  .tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  code.inl{font-family:var(--mono);font-size:.86em;background:#EEF2F7;padding:1px 6px;border-radius:5px;color:var(--ink-2)}
+  .confirm{color:var(--amber);font-family:var(--mono);font-size:.86em;font-weight:600}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand"><span class="glyph">A</span> AUREVIX <small>· STRATEGY BRIEF</small></div>
+    <div class="topmeta">
+      Robotics opportunity & product strategy · <b>Agentic Convergent</b><br>
+      Compiled 22 Jun 2026 · grounded in live console + current market scan
+    </div>
+  </div>
+</header>
+
+<div class="mobnav">
+  <select id="mobselect" aria-label="Jump to section"></select>
+</div>
+
+<div class="shell">
+  <nav class="rail" aria-label="Sections">
+    <div class="rail-group">
+      <h4>Orientation</h4>
+      <button class="tab" role="tab" data-target="s-read" aria-selected="true"><span class="num">00</span><span>Read me first</span></button>
+      <button class="tab" role="tab" data-target="s-thesis-top"><span class="num">01</span><span>The thesis, up top</span></button>
+    </div>
+    <div class="rail-group">
+      <h4>The landscape</h4>
+      <button class="tab" role="tab" data-target="s-market"><span class="num">02</span><span>Market map & 2026 signals</span></button>
+      <button class="tab" role="tab" data-target="s-comp"><span class="num">03</span><span>Competitive teardown</span></button>
+      <button class="tab" role="tab" data-target="s-gaps"><span class="num">04</span><span>The gaps (ranked)</span></button>
+    </div>
+    <div class="rail-group">
+      <h4>Your position</h4>
+      <button class="tab" role="tab" data-target="s-product"><span class="num">05</span><span>Where Aurevix already wins</span></button>
+      <button class="tab" role="tab" data-target="s-aurevix"><span class="num">06</span><span>Aurevix product strategy</span></button>
+      <button class="tab" role="tab" data-target="s-kine"><span class="num">07</span><span>KineTrace strategy</span></button>
+    </div>
+    <div class="rail-group">
+      <h4>Decisions</h4>
+      <button class="tab" role="tab" data-target="s-opp"><span class="num">08</span><span>Opportunity map & wedges</span></button>
+      <button class="tab" role="tab" data-target="s-avoid"><span class="num">09</span><span>What to avoid</span></button>
+      <button class="tab" role="tab" data-target="s-validate"><span class="num">10</span><span>Validate w/ design partners</span></button>
+      <button class="tab" role="tab" data-target="s-final"><span class="num">11</span><span>Final thesis</span></button>
+    </div>
+  </nav>
+
+  <main class="main">
+  <div class="wrap">
+
+  <!-- ====================== 00 READ ME ====================== -->
+  <section class="panel active" id="s-read" role="tabpanel">
+    <p class="eyebrow">00 · Read me first</p>
+    <h1 class="title">Truth over excitement.<br>The task layer, not the robot.</h1>
+    <p class="lede">This is the high-conviction version of the deep-research brief you scoped — the part that changes a decision. The exhaustive form (200+ links, 100+ catalogued gaps, 18 files) is a multi-day agentic crawl; I'd run that through the Research feature. What follows is the thinking, grounded in a fresh June-2026 market scan and read against your live console.</p>
+
+    <div class="callout insight">
+      <span class="k">What's in here vs. what isn't</span>
+      <p><b>In:</b> a current competitive teardown, the ~20 strongest gaps scored on your framework, an honest audit of the live product, a re-ranked Aurevix + KineTrace roadmap, wedge/beachhead ranking, and design-partner validation questions. <b>Not in:</b> the padded 100-gap catalogue or 200-link bibliography — those add bulk, not signal, and most would be filler. Every claim that comes from the web scan is attributed; everything I couldn't verify is marked <span class="confirm">[[CONFIRM]]</span>.</p>
+    </div>
+
+    <h2>Six findings that move the picture since your last pass</h2>
+    <div class="grid g2">
+      <div class="card">
+        <span class="chip red">Threat ↑</span>
+        <h3>Standard Bots is now a $1B unicorn</h3>
+        <p>$200M Series C at a $1B valuation closed <b>9 Jun 2026</b>, claiming to deliver ~10% of new US industrial-robot deployments within a year. Same pitch as you on the surface — teach-by-demonstration, no code, a data flywheel — but <b>locked to their own arm</b>. <span class="tag">PR Newswire · The Robot Report · SiliconANGLE</span></p>
+      </div>
+      <div class="card">
+        <span class="chip amber">Reframe</span>
+        <h3>Wandelbots dropped the TracePen</h3>
+        <p>Your notes still list Wandelbots as hardware-dependent. No longer. NOVA is now a <b>pure, hardware-agnostic software platform</b> (NOVA OS + Cloud, digital twin, IT/OT bridge, "Windows for the factory floor"). They are now your closest <em>strategic mirror</em>, not an also-ran. <span class="tag">wandelbots.com · Hannover Messe</span></p>
+      </div>
+      <div class="card">
+        <span class="chip red">Cautionary tale</span>
+        <h3>The "universal robot OS" is a graveyard</h3>
+        <p>READY Robotics / ForgeOS — 250+ supported arms, the literal "Windows for robots" — <b>shut down in Aug 2024</b>. OEMs starved it; one industry leader said the answer is "AI/digital-twin/sensor-fusion, not a universal OS." Standard Bots bought the corpse (the cross-brand API). <span class="tag">The Robot Report</span></p>
+      </div>
+      <div class="card">
+        <span class="chip blue">Tailwind</span>
+        <h3>The safety/liability trend is your trend</h3>
+        <p>IFR's top-5 for 2026 names AI autonomy, IT/OT convergence — and, critically, <b>safety, black-box liability, and auditability</b>. AI-generated robot code with no audit trail is the exact anxiety your deploy-readiness gate answers. <span class="tag">IFR · The Robot Report</span></p>
+      </div>
+      <div class="card">
+        <span class="chip blue">Tailwind</span>
+        <h3>US reshoring economics flipped overnight</h3>
+        <p>100% bonus depreciation (write off a robot cell in year one through 2029) + reshoring + an active "ban Chinese industrial robots" lobby. A US-first GTM has never had a better tax-and-policy backdrop. <span class="tag">Standard Bots policy filings · IFR install data</span></p>
+      </div>
+      <div class="card">
+        <span class="chip ink">Context</span>
+        <h3>Foundation models generalize — in labs</h3>
+        <p>π0.5 → π0.7 (open-world generalization, embodied memory, human-video→robot transfer) and GR00T move fast. But generalization is proven in homes/labs, not on a line under safety review. The <b>industrial-reliability gap is the opening</b> — and it sits above the model. <span class="tag">Physical Intelligence · NVIDIA</span></p>
+      </div>
+    </div>
+
+    <div class="callout principle">
+      <span class="k">Your own principles, kept in view</span>
+      <p>I've held the line on the rules you set: no premature moat claims, no unverified stats (the "99.3% of factories never automate" figure stays dead), "video demonstration / intent extraction" language over "record yourself on a phone," and pricing that captures value rather than exposing COGS. Where the <em>live site</em> currently breaks one of these (the "90%" hero, "94% confidence," "trusted by manufacturers in 4 countries"), I flag it in §05 — not to nag, but because a technical evaluator will.</p>
+    </div>
+  </section>
+
+  <!-- ====================== 01 THESIS TOP ====================== -->
+  <section class="panel" id="s-thesis-top" role="tabpanel">
+    <p class="eyebrow">01 · The thesis, up top</p>
+    <h1 class="title">Own the task-intent layer between people and industrial robots.</h1>
+    <p class="lede">Everyone else is fighting over the robot — the hardware, the model, the motion. The defensible company is the one that captures, validates, versions, approves, and remembers <em>the task</em> across whatever robot or model executes it. That layer is software, it's robot-agnostic by necessity, and nobody owns it yet.</p>
+
+    <div class="callout insight">
+      <span class="k">One sentence</span>
+      <p><b>Aurevix is the deployment-and-trust layer for industrial automation: show it a task once, and it produces validated, auditable, redeployable robot work — across the robots a factory already owns — without an integrator on the critical path.</b></p>
+    </div>
+
+    <p>Three reasons this beats "no-code programming from video," which is a feature inside the above, not a company:</p>
+    <ol>
+      <li><b>Video-to-code is contestable; task memory + validation is not.</b> Standard Bots, Wandelbots, Intrinsic and the VLA labs can all generate motion. None of them owns a permissioned, cross-brand record of <em>why</em> a task is the way it is, what it's allowed to do, how it was signed off, and how it has drifted. That record compounds.</li>
+      <li><b>The market's blocker is trust, not motion.</b> IFR's 2026 read is explicit: AI autonomy makes "testing, validation, and human oversight much more complex — but more necessary." The thing standing between a working demo and a deployed cell is a safety review and a liability question. That's a product, and you're already building it (the deploy-readiness gate).</li>
+      <li><b>Robot-agnostic is the only durable surface — but as a <em>task</em> layer, not an <em>OS</em>.</b> The universal-OS version of agnosticism died with ForgeOS because OEMs control the runtime. The task-intent version doesn't fight the OEM runtime; it sits above it and exports into it. Same agnosticism, different altitude, survivable.</li>
+    </ol>
+
+    <div class="callout warn">
+      <span class="k">The honest tension</span>
+      <p>This thesis is more defensible but slower to prove than "90% faster programming." It requires you to sell a <em>system of record</em>, which means landing the wedge (fast retasking) and then expanding into memory, validation, and approval before a competitor with more capital does the same. The race is real: Standard Bots explicitly frames deployments → data → better models as <em>their</em> flywheel. Your counter is that your flywheel spans the installed brownfield fleet, not one vendor's arm.</p>
+    </div>
+  </section>
+
+  <!-- ====================== 02 MARKET ====================== -->
+  <section class="panel" id="s-market" role="tabpanel">
+    <p class="eyebrow">02 · Market map & 2026 signals</p>
+    <h1 class="title">The money is moving toward physical AI — and toward usability, not just hardware.</h1>
+
+    <div class="kfacts">
+      <div class="f"><div class="n">$16.7B</div><div class="l">Industrial robot installs, all-time high (IFR, Jan '26)</div></div>
+      <div class="f"><div class="n">~700k</div><div class="l">Units/yr forecast by 2028 (~7% CAGR)</div></div>
+      <div class="f"><div class="n">9×</div><div class="l">China vs. US industrial robot installs (2024)</div></div>
+      <div class="f"><div class="n">100%</div><div class="l">Year-one robot-cell expensing through 2029 (US)</div></div>
+    </div>
+
+    <h2>The five IFR trends, read for Aurevix</h2>
+    <div class="scroller">
+    <table>
+      <thead><tr><th>IFR 2026 trend</th><th>What it means on the floor</th><th>Aurevix angle</th></tr></thead>
+      <tbody>
+        <tr><td><b>AI & autonomy (agentic AI)</b></td><td>Shift from rule-based to self-evolving systems; robots learn tasks and generate training data via sim.</td><td>Tailwind for "teach, don't program." But autonomy raises the validation bar — your gate is the counterweight.</td></tr>
+        <tr><td><b>IT/OT convergence</b></td><td>Demand for versatile robots; data flowing between planning and execution.</td><td>Your cloud task library + execution history + automation passport <em>is</em> the IT/OT bridge for task work.</td></tr>
+        <tr><td><b>Humanoids prove reliability</b></td><td>Moving past prototypes; must match cycle time, energy, maintenance, ISO safety.</td><td>Don't fight the form factor. Position as the task/validation layer humanoids will <em>also</em> need.</td></tr>
+        <tr><td class="nowrap"><b>Safety, security & liability</b></td><td>Black-box models, audit gaps, cloud-connected robot cyber risk, unclear liability for AI decisions.</td><td><b>Your single best macro alignment.</b> Deploy-readiness + approval routing + audit log answers this directly.</td></tr>
+        <tr><td><b>Robots vs. labor gaps</b></td><td>Skilled-worker shortage; "onboard the workforce alongside the robot."</td><td>Operator-owned retasking + training mode is the "ally, not replacement" story buyers want to hear.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>Capital signals (last ~6 months)</h2>
+    <ul>
+      <li><b>Standard Bots</b> — $200M Series C, $1B valuation (Jun '26); total ~$220M. US-native, vertically integrated, teach-by-demonstration. <span class="tag">PR Newswire</span></li>
+      <li><b>Physical Intelligence</b> — shipped π0.5 (open-world generalization) and π0.6/0.7 (steerable, RL fine-tuning, embodied memory); actively researching human-video→robot transfer. Frontier, very well capitalized. <span class="tag">pi.website</span></li>
+      <li><b>Intrinsic (now folded into Google, Feb '26)</b> — Flowstate platform + Intrinsic Vision Model, Gemini + DeepMind + NVIDIA Isaac access; Foxconn JV targeting US factories in 2026. Deep-pocketed, developer/integrator-oriented. <span class="tag">Dataconomy · TechCrunch</span></li>
+      <li><b>Adjacent raises</b> — Generalist AI ($400M), Bedrock Robotics ($270M Series B), Figure (humanoids, ~$1.75B raised), Neura ($1.4B). <span class="tag">multiple</span></li>
+      <li><b>ABB Robotics</b> spinning off as a separate listed entity in 2026 (~$3.5B target); crowned <b>Mbodi</b> and T-Robotics in its AI Startup Challenge — note Mbodi, one of your named US-native threats, is real but early. <span class="tag">Standard Bots blog · ABB</span></li>
+    </ul>
+
+    <div class="callout green">
+      <span class="k">The macro read</span>
+      <p>Three things now point the same direction for a <b>US-first, brownfield, software</b> play: (1) capital is rewarding <em>usability</em> ("actually usable on the factory floor without specialized programming" was the literal investor quote on the SB round); (2) US tax + reshoring + policy make SME automation suddenly financeable; (3) the safety/liability anxiety is rising exactly as autonomy rises. Your EMC proof point + US-first GTM is aimed at the right wave — provided you sell the validated-task story, not the motion-generation story.</p>
+    </div>
+
+    <div class="ref">
+      <b>Sources, this section:</b> International Federation of Robotics, "Top 5 Global Robotics Trends 2026" (8 Jan 2026) and The Robot Report coverage (16 Jan 2026); PR Newswire / The Robot Report / SiliconANGLE on Standard Bots Series C (9 Jun 2026); Physical Intelligence (pi.website); Dataconomy & TechCrunch on Intrinsic→Google (Feb 2026). Market-size and install figures per IFR. Anything not from these is marked <span class="confirm">[[CONFIRM]]</span>.
+    </div>
+  </section>
+
+  <!-- ====================== 03 COMPETITIVE ====================== -->
+  <section class="panel" id="s-comp" role="tabpanel">
+    <p class="eyebrow">03 · Competitive teardown</p>
+    <h1 class="title">Where everyone sits — and the lane nobody is standing in.</h1>
+    <p class="lede">The useful question isn't "who programs robots." It's who owns <em>retasking, validation, safety sign-off, multi-brand reach, and the SME buyer — together</em>. Almost no one scores across that row. That intersection is the opening.</p>
+
+    <div class="scroller">
+    <table>
+      <thead>
+        <tr>
+          <th>Player</th><th>Shape</th><th>Retasking by operator</th><th>Deploy validation / gate</th><th>Safety sign-off & audit</th><th>Multi-brand</th><th>SME reach</th><th>The lane they leave open</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><b>Standard Bots</b></td><td>HW + SW, US-native</td><td class="nowrap">✅ teach-by-demo</td><td>⚠️ implicit</td><td>⚠️ limited</td><td>❌ own arm (owns READY API, not used cross-brand GTM)</td><td>✅ strong</td><td>The <b>installed base</b> — they only help if you buy their robot.</td></tr>
+        <tr><td><b>Wandelbots (NOVA)</b></td><td>SW only, agnostic</td><td>✅ demo/virtual</td><td>⚠️ sim + digital twin</td><td>⚠️ partial</td><td>✅ UR/ABB/KUKA/FANUC/Yaskawa</td><td>⚠️ via integrators</td><td><b>Task intent & sign-off</b> — strong on motion/OS, light on the "why/approved/drifted" record.</td></tr>
+        <tr><td><b>Intrinsic / Google (Flowstate)</b></td><td>SW, Gemini-backed</td><td>❌ developer-built apps</td><td>⚠️ sim (Isaac)</td><td>❌</td><td>✅</td><td>❌ devs/large mfrs</td><td>The <b>operator</b> — it's a developer/integrator platform, not a shop-floor tool.</td></tr>
+        <tr><td><b>Physical Intelligence / VLA labs</b></td><td>Foundation models</td><td>n/a (model layer)</td><td>❌</td><td>❌</td><td>✅ (model is embodiment-flexible)</td><td>❌ research/partners</td><td>The entire <b>deployment, validation & trust</b> stack above the model.</td></tr>
+        <tr><td><b>RoboDK / OEM sims (RobotStudio, ROBOGUIDE, KUKA.Sim)</b></td><td>SW, offline programming</td><td>❌ needs expertise</td><td>⚠️ sim only</td><td>❌</td><td>RoboDK ✅ / OEM ❌</td><td>❌ engineers</td><td><b>"Is it production-ready & approved?"</b> — sim ≠ readiness; nothing scores deployment.</td></tr>
+        <tr><td><b>Vention</b></td><td>SW + marketplace</td><td>⚠️ guided design</td><td>⚠️</td><td>❌</td><td>⚠️ narrower</td><td>✅ SME-friendly</td><td>Demonstration-driven <b>task intent</b> + cross-brand validation.</td></tr>
+        <tr><td><b>GrayMatter Robotics</b></td><td>App-OS (sanding/finishing)</td><td>✅ within vertical</td><td>✅ within vertical</td><td>⚠️</td><td>❌ vertical-bound</td><td>✅ in vertical</td><td>Everything <b>outside surface-finishing</b> — proof the "app-OS, not universal-OS" pattern works.</td></tr>
+        <tr><td><b>Micropsi / Mbodi / emerging AI</b></td><td>SW, AI-first</td><td>⚠️ adaptive control</td><td>❌</td><td>❌</td><td>⚠️</td><td>⚠️ early</td><td>The full <b>task-record + sign-off</b> layer; most are pre-scale.</td></tr>
+        <tr><td><b>READY Robotics / ForgeOS</b></td><td>Universal robot OS</td><td>—</td><td>—</td><td>—</td><td>250+ arms</td><td>—</td><td><b>Dead (2024).</b> The warning sign on the universal-OS thesis.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>The three reads that matter</h2>
+    <div class="grid g3">
+      <div class="card">
+        <span class="chip red">Closest mirror</span>
+        <h3>Wandelbots</h3>
+        <p>Now a hardware-agnostic software platform with a system-of-record ambition. They beat you today on <b>platform breadth, brand, and OEM relationships</b> (Yaskawa, VW, BMW history). You differentiate on three things they don't lead with: <b>video-native intent extraction</b> (no pen, no kinesthetic guiding), <b>deploy-readiness as a first-class gated product</b>, and <b>outcome-based pricing</b> tied to integrator cost avoided. Treat them as the benchmark to out-position, not out-feature.</p>
+      </div>
+      <div class="card">
+        <span class="chip amber">Best-funded threat</span>
+        <h3>Standard Bots</h3>
+        <p>$1B, US-native, loud in policy, and explicitly running the deployments→data→models flywheel. But it's a <b>hardware company</b>: the flywheel only spins on Standard Bots arms. Your entire counter is one sentence — <em>"we make the UR, FANUC, KUKA, and ABB robots you already own retaskable; you don't have to rip them out."</em> That's a different, larger, brownfield buyer.</p>
+      </div>
+      <div class="card">
+        <span class="chip ink">Sleeping giant</span>
+        <h3>Intrinsic / Google</h3>
+        <p>Gemini + DeepMind + Isaac behind a robot-software platform is a serious long-term force. But Flowstate is for <b>developers building applications</b>, and the Foxconn JV points at large electronics manufacturers. The SME operator retasking a cell between SKUs is not their user. Watch them; don't try to be them.</p>
+      </div>
+    </div>
+
+    <div class="callout insight">
+      <span class="k">The standing-room</span>
+      <p>No one combines <b>operator-owned retasking + a deploy-readiness gate + a safety sign-off/audit trail + multi-brand reach + a system-of-record for task intent</b>, sold to the SME and integrator. Wandelbots is closest but leads with the OS; Standard Bots is locked to hardware; Intrinsic is for developers; the VLA labs are below you. That five-way intersection is the company.</p>
+    </div>
+
+    <div class="ref"><b>Sources:</b> wandelbots.com & Hannover Messe (NOVA platform); PR Newswire/The Robot Report (Standard Bots + READY IP acquisition, Nov 2024); The Robot Report (READY/ForgeOS shutdown, Aug 2024; GrayMatter app-OS commentary); Dataconomy/TechCrunch (Intrinsic→Google); pi.website. Capability scoring is my assessment from public positioning, not vendor benchmarks — verify before quoting in a deck.</div>
+  </section>
+
+  <!-- ====================== 04 GAPS ====================== -->
+  <section class="panel" id="s-gaps" role="tabpanel">
+    <p class="eyebrow">04 · The gaps, ranked on your framework</p>
+    <h1 class="title">Twenty gaps worth the bandwidth — scored like a deploy-readiness gate.</h1>
+    <p class="lede">Each gap is scored on your 8-axis rubric (Pain · Budget · Urgency · Competition[open=5] · Feasibility · Distribution · Defensibility · Fit), out of 40. The bar uses the same thresholds your console uses for skills — so a gap "ships" at the same line a robot task does.</p>
+
+    <div class="legend">
+      <span class="chip green">36–40 · Exceptional</span>
+      <span class="chip green">30–35 · Very strong</span>
+      <span class="chip blue">24–29 · Strong</span>
+      <span class="chip amber">18–23 · Medium</span>
+      <span class="chip red">&lt;18 · Weak</span>
+    </div>
+
+    <h2>The top table</h2>
+    <div class="scroller">
+    <table>
+      <thead><tr><th>#</th><th>Gap</th><th>Category</th><th>Best first buyer</th><th>Score</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><b>Deploy-readiness scoring as a gate</b></td><td>Validation</td><td>Risk-averse SME ops</td><td class="nowrap"><b>37</b>/40</td><td><span class="chip green">Exceptional</span></td></tr>
+        <tr><td>2</td><td><b>Task-intent system-of-record + versioning</b></td><td>Memory / moat</td><td>Multi-cell SMEs</td><td class="nowrap"><b>35</b>/40</td><td><span class="chip green">Very strong</span></td></tr>
+        <tr><td>3</td><td><b>Safety sign-off & audit trail for AI-gen code</b></td><td>Safety / liability</td><td>EHS / plant managers</td><td class="nowrap"><b>34</b>/40</td><td><span class="chip green">Very strong</span></td></tr>
+        <tr><td>4</td><td><b>Pre-purchase feasibility simulator</b></td><td>Top-of-funnel</td><td>Integrators + buyers</td><td class="nowrap"><b>32</b>/40</td><td><span class="chip green">Very strong</span></td></tr>
+        <tr><td>5</td><td><b>Operator-owned retasking (high-mix)</b></td><td>Programming</td><td>HMLV contract mfrs</td><td class="nowrap"><b>31</b>/40</td><td><span class="chip green">Very strong</span></td></tr>
+        <tr><td>6</td><td><b>Confidence-drift detection & re-demo trigger</b></td><td>Operations</td><td>Anyone in production</td><td class="nowrap"><b>30</b>/40</td><td><span class="chip green">Very strong</span></td></tr>
+        <tr><td>7</td><td><b>Gripper/EOAT intelligence & grasp validation</b></td><td>Tooling</td><td>Pick/place + tending</td><td class="nowrap"><b>29</b>/40</td><td><span class="chip blue">Strong</span></td></tr>
+        <tr><td>8</td><td><b>Integrator co-pilot (scope→quote→handover)</b></td><td>Deployment</td><td>System integrators</td><td class="nowrap"><b>29</b>/40</td><td><span class="chip blue">Strong</span></td></tr>
+        <tr><td>9</td><td><b>Outcome-based pricing engine</b></td><td>Business model</td><td>ROI-driven SMEs</td><td class="nowrap"><b>28</b>/40</td><td><span class="chip blue">Strong</span></td></tr>
+        <tr><td>10</td><td><b>Automation passport / cross-site portability</b></td><td>Memory</td><td>Multi-site groups</td><td class="nowrap"><b>27</b>/40</td><td><span class="chip blue">Strong</span></td></tr>
+        <tr><td>11</td><td><b>Cell observability ("Datadog for cells")</b></td><td>Operations</td><td>Plant engineering</td><td class="nowrap"><b>27</b>/40</td><td><span class="chip blue">Strong</span></td></tr>
+        <tr><td>12</td><td><b>Physics-event annotation (KineTrace core)</b></td><td>Robot data</td><td>Robot-learning labs</td><td class="nowrap"><b>26</b>/40</td><td><span class="chip blue">Strong</span></td></tr>
+        <tr><td>13</td><td><b>Failure mining from real robot logs</b></td><td>Robot data</td><td>VLA / humanoid teams</td><td class="nowrap"><b>26</b>/40</td><td><span class="chip blue">Strong</span></td></tr>
+        <tr><td>14</td><td><b>Fixture & jig designer from the demo</b></td><td>Tooling</td><td>Mfg engineers</td><td class="nowrap"><b>25</b>/40</td><td><span class="chip blue">Strong</span></td></tr>
+        <tr><td>15</td><td><b>Operator training / "how the robot sees it" mode</b></td><td>Adoption</td><td>Shop-floor leads</td><td class="nowrap"><b>24</b>/40</td><td><span class="chip blue">Strong</span></td></tr>
+        <tr><td>16</td><td><b>Multi-brand controller export (as a feature)</b></td><td>Programming</td><td>Mixed-fleet shops</td><td class="nowrap"><b>23</b>/40</td><td><span class="chip amber">Medium</span></td></tr>
+        <tr><td>17</td><td><b>Tool-change / peripheral abstraction</b></td><td>Tooling</td><td>Tending + multi-tool</td><td class="nowrap"><b>23</b>/40</td><td><span class="chip amber">Medium</span></td></tr>
+        <tr><td>18</td><td><b>Sim-to-real readiness reconciliation</b></td><td>Validation</td><td>Quality teams</td><td class="nowrap"><b>22</b>/40</td><td><span class="chip amber">Medium</span></td></tr>
+        <tr><td>19</td><td><b>Robot-learning dataset version control</b></td><td>Robot data</td><td>ML platform teams</td><td class="nowrap"><b>21</b>/40</td><td><span class="chip amber">Medium</span></td></tr>
+        <tr><td>20</td><td><b>Universal robot OS / runtime</b></td><td>Programming</td><td>—</td><td class="nowrap"><b>14</b>/40</td><td><span class="chip red">Avoid</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>The eight that deserve a closer look</h2>
+
+    <!-- gap 1 -->
+    <div class="card">
+      <div class="pill-row"><span class="chip green">#1 · Exceptional</span><span class="chip ink">Validation</span><span class="chip blue">Already building</span></div>
+      <h3>Deploy-readiness scoring as a gate, not a number</h3>
+      <p><b>Pain:</b> a simulated task is not an approved task. Buyers can't tell a working demo from a production-safe cell, and "94% confidence" with no definition is meaningless to an engineer. <b>Why now:</b> autonomy is rising and IFR explicitly calls validation/oversight "more necessary." <b>Why incumbents miss it:</b> sims output trajectories, not a readiness verdict; OEM tools have no concept of "approved to deploy." <b>Wedge:</b> exactly what your Skill Templates page already does — readiness from observed success + task completeness + validation history, with hard gates (&lt;80% blocked · 80–89% simulation review · 90%+ supervised deploy). <b>Moat:</b> the longer it runs, the more your thresholds are calibrated on real outcome data nobody else has. <b>Risk:</b> over-claiming a "readiness" number you can't defend; keep the gate conservative and evidence-linked.</p>
+      <div class="score"><div class="lab"><span>Pain 5 · Budget 4 · Urgency 5 · Competition 5 · Feasibility 5 · Distribution 4 · Defensibility 5 · Fit 5</span><b>37/40</b></div><div class="track"><div class="fill exc" style="width:92.5%"></div></div></div>
+    </div>
+
+    <!-- gap 2 -->
+    <div class="card">
+      <div class="pill-row"><span class="chip green">#2 · Very strong</span><span class="chip ink">Memory · the moat</span></div>
+      <h3>Task-intent system-of-record + versioning</h3>
+      <p><b>Pain:</b> a robot program is waypoints and logic — it doesn't record the objective, the constraints that matter, the gripper assumptions, what changed, or who approved it. Six months later nobody knows why the program is the way it is. <b>Why now:</b> high-mix shops retask constantly; tribal knowledge walks out the door. <b>Why incumbents miss it:</b> they generate motion and stop; even Wandelbots leads with the OS, not the "why." <b>Wedge:</b> attach an immutable, diffable task record to every Aurevix task (intent, objects, fixtures, gripper, success/failure conditions, sim results, deploy history, operator notes). <b>Moat:</b> this is the cornered resource — a permissioned, cross-brand task knowledge graph that compounds and creates switching cost. <b>Risk:</b> it's invisible until it's deep; sell it as "version history + audit," not "knowledge graph."</p>
+      <div class="score"><div class="lab"><span>P5 · B4 · U4 · C5 · F4 · D4 · Def5 · Fit5</span><b>35/40</b></div><div class="track"><div class="fill vs" style="width:87.5%"></div></div></div>
+    </div>
+
+    <!-- gap 3 -->
+    <div class="card">
+      <div class="pill-row"><span class="chip green">#3 · Very strong</span><span class="chip ink">Safety / liability</span><span class="chip blue">Rides IFR trend</span></div>
+      <h3>Safety sign-off & audit trail for AI-generated robot code</h3>
+      <p><b>Pain:</b> when AI writes the motion and something goes wrong, who's liable — and can you reconstruct the decision? Today: no audit trail, no approval routing, no explainability. <b>Why now:</b> IFR names black-box liability and audit gaps as a defining 2026 concern; ISO 10218:2026 is landing. <b>Why incumbents miss it:</b> hardware and model players treat safety as the OEM's or integrator's problem. <b>Wedge:</b> a pre-deploy checklist → risk-assessment support → approval routing → immutable sign-off log → deployment evidence package. Your console already references ISO 10218 / ISO/TS 15066 — make the workflow real. <b>Moat:</b> the audit/approval record becomes the compliance artifact a plant keeps; ripping it out means losing the paper trail. <b>Risk:</b> never imply Aurevix <em>certifies</em> safety — it documents and gates human sign-off.</p>
+      <div class="score"><div class="lab"><span>P5 · B4 · U4 · C5 · F4 · D3 · Def5 · Fit4</span><b>34/40</b></div><div class="track"><div class="fill vs" style="width:85%"></div></div></div>
+    </div>
+
+    <!-- gap 4 -->
+    <div class="card">
+      <div class="pill-row"><span class="chip green">#4 · Very strong</span><span class="chip ink">Top-of-funnel</span></div>
+      <h3>Pre-purchase feasibility simulator</h3>
+      <p><b>Pain:</b> SMEs and integrators don't know, before buying, whether a given task will actually automate on a given robot — so projects stall or fail post-purchase. <b>Why now:</b> with year-one expensing, more shops are evaluating cells than ever and need a fast yes/no. <b>Why incumbents miss it:</b> OEM tools assume you've already bought their arm. <b>Wedge:</b> feed a demo video → return a feasibility verdict (reachability, cycle-time, gripper risk, perception risk, "deployable on UR5e / FANUC LR Mate / …"). <b>Moat:</b> it's the lowest-friction front door and it feeds the task record from day zero; also a natural <em>integrator co-sell</em>. <b>Risk:</b> accuracy — a wrong "feasible" burns trust fast; gate optimistic verdicts behind simulation review.</p>
+      <div class="score"><div class="lab"><span>P4 · B4 · U4 · C4 · F4 · D5 · Def3 · Fit4</span><b>32/40</b></div><div class="track"><div class="fill vs" style="width:80%"></div></div></div>
+    </div>
+
+    <!-- gap 5 -->
+    <div class="card">
+      <div class="pill-row"><span class="chip green">#5 · Very strong</span><span class="chip ink">The core wedge</span><span class="chip amber">Now contested</span></div>
+      <h3>Operator-owned retasking for high-mix manufacturers</h3>
+      <p><b>Pain:</b> a factory doesn't own its automation if every SKU change means calling an integrator. Programming is 20–50% of total robot cost; integration downtime runs $1,000–$10,000/minute. <b>Why now:</b> labor gaps + reshoring + HMLV pressure. <b>Why incumbents miss it (partially):</b> they do address it — this is now Standard Bots' and Wandelbots' core claim too, which is why <b>Competition drops to 4</b>. <b>Wedge:</b> your differentiator isn't "retasking" generically, it's "retasking <em>the robots you already own</em>, validated and signed off." <b>Moat:</b> weak on its own; only durable when fused with #2 and #3. <b>Risk:</b> being read as "another no-code UI." Lead with brownfield + validation, not the demo trick.</p>
+      <div class="score"><div class="lab"><span>P5 · B4 · U5 · C3 · F4 · D4 · Def2 · Fit4</span><b>31/40</b></div><div class="track"><div class="fill vs" style="width:77.5%"></div></div></div>
+    </div>
+
+    <!-- gap 6 -->
+    <div class="card">
+      <div class="pill-row"><span class="chip green">#6 · Very strong</span><span class="chip ink">Operations</span><span class="chip blue">Already live</span></div>
+      <h3>Confidence-drift detection & re-demonstration trigger</h3>
+      <p><b>Pain:</b> a task that worked at deployment silently degrades — lighting, wear, part variation — and nobody notices until scrap piles up. <b>Why now:</b> learned/AI-driven tasks drift in ways hand-coded ones don't. <b>Why incumbents miss it:</b> one-shot teaching tools consider the job done at deploy. <b>Wedge:</b> you already surface this — "Place Connector: confidence dropped 18% in 14 days — re-demonstrate recommended." Productize it into a monitored SLA tied to the task record. <b>Moat:</b> requires the longitudinal task history only you keep. <b>Risk:</b> false alarms erode trust; tie drift alerts to real downstream outcome signals (scrap, cycle drift, failed cycles), not just model confidence.</p>
+      <div class="score"><div class="lab"><span>P4 · B3 · U4 · C5 · F4 · D4 · Def4 · Fit5</span><b>30/40</b></div><div class="track"><div class="fill vs" style="width:75%"></div></div></div>
+    </div>
+
+    <!-- gap 7 -->
+    <div class="card">
+      <div class="pill-row"><span class="chip blue">#7 · Strong</span><span class="chip ink">Tooling</span></div>
+      <h3>Gripper / EOAT intelligence & grasp-reliability validation</h3>
+      <p><b>Pain:</b> the gripper is the hidden complexity — a slip ruins ROI, and EOAT setup is manual. Pneumatic grippers are ~55–60% of installed industrial grippers. <b>Why now:</b> as tasks get taught by demo, the grasp is the part demos hide. <b>Why incumbents miss it:</b> no universal grasp abstraction or slip-risk score exists. <b>Wedge:</b> you've already started — Workcell setup configures gripper type, Schunk PGN-plus models, pneumatic valve I/O, tool-change docks. Add a grasp-reliability risk score and parameter suggestions per part. <b>Moat:</b> a gripper-failure dataset accrues from the flywheel. <b>Risk:</b> physical grasp validation without force/tactile data is hard; scope to what video + I/O can support, and gate the rest behind sim review.</p>
+      <div class="score"><div class="lab"><span>P4 · B3 · U3 · C4 · F3 · D4 · Def4 · Fit4</span><b>29/40</b></div><div class="track"><div class="fill st" style="width:72.5%"></div></div></div>
+    </div>
+
+    <!-- gap 8 -->
+    <div class="card">
+      <div class="pill-row"><span class="chip blue">#8 · Strong</span><span class="chip ink">Deployment</span><span class="chip blue">Your near-term ICP</span></div>
+      <h3>Integrator co-pilot: scope → feasibility → quote → handover</h3>
+      <p><b>Pain:</b> integrators hold the knowledge, quotes take weeks, scoping is manual, and handover docs are poor. Your GTM pivot already prioritizes integrators near-term. <b>Why now:</b> integrators are capacity-constrained against a demand spike; tooling that makes them faster is welcome, not threatening. <b>Why incumbents miss it:</b> most tools position <em>against</em> integrators ("replace the expert") instead of arming them. <b>Wedge:</b> feasibility analysis + auto-generated simulation package + quote support + a customer-ready handover/documentation bundle (you already export URScript / ROS 2 / PDF report bundles). <b>Moat:</b> an integrator partner network is a distribution moat, not just a product one. <b>Risk:</b> channel conflict if you also sell direct — pick the sequence deliberately.</p>
+      <div class="score"><div class="lab"><span>P4 · B4 · U3 · C4 · F4 · D4 · Def3 · Fit3</span><b>29/40</b></div><div class="track"><div class="fill st" style="width:72.5%"></div></div></div>
+    </div>
+
+    <div class="callout warn">
+      <span class="k">On the "100 gaps" target</span>
+      <p>I deliberately stopped at 20. Past the strongest two dozen, a robotics-gap list becomes restatements ("robot logs are fragmented," "documentation is poor") that don't change what you build next quarter. If you want the exhaustive catalogue for completeness or for the deck appendix, that's the right job for the Research feature — say the word and I'll frame the prompt so it returns structured, de-duplicated, sourced entries rather than padding.</p>
+    </div>
+
+    <div class="ref"><b>Scoring note:</b> scores are my reasoned estimates on your 8-axis rubric, not measured data. Verified inputs used: programming = 20–50% of total robot cost (Standard Bots, 2026); integration delays $1,000–$10,000/min (Standard Bots, 2026); pneumatic grippers 55–60% of installed grippers (GrabaRobot, 2026). Treat scores as a prioritization aid, not a forecast.</div>
+  </section>
+
+  <!-- ====================== 05 PRODUCT AUDIT ====================== -->
+  <section class="panel" id="s-product" role="tabpanel">
+    <p class="eyebrow">05 · Where Aurevix already wins (and where it leaks)</p>
+    <h1 class="title">The product is further along the right thesis than the marketing is.</h1>
+    <p class="lede">Read against the console you sent, Aurevix already embodies the task-layer thesis in places competitors don't. The risk isn't the product — it's a few credibility leaks at the surface that a technical evaluator will catch first.</p>
+
+    <h2>Already built, already differentiating</h2>
+    <div class="grid g2">
+      <div class="card"><span class="chip green">Strong</span><h3>The deploy-readiness gate is real</h3><p>Skill Templates spells out the gate language — &lt;80% blocked, 80–89% simulation review, 90%+ supervised deploy — and references ISO 10218 / ISO/TS 15066. This is your #1 gap, shipped. Most competitors don't have a defined gate at all.</p></div>
+      <div class="card"><span class="chip green">Strong</span><h3>Drift is surfaced, not hidden</h3><p>"Place Connector — confidence dropped 18% in 14 days — re-demonstrate recommended" appears across My Skills, Robots, and Overview. That's the monitored-task story (#6) already in the UI.</p></div>
+      <div class="card"><span class="chip green">Strong</span><h3>Workcell config goes deep on EOAT</h3><p>Gripper type, Schunk PGN-plus models, pneumatic DO/DI valve mapping, actuation delays, and automatic tool-change docks with lock/unlock I/O. This is the gripper-intelligence groundwork (#7) most "no-code" tools skip entirely.</p></div>
+      <div class="card"><span class="chip green">Strong</span><h3>Outcome-based pricing exists</h3><p>Billing offers 15% of verified integration cost avoided, $199 floor / $2,000 cap, counting only successful cycles — explicitly "no billing for missing or estimated outcomes." This is the value-capture-not-COGS model done right (#9), and a real differentiator.</p></div>
+      <div class="card"><span class="chip green">Strong</span><h3>Cross-vendor export + passport</h3><p>Code export ships URScript, ROS 2 package, and PDF report bundles; Task Records shows an "Automation Passport" and cross-site framing. Multi-brand as a <em>feature</em> (the right altitude), plus the seed of portability (#10).</p></div>
+      <div class="card"><span class="chip green">Strong</span><h3>ROI is instrumented in-product</h3><p>The ROI calculator ($52,373/cell, 1.4-mo payback, with a downloadable PDF + share link) turns the value story into a self-serve artifact a champion can forward internally. Good motion design for SME selling.</p></div>
+    </div>
+
+    <h2>Credibility leaks to fix before the next technical demo</h2>
+    <div class="callout warn">
+      <span class="k">Surface claims vs. your own principles</span>
+      <p>You set the rule that overclaiming is a liability with technical evaluators. The live site currently trips it in three places:</p>
+      <ul style="margin-bottom:0">
+        <li><b>"Reduce robot programming time by 90%"</b> (home hero) — a hard, unverified number on the first screen. Soften to a defensible, range-based or design-partner-attributed claim, or tie it to the ROI calculator's own inputs.</li>
+        <li><b>"94% confidence"</b> as a headline stat — a bare percentage is exactly what your own gate philosophy argues against. Frame it as a <em>deploy-readiness</em> figure with the threshold definition, or drop it from the hero.</li>
+        <li><b>"Trusted by manufacturers in DE / US / UK / CN"</b> — with EMC as the one nameable partner, four country flags reads as inflation. Either earn the logos or change to "Validated with our European design partner; scaling US-first," which is both true and stronger.</li>
+      </ul>
+    </div>
+
+    <div class="grid g2">
+      <div class="card"><span class="chip amber">Friction</span><h3>"Try your own video" is a credibility risk</h3><p>The Teach-from-video panel invites a user's own clip. With evaluators, the "record yourself on a phone" framing undersells a pipeline that's in active testing, not production. Keep the language at "video demonstration / intent extraction," and gate self-serve uploads behind expectations (supported tasks, robots, lighting).</p></div>
+      <div class="card"><span class="chip amber">Honesty</span><h3>"Hides robot logic until you edit it"</h3><p>The interpretation panel says the guided workflow "hides robot logic until you need to edit it." To a technical buyer that can read as "we're hiding complexity." Reframe as "generated controller logic is editable and inspectable" — transparency is the trust sell, not concealment.</p></div>
+      <div class="card"><span class="chip ink">Expectation-setting</span><h3>"Demo data stored in this browser"</h3><p>Robots and Settings note demo state lives in the browser ("Safe Demo Mode," "production workspaces use durable cloud records"). Good honesty for a demo — but make sure the sales narrative draws the line clearly between the deterministic demo and the real cloud system-of-record you're building, so the moat story lands.</p></div>
+      <div class="card"><span class="chip ink">Naming</span><h3>One task shows an ERROR state</h3><p>Task Records shows a "Bench pick-rotate-place demonstration" in ERROR. In a live demo that reads as a bug; in a validation story it can read as honesty ("the system flags what it can't yet do"). Decide which, and stage it intentionally.</p></div>
+    </div>
+
+    <div class="callout principle">
+      <span class="k">The reframe for all of it</span>
+      <p>Your product's strongest, most defensible features (the gate, drift, audit references, EOAT config, outcome pricing) are exactly the <em>task-layer</em> capabilities — and they're under-marketed. The hero sells the magic trick ("90%, 30 seconds, 94%"); it should sell the trust ("validated, signed-off, auditable robot work across the robots you already own"). The product is already ahead of the pitch. Move the pitch up to meet it.</p>
+    </div>
+  </section>
+
+  <!-- ====================== 06 AUREVIX STRATEGY ====================== -->
+  <section class="panel" id="s-aurevix" role="tabpanel">
+    <p class="eyebrow">06 · Aurevix product strategy</p>
+    <h1 class="title">Build the moat in sequence. Don't claim it early.</h1>
+    <p class="lede">No moat exists yet — that's a feature of the stage, not a problem. The moat is constructed in a deliberate order, where each layer makes the next more valuable and harder to copy.</p>
+
+    <h2>The moat-construction order</h2>
+    <div class="tl">
+      <div class="step"><div class="h">Layer 1 — Land</div><p><b>Operator-owned retasking on the installed base.</b> The wedge that gets you in the door. Differentiate on "your existing UR/FANUC/KUKA/ABB robots," not the demo trick. Contested, so win on brownfield + validation.</p></div>
+      <div class="step"><div class="h">Layer 2 — Gate</div><p><b>Deploy-readiness + safety sign-off.</b> Turns a demo into a deployment and makes you the system buyers route approvals through. This is what competitors can't easily bolt on, and it rides the IFR liability trend.</p></div>
+      <div class="step"><div class="h">Layer 3 — Remember</div><p><b>Task-intent record + versioning + audit log.</b> The cornered resource. Every task ever taught, with its why/constraints/sign-off/drift. Creates switching cost and a cross-brand knowledge graph nobody else holds.</p></div>
+      <div class="step"><div class="h">Layer 4 — Compound</div><p><b>Permissioned data flywheel + cross-site passport.</b> Aggregate (with permission) what works across customers into better feasibility, better grasp suggestions, better readiness calibration. This is where the flywheel finally out-runs a single-vendor (Standard Bots) flywheel — because yours spans the fleet.</p></div>
+    </div>
+
+    <div class="callout insight">
+      <span class="k">Why this order beats a better flywheel argument</span>
+      <p>Standard Bots will out-spend you on the model flywheel. You don't win the model race; you win the <b>record</b> race. A permissioned, cross-brand task-and-approval record is something a hardware company structurally can't build (their data is locked to their arm) and a model lab won't build (it's not their layer). Sequence the product so that by the time the record is deep, it's the reason customers can't leave.</p>
+    </div>
+
+    <h2>The six expansion features, re-ranked against the new reality</h2>
+    <div class="scroller">
+    <table>
+      <thead><tr><th>Feature</th><th>Build priority</th><th>Why / caveat</th></tr></thead>
+      <tbody>
+        <tr><td><b>Risk-Assessment Accelerator</b></td><td><span class="chip green">P0</span></td><td>Directly serves the Gate layer and the #1/#3 gaps. Highest leverage; rides the strongest macro trend.</td></tr>
+        <tr><td><b>Pre-Purchase Feasibility Simulator</b></td><td><span class="chip green">P0</span></td><td>Lowest-friction front door (#4) and a natural integrator co-sell. Seeds the task record from first contact.</td></tr>
+        <tr><td><b>Outcome-Based Pricing Engine</b></td><td><span class="chip blue">P1</span></td><td>Already live — refine it. The value-capture model is a genuine differentiator; validate the $/cycle math with prospects (<span class="confirm">[[CONFIRM]]</span> the 15% / cap figures hold).</td></tr>
+        <tr><td><b>Gripper / Peripheral Recommender</b></td><td><span class="chip blue">P1</span></td><td>Builds on existing Workcell config (#7). Scope to video + I/O reality; gate grasp-reliability claims.</td></tr>
+        <tr><td><b>Fixture & Jig Designer</b></td><td><span class="chip amber">P2</span></td><td>Real value (#14) but heavier to build; compounds best <em>after</em> the gripper layer exists.</td></tr>
+        <tr><td><b>Automation Passport</b></td><td><span class="chip amber">P2</span></td><td>The portability/memory play (#10). High moat value, but only matters once multiple cells/sites exist — sequence behind the record layer.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>Roadmap, by horizon</h2>
+    <div class="grid g2">
+      <div class="card"><span class="meta">30 days</span><h3>Sharpen the wedge + close the leaks</h3><p>Fix the three hero overclaims. Re-language "video demonstration / intent extraction" everywhere. Ship the Risk-Assessment Accelerator v1 as an extension of the existing gate. Instrument the task record (even minimal: intent + version + sign-off) on every task. Get explicit permission to name EMC. <span class="confirm">[[CONFIRM]]</span> traction + round size.</p></div>
+      <div class="card"><span class="meta">90 days</span><h3>Make the gate the product</h3><p>Full safety sign-off workflow (checklist → approval routing → immutable log → evidence package). Pre-purchase feasibility front door, framed for integrator co-sell. Drift monitoring tied to outcome signals, not just confidence. First paid integrator pilot in a US manufacturing region.</p></div>
+      <div class="card"><span class="meta">6 months</span><h3>Turn the record into switching cost</h3><p>Task-intent system-of-record with diffable versions and cross-site passport. Gripper recommender on the EOAT data accruing. 3–5 design-partner deployments generating the first permissioned flywheel data. The deck's "moat we are building" becomes "moat we have started."</p></div>
+      <div class="card"><span class="meta">12 months</span><h3>Be the layer, not the tool</h3><p>The task-intent + validation + approval + observability stack across a customer's brownfield fleet, priced on outcomes. KineTrace either feeding the same flywheel or spun as a parallel line (see §07). Position: the deployment-and-trust layer for industrial automation.</p></div>
+    </div>
+  </section>
+
+  <!-- ====================== 07 KINETRACE ====================== -->
+  <section class="panel" id="s-kine" role="tabpanel">
+    <p class="eyebrow">07 · KineTrace strategy</p>
+    <h1 class="title">A real wedge in a brutal neighborhood — keep it focused or keep it inside.</h1>
+    <p class="lede">KineTrace's core insight is right: robotics data needs <em>physics-aware</em> annotation (micro-slips, torque anomalies, contact transitions, friction), not generic video labeling. The question isn't whether the gap is real — it's whether you fight for it as a standalone line against very well-funded labs, or use it as Aurevix's data engine.</p>
+
+    <h2>The honest competitive read</h2>
+    <div class="callout warn">
+      <span class="k">Who you'd be competing with</span>
+      <p>The robot-data layer is where the frontier labs are spending hardest. Physical Intelligence is actively researching <b>human-video→robot transfer</b> and embodied memory; NVIDIA (Isaac / GR00T / Cosmos) is building the data + sim stack; and the OXE/RLDS ecosystem plus a wave of academic data-augmentation work (RDT2, OXE-AUGE, Galaxea G0) is moving monthly. A horizontal "Scale AI for robot data" sells into teams who increasingly build this in-house. That's why KineTrace's standalone score sits at Strong, not Exceptional — the gap is real, the buyer is sophisticated and partly self-supplying.</p>
+    </div>
+
+    <h2>Where a defensible wedge actually exists</h2>
+    <div class="grid g2">
+      <div class="card"><span class="chip green">Sharpest</span><h3>Failure mining as the entry point</h3><p>Labs drown in success data and starve for labeled <em>near-failures</em> — slips, recoveries, unstable contacts, missed detections. "Find every near-failed grasp in this dataset and explain it" is a wedge that's painful, specific, and under-served. Lead here, not with general annotation.</p></div>
+      <div class="card"><span class="chip blue">Strong</span><h3>Physics-event labels humans can't make</h3><p>The differentiator vs. generic labeling: torque/contact/friction events from MCAP / ROS bag / HDF5 / RLDS + force-torque streams. This is genuinely hard and genuinely valuable — but the technical quality must be real, or sophisticated buyers will see through it instantly.</p></div>
+      <div class="card"><span class="chip blue">Strong</span><h3>Dataset quality / leakage scoring</h3><p>"Why did my policy fail?" → missing examples, bad sync, distribution shift, train/test leakage. A debugger for robot-learning data is a sticky, repeated-use tool that a one-off labeling vendor isn't.</p></div>
+      <div class="card"><span class="chip amber">Watch</span><h3>The "GitHub/Datadog for robot data" framing</h3><p>Evocative, but it's a platform ambition that needs a wedge first. Earn it through failure mining + physics events; don't lead with the platform metaphor.</p></div>
+    </div>
+
+    <div class="callout insight">
+      <span class="k">The strategic call</span>
+      <p>The highest-leverage version of KineTrace may be <b>internal</b>: it's the annotation + failure-mining engine that turns Aurevix's permissioned flywheel into the moat in §06. Every deployed Aurevix task generates exactly the physics-event and failure data KineTrace is built to label — a data advantage no pure-software competitor and no single-hardware vendor can match. Run KineTrace as Aurevix's data engine first; spin it out as a standalone line only once it has a proprietary dataset (from Aurevix deployments) that the labs can't replicate. That sequencing turns a crowded standalone bet into a compounding asset.</p>
+    </div>
+
+    <h3>Best standalone customers, if you do go external</h3>
+    <p>In rough order of pain × budget × reachability: industrial-robot AI teams and warehouse-manipulation startups (concrete failure cost, reachable), then robot OEMs building learning stacks, then humanoid companies (huge budgets but heavy in-house builds), then academic labs (reachable, low budget — good for credibility, not revenue). The frontier foundation-model labs are the worst first customers: highest capability to build it themselves.</p>
+
+    <div class="ref"><b>Sources:</b> Physical Intelligence (pi.website; π0.5/0.7, human-video transfer, embodied memory); arXiv robot-learning data work cited in current VLA papers (RDT2, OXE-AUGE, Galaxea G0 — 2025–26). Buyer ranking is my assessment.</div>
+  </section>
+
+  <!-- ====================== 08 OPPORTUNITY MAP ====================== -->
+  <section class="panel" id="s-opp" role="tabpanel">
+    <p class="eyebrow">08 · Opportunity map, wedges & beachhead</p>
+    <h1 class="title">Which thesis, which wedge, which buyer first.</h1>
+
+    <h2>Candidate theses, evaluated</h2>
+    <div class="scroller">
+    <table>
+      <thead><tr><th>Thesis</th><th>Defensibility</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td><b>"The task layer for industrial robots"</b> (teach → validate → version → approve → deploy → monitor)</td><td class="nowrap">High</td><td><span class="chip green">Own this</span></td></tr>
+        <tr><td><b>"The validation/trust layer for AI-generated robot code"</b></td><td>High</td><td><span class="chip green">Core sub-thesis — rides IFR safety trend</span></td></tr>
+        <tr><td><b>"The memory/system-of-record for robot work"</b></td><td>High</td><td><span class="chip green">The moat layer of the above</span></td></tr>
+        <tr><td><b>"No-code programming from video"</b></td><td>Low</td><td><span class="chip amber">A feature, not the company — now contested by SB/Wandelbots</span></td></tr>
+        <tr><td><b>"The operating system for robot retasking"</b></td><td>Low</td><td><span class="chip red">The ForgeOS trap — OEMs starve it</span></td></tr>
+        <tr><td><b>"The data engine for robot learning" (KineTrace)</b></td><td>Medium</td><td><span class="chip blue">Best as Aurevix's engine first; standalone later</span></td></tr>
+        <tr><td><b>"Control tower for physical-AI deployment"</b></td><td>Medium-High</td><td><span class="chip blue">A good <em>narrative wrapper</em> for the task layer; not a separate bet</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>Wedge ranking</h2>
+    <ol>
+      <li><b>Deploy-readiness validation + safety sign-off</b> — strongest, most defensible, on-trend, already partly built.</li>
+      <li><b>Operator-owned retasking on the installed brownfield fleet</b> — the door-opener; win on "robots you already own + validated."</li>
+      <li><b>Pre-purchase feasibility (integrator co-sell)</b> — lowest-friction front door, seeds the record.</li>
+      <li><b>Task-intent record + versioning + audit</b> — the switching-cost layer; build behind the wedge.</li>
+      <li><b>Gripper/EOAT intelligence</b> — the hidden-complexity differentiator; you've started it.</li>
+      <li><b>Outcome-based pricing</b> — a commercial wedge as much as a product one; already live.</li>
+    </ol>
+
+    <h2>Beachhead, scored</h2>
+    <div class="scroller">
+    <table>
+      <thead><tr><th>Beachhead</th><th>Pain</th><th>Budget</th><th>Reachability</th><th>Pilot feasibility</th><th>Expansion</th><th>Call</th></tr></thead>
+      <tbody>
+        <tr><td><b>Robot system integrators</b> (your stated near-term ICP)</td><td>High</td><td>Med</td><td>High</td><td>High</td><td>High (channel)</td><td><span class="chip green">Start here</span></td></tr>
+        <tr><td><b>HMLV / SME contract manufacturers</b> (UR/FANUC/KUKA fleets)</td><td>High</td><td>Med</td><td>Med</td><td>High</td><td>High</td><td><span class="chip green">Primary end-buyer</span></td></tr>
+        <tr><td><b>CNC machine-tending shops</b></td><td>High</td><td>Med</td><td>Med</td><td>High</td><td>Med</td><td><span class="chip blue">Strong vertical wedge</span></td></tr>
+        <tr><td><b>Packaging / palletizing SMEs</b></td><td>Med</td><td>Med</td><td>Med</td><td>High</td><td>Med</td><td><span class="chip blue">Good repeatable tasks</span></td></tr>
+        <tr><td><b>Cobot distributors</b></td><td>Med</td><td>Low-Med</td><td>High</td><td>Med</td><td>High (channel)</td><td><span class="chip blue">Distribution lever</span></td></tr>
+        <tr><td><b>Robotics ML / foundation-model labs</b> (KineTrace)</td><td>Med</td><td>High</td><td>Low</td><td>Med</td><td>Med</td><td><span class="chip amber">Hard first customer</span></td></tr>
+        <tr><td><b>Large electronics manufacturers</b></td><td>High</td><td>High</td><td>Low</td><td>Low</td><td>High</td><td><span class="chip red">Intrinsic/Foxconn turf — avoid early</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="callout green">
+      <span class="k">The combination</span>
+      <p><b>Sell the validation wedge, through integrators, into SME brownfield fleets, in a US manufacturing region (Midwest / Southeast / Texas), priced on outcomes, with EMC as the proof point.</b> That's the convergence of every score above — and it matches the GTM pivot already in your notes.</p>
+    </div>
+  </section>
+
+  <!-- ====================== 09 AVOID ====================== -->
+  <section class="panel" id="s-avoid" role="tabpanel">
+    <p class="eyebrow">09 · What to avoid</p>
+    <h1 class="title">The expensive mistakes — most are tempting.</h1>
+
+    <div class="grid g2">
+      <div class="card"><span class="chip red">Avoid</span><h3>Positioning as a universal robot OS</h3><p>ForgeOS proved OEMs will starve it and the runtime isn't yours to own. Multi-brand export is a <em>feature at the task altitude</em>, never the company's identity. <span class="tag">READY Robotics, 2024</span></p></div>
+      <div class="card"><span class="chip red">Avoid</span><h3>Building a frontier VLA</h3><p>π0.x, GR00T, and a dozen labs are spending hundreds of millions. You will not win the model. Sit <em>above</em> it as the deployment/validation/trust layer and stay model-agnostic.</p></div>
+      <div class="card"><span class="chip red">Avoid</span><h3>Leading with the magic trick</h3><p>"90% / 30 seconds / 94%" is the demo, not the moat — and it's now a claim Standard Bots and Wandelbots can match. Lead with validated, auditable, brownfield-native task work.</p></div>
+      <div class="card"><span class="chip red">Avoid</span><h3>Compute-time or per-video-minute pricing</h3><p>It exposes COGS and caps your value capture. Your outcome / customer-type model is correct — protect it. <span class="confirm">[[CONFIRM]]</span> the specific figures with prospects, but keep the structure.</p></div>
+      <div class="card"><span class="chip red">Avoid</span><h3>Overclaiming credibility you haven't earned</h3><p>Country-flag "trust" rows, undefined confidence numbers, and "record yourself on a phone" all read as risk to technical evaluators. One named, real design partner beats four flags.</p></div>
+      <div class="card"><span class="chip red">Avoid</span><h3>"Replace your workers" framing</h3><p>IFR's 2026 narrative — and the buyer's psychology — is "ally, not replacement." Sell factory independence and operator empowerment, not headcount removal. It also defuses floor-level resistance to adoption.</p></div>
+      <div class="card"><span class="chip red">Avoid</span><h3>Fighting Standard Bots on their turf</h3><p>Don't pitch "buy our robot" or out-hardware a vertically-integrated unicorn. Your turf is the installed base they can't touch. Make "no rip-and-replace" the whole point.</p></div>
+      <div class="card"><span class="chip red">Avoid</span><h3>Selling to everyone at once</h3><p>SME + integrator + ML lab + OEM is three companies. Sequence: integrators → SME brownfield → (later) data line. Diffuse focus is how design-partner-stage startups stall.</p></div>
+      <div class="card"><span class="chip red">Avoid</span><h3>Claiming the moat before it exists</h3><p>The flywheel and system-of-record are what you're <em>building</em>, not what you <em>have</em>. Investors reward a credible construction plan over an overstated asset — and overstating it is the fastest way to lose a technical diligence call.</p></div>
+      <div class="card"><span class="chip red">Avoid</span><h3>Large-electronics / humanoid beachheads early</h3><p>That's Intrinsic/Foxconn and the humanoid-hardware war. Long sales cycles, deep-pocketed incumbents. Win the brownfield SME first; meet humanoids later as the task layer they'll also need.</p></div>
+    </div>
+  </section>
+
+  <!-- ====================== 10 VALIDATE ====================== -->
+  <section class="panel" id="s-validate" role="tabpanel">
+    <p class="eyebrow">10 · Validate with design partners</p>
+    <h1 class="title">Ten questions that decide the roadmap.</h1>
+    <p class="lede">These are ordered to test the thesis itself — the task-layer bet lives or dies on the answers to 1–4. Take them to EMC, to Zachary at Neovia, and to the first integrator pilot.</p>
+
+    <ol>
+      <li><b>What does a single task change actually cost you today</b> — in dollars, downtime, and wait-for-the-integrator days? <span class="footnote">(Sizes the wedge and validates the $/cycle outcome price.)</span></li>
+      <li><b>What specifically makes you call an integrator vs. handle it in-house?</b> <span class="footnote">(Defines the exact line your product has to cross to remove them from the critical path.)</span></li>
+      <li><b>What must be true before your safety/EHS person signs off on a robot task?</b> <span class="footnote">(Designs the sign-off workflow — your #3 gap — from the real gating criteria.)</span></li>
+      <li><b>Who today owns "why is this program the way it is," and what breaks when they leave?</b> <span class="footnote">(Tests whether the task-record moat solves a felt pain.)</span></li>
+      <li><b>What would you trust an operator (not an engineer) to change unsupervised — and what never?</b> <span class="footnote">(Calibrates the deploy-readiness thresholds against real risk tolerance.)</span></li>
+      <li><b>How often do you actually retask, and is it predictable or reactive?</b> <span class="footnote">(Validates HMLV frequency and the monitoring/drift value.)</span></li>
+      <li><b>What has to pass in simulation before you'll run a new task on a real cell?</b> <span class="footnote">(Defines what "feasibility" and "readiness" must actually check.)</span></li>
+      <li><b>Which gripper/EOAT failures hurt most, and how do you catch them now?</b> <span class="footnote">(Scopes the gripper-intelligence layer to real failure modes.)</span></li>
+      <li><b>Would you pay monthly for retasking software — and does outcome-based (pay-per-successful-cycle) feel safer or scarier than a flat fee?</b> <span class="footnote">(Validates the pricing model directly, including the cap.)</span></li>
+      <li><b>If we made your existing UR/FANUC/KUKA robots retaskable without new hardware, what's the first task you'd put on it?</b> <span class="footnote">(Tests the brownfield positioning and surfaces the highest-value first deployment.)</span></li>
+    </ol>
+
+    <div class="callout insight">
+      <span class="k">What you're really testing</span>
+      <p>If partners light up on 1–4 (cost of change, integrator trigger, sign-off criteria, ownership of intent), the task-layer thesis is validated and you should build the gate + record next. If they only light up on 5–6 and 10 (retasking frequency, brownfield), you have a strong wedge but need to earn the right to the moat through usage. Either answer is useful — but they point to different sequencing.</p>
+    </div>
+  </section>
+
+  <!-- ====================== 11 FINAL ====================== -->
+  <section class="panel" id="s-final" role="tabpanel">
+    <p class="eyebrow">11 · Final thesis</p>
+    <h1 class="title">The robot was never the hard part.</h1>
+
+    <p class="lede">The robotics market is about to be flooded with capital, hardware, and foundation models that can all generate motion. Standard Bots will sell arms; Physical Intelligence and NVIDIA will sell brains; Wandelbots and Intrinsic will sell platforms. What none of them is building — because hardware companies can't and model labs won't — is the layer that turns a robot into a <em>repeatable, trusted, auditable production worker</em> across the robots a factory already owns.</p>
+
+    <div class="callout insight">
+      <span class="k">The thesis</span>
+      <p>The winning industrial-AI software company will not generate motion. It will <b>capture task intent, validate deployment readiness, manage safety sign-off, remember every task and its history, monitor execution for drift, and let factories retask their existing robots without depending on outside experts</b> — and it will charge for the outcome, not the compute. Aurevix should own the task layer between human workers and industrial robots. The motion-generation demo is how you get in the room; the validated, remembered, signed-off task record is why you stay.</p>
+    </div>
+
+    <h2>If you do one thing this quarter</h2>
+    <p>Move the pitch up to where the product already is. Stop leading with "90% faster in 30 seconds" — a claim your best-funded competitor can now match — and start leading with the thing only you are building: <b>"the deployment-and-trust layer that makes the robots you already own retaskable, validated, and signed off."</b> Then build the gate and the record behind it, in that order, before someone with more money builds the same and calls it theirs first.</p>
+
+    <div class="callout principle">
+      <span class="k">The discipline that wins</span>
+      <p>You set the right rules already: no premature moat claims, no unverified stats, credibility over magic, value-based pricing. The market in 2026 rewards exactly that posture — investors on the Standard Bots round paid a billion dollars for "actually usable on the floor," not for a flashier demo. Keep optimizing for truth. It's also, conveniently, the most defensible strategy you have.</p>
+    </div>
+
+    <div class="hr"></div>
+    <p class="footnote"><b>Provenance:</b> Market and competitive claims are from a June 2026 web scan — IFR (Top 5 Trends 2026), The Robot Report, PR Newswire, SiliconANGLE, Dataconomy, TechCrunch, wandelbots.com, pi.website, and Standard Bots/ABB materials. Product observations are read directly from the console screenshots you provided. Scores and rankings are reasoned estimates on your 8-axis framework, not measured data. Items I could not verify are marked <span class="confirm">[[CONFIRM]]</span>. The exhaustive 18-file / 200-link version of this brief is a Research-feature job — ask and I'll scope the prompt to return structured, sourced, de-duplicated output rather than padding.</p>
+  </section>
+
+  </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  var panels = Array.prototype.slice.call(document.querySelectorAll('.panel'));
+  var sel = document.getElementById('mobselect');
+
+  // build mobile select
+  tabs.forEach(function(t){
+    var o = document.createElement('option');
+    o.value = t.getAttribute('data-target');
+    o.textContent = t.querySelector('.num').textContent + '  ' + t.querySelector('span:last-child').textContent;
+    sel.appendChild(o);
+  });
+
+  function activate(id, fromKeyboard){
+    panels.forEach(function(p){ p.classList.toggle('active', p.id === id); });
+    tabs.forEach(function(t){
+      var on = t.getAttribute('data-target') === id;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      if(on && fromKeyboard){ t.focus(); }
+    });
+    if(sel.value !== id){ sel.value = id; }
+    // scroll content area up
+    window.scrollTo({top: 0, behavior: (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto':'smooth')});
+  }
+
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ activate(t.getAttribute('data-target')); });
+    t.addEventListener('keydown', function(e){
+      var idx = i;
+      if(e.key === 'ArrowDown' || e.key === 'ArrowRight'){ e.preventDefault(); idx = (i+1) % tabs.length; activate(tabs[idx].getAttribute('data-target'), true); }
+      else if(e.key === 'ArrowUp' || e.key === 'ArrowLeft'){ e.preventDefault(); idx = (i-1+tabs.length) % tabs.length; activate(tabs[idx].getAttribute('data-target'), true); }
+      else if(e.key === 'Home'){ e.preventDefault(); activate(tabs[0].getAttribute('data-target'), true); }
+      else if(e.key === 'End'){ e.preventDefault(); activate(tabs[tabs.length-1].getAttribute('data-target'), true); }
+    });
+  });
+
+  sel.addEventListener('change', function(){ activate(sel.value); });
+
+  // deep-link via hash
+  if(location.hash){
+    var id = location.hash.replace('#','');
+    if(document.getElementById(id) && document.getElementById(id).classList.contains('panel')){ activate(id); }
+  }
+})();
+</script>
+</body>
+</html>

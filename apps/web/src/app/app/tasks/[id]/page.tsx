@@ -9,6 +9,7 @@ import { RiskAssessmentDraftAction } from "@/components/risk-assessment-draft";
 import { GripperRecommendations } from "@/components/gripper-recommendations";
 import { AutomationPassportExport } from "@/components/automation-passport-export";
 import { FixtureDesignerPanel } from "@/components/fixture-designer";
+import { TaskTrustLayer } from "@/components/task-trust-layer";
 import type { Task } from "@/lib/types";
 
 export default function TaskDetailPage() {
@@ -60,6 +61,8 @@ export default function TaskDetailPage() {
           </p>
         )}
       </section>
+
+      <TaskTrustLayer taskId={task.id} />
 
       <section className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5">
         <h2 className="font-display text-2xl">Motion summary</h2>
