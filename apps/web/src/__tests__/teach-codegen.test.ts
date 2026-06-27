@@ -15,7 +15,7 @@ import {
   sanitizeIdentifier,
   stateMethodName,
   type SequenceStep,
-} from "@/app/app/teach/page";
+} from "@/lib/teach-codegen";
 
 function step(partial: Partial<TaskStep> & Pick<TaskStep, "action" | "target">): TaskStep {
   return {

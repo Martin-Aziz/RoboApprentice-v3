@@ -128,11 +128,21 @@ export function ensureTerminalHomeSteps(steps: TaskStep[]): TaskStep[] {
 
   if (!sorted[0] || sorted[0].action !== "home") {
     sorted.unshift(makeHome("Move to calibrated home pose", 0));
+  } else {
+    sorted[0] = { ...sorted[0], gripper: "open" };
   }
 
   const last = sorted[sorted.length - 1];
   if (!last || last.action !== "home") {
     sorted.push(makeHome("Return to calibrated home pose", sorted.length + 1));
+  } else {
+    sorted[sorted.length - 1] = {
+      ...last,
+      description: last.description.toLowerCase().includes("gripper open")
+        ? last.description
+        : `${last.description} with gripper open`,
+      gripper: "open",
+    };
   }
 
   return sorted.map((step, index) => ({ ...step, order: index + 1 }));

@@ -52,6 +52,8 @@ describe("policy pipeline", () => {
     expect(errors).toEqual([]);
     expect(policy.steps[0].action).toBe("home");
     expect(policy.steps.at(-1)?.action).toBe("home");
+    expect(policy.steps[0].gripper).toBe("open");
+    expect(policy.steps.at(-1)?.gripper).toBe("open");
     expect(policy.steps.some((s) => s.description.includes("Approach for grip"))).toBe(true);
     expect(policy.steps.some((s) => s.description.includes("Approach for release"))).toBe(true);
     expect(policy.steps.some((s) => s.description.includes("Lift clear after grip"))).toBe(true);
@@ -62,5 +64,33 @@ describe("policy pipeline", () => {
     ).toBe(true);
     expect(policy.estimatedCycleSeconds).toBeGreaterThan(raw.estimatedCycleSeconds);
     expect(policy.workspaceBounds?.zMin).toBeCloseTo(0.08);
+  });
+
+  it("normalizes existing terminal home poses to an open gripper", () => {
+    const raw: TaskPolicy = {
+      toolFrame: "tcp_default",
+      estimatedCycleSeconds: 4,
+      steps: [
+        step({
+          order: 1,
+          action: "home",
+          target: target(0, 0, 0.6),
+          gripper: "unchanged",
+        }),
+        step({
+          order: 2,
+          action: "home",
+          target: target(0, 0, 0.6),
+          description: "Return to home position",
+          gripper: "unchanged",
+        }),
+      ],
+    };
+
+    const { policy } = processPolicyPipeline(raw);
+
+    expect(policy.steps[0].gripper).toBe("open");
+    expect(policy.steps.at(-1)?.gripper).toBe("open");
+    expect(policy.steps.at(-1)?.description).toContain("gripper open");
   });
 });

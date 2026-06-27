@@ -4,7 +4,7 @@ import { spawn } from "child_process";
 import Anthropic from "@anthropic-ai/sdk";
 import { getTask, updateTask } from "@/lib/task-store-db";
 import { processPolicyPipeline } from "@/lib/policy-pipeline";
-import { extractVideoFrames } from "@/lib/video-frames";
+import { extractVideoFrames, type FrameSample } from "@/lib/video-frames";
 import type { GripperState, RobotAction, TaskPolicy, TaskStep, Waypoint } from "@/lib/types";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
@@ -277,15 +277,23 @@ class StreamingJSONParser {
 const SYSTEM_PROMPT = `You are an expert industrial robotics motion planner with deep knowledge of 6-DOF manipulator kinematics, trajectory planning, and manufacturing automation. Your task is to analyze a robot teaching demonstration and produce a precise, executable motion policy.
 
 ## EVIDENCE
-If still frames sampled from the demonstration video are provided, they are your PRIMARY source of truth. Read them in order and infer the actual motion: which object is grasped, the direction it travels, any rotation/reorientation, and where it is set down. Ground every waypoint coordinate and step description in what the frames actually show. Use the title/narration only to fill gaps the frames leave ambiguous.
+If still frames sampled from the demonstration video are provided, they are your PRIMARY source of truth. The frames are timestamped and appear in chronological order. Preserve distinct stages that happen at different timestamps. Do not collapse a multi-stage warehouse or workcell video into a single pick/place cycle unless the evidence truly shows only one cycle. Ground every waypoint coordinate and step description in what the frames actually show. Use the title/narration only to fill gaps the frames leave ambiguous.
+
+## ANTI-HALLUCINATION RULES
+- Do not name equipment, sensors, scanners, second robots, collaborative zones, or inspection systems unless they are clearly visible in the frames or stated in the operator description.
+- If a stage is ambiguous, describe it conservatively as "transition to next workcell position" or "hold at intermediate waypoint" instead of inventing a process.
+- Use "inspect" only when the video clearly shows a vision/checking pose, camera/scanner, or inspection pause; otherwise use "move" or "wait".
+- If the final frames do not clearly show the robot still carrying a payload, end with gripper open at home.
+- Never claim the task is complete with a part held in the gripper unless the final frame visibly proves that state.
 
 ## THINKING PROCESS
 Before generating output, reason through these questions mentally:
-1. What is the primary pick-and-place or manipulation goal?
-2. What are the key spatial waypoints (home → approach → grasp → carry → approach → place → home)?
-3. Which steps require vision/sensing vs. blind positioning?
-4. Where are the critical contact points that need slow, careful motion?
-5. What safety clearances and approach vectors are needed to avoid collisions?
+1. How many distinct temporal stages are visible? Treat scene changes, long position changes, handoff moments, bin/tote moves, fixture moves, tool-change-looking moves, and final placement as separate stages.
+2. For each stage, what object or robot state changes? If the object, source, destination, or tool posture changes, keep that as its own stage.
+3. What are the key spatial waypoints for every stage (home → approach → contact/action → lift/retract → transfer → next stage)?
+4. Which steps require vision/sensing vs. blind positioning?
+5. Where are the critical contact points that need slow, careful motion?
+6. What safety clearances and approach vectors are needed to avoid collisions?
 
 ## OUTPUT FORMAT
 Respond with ONLY a valid JSON array. No markdown fences, no commentary, no prose before or after.
@@ -314,10 +322,15 @@ Robot base frame. Origin at robot base center.
 ## STRICT RULES
 
 ### Step count & structure
-- Generate 5 to 14 atomic steps total
+- Generate 6 to 30 atomic steps total
+- For a single simple pick/place, 6 to 14 steps is enough.
+- For multi-stage warehouse/workcell demonstrations, use 12 to 30 steps and preserve every visible stage.
 - ALWAYS start with step 1 as "home" action (joints at rest, gripper open, z ≥ 0.5)
 - ALWAYS end with the final step as "home" action (return to rest)
-- Structure: home → [approach → grip → lift] → [carry] → [approach → release → retract] → home
+- Preferred structure: home → stage 1 actions → stage 2 actions → ... → final retract → home
+- A stage may be a grip/release cycle, an inspection, a wait-for-signal, a tool-change posture, a bin/tote transfer, a fixture alignment, or a final placement.
+- If a clip shows an operator-only setup/introduction, represent it only if it affects robot action; otherwise start from the first robot-relevant stage.
+- Do not invent repeated cycles that are not visible, but do not omit distinct cycles/stages that are visible.
 
 ### Approach steps (mandatory before contact)
 - Insert an "approach" step 5–8cm ABOVE every grip or release target
@@ -346,6 +359,7 @@ Robot base frame. Origin at robot base center.
 - Use precise imperative sentences: "Descend 5cm above left bin bracket at approach speed"
 - Include spatial direction when helpful: "Move RIGHT to fixture slot B"
 - Include contact cues: "Grip bracket with 40N force until position stable"
+- Include stage-specific landmarks when visible: "gray tote", "fixture slot", "bench rail", "second part", "tool-change station"
 - Avoid vague verbs: NO "do", "perform", "execute" — use "grip", "move", "descend", "rotate"
 
 ### Durations (physics-based)
@@ -361,6 +375,7 @@ Robot base frame. Origin at robot base center.
 ✓ Coordinates within safe working envelope
 ✓ Gripper state changes ONLY on grip/release actions
 ✓ Descriptions are precise and action-oriented
+✓ Multi-stage videos preserve each distinct visible stage
 ✓ Output is valid JSON array only — no surrounding text`;
 
 /**
@@ -373,16 +388,19 @@ Robot base frame. Origin at robot base center.
 function runClaudeCodeCli(opts: {
   systemPrompt: string;
   userText: string;
-  frames: string[];
+  samples: FrameSample[];
   mediaType: string;
 }): Promise<string> {
   const content: Anthropic.ContentBlockParam[] = [
     { type: "text", text: opts.userText },
-    ...opts.frames.map(
-      (data): Anthropic.ImageBlockParam => ({
-        type: "image",
-        source: { type: "base64", media_type: opts.mediaType as "image/jpeg", data },
-      }),
+    ...opts.samples.flatMap(
+      (sample): Anthropic.ContentBlockParam[] => [
+        { type: "text", text: sample.label },
+        {
+          type: "image",
+          source: { type: "base64", media_type: opts.mediaType as "image/jpeg", data: sample.data },
+        },
+      ],
     ),
   ];
   const message = { type: "user", message: { role: "user", content } };
@@ -459,27 +477,35 @@ export async function POST(
         // Pull still frames from the demonstration video so Claude can derive
         // the policy from what actually happens on screen. Degrades to
         // text-only when the video isn't server-readable or ffmpeg is absent.
-        const extracted = await extractVideoFrames(task.videoUrl, { maxFrames: 8 });
-        if (extracted.frames.length > 0) {
-          send({ type: "status", message: `Analyzing ${extracted.frames.length} frames sampled from the demonstration video.` });
+        const extracted = await extractVideoFrames(task.videoUrl, { maxFrames: 24 });
+        if (extracted.samples.length > 0) {
+          const durationText = extracted.durationSeconds ? ` across ${extracted.durationSeconds.toFixed(1)}s` : "";
+          const sceneText = extracted.sceneChanges.length ? `; ${extracted.sceneChanges.length} scene changes detected` : "";
+          send({ type: "status", message: `Analyzing ${extracted.samples.length} timestamped frames${durationText}${sceneText}.` });
         } else if (extracted.note) {
           send({ type: "status", message: `Vision analysis skipped — interpreting from text. ${extracted.note}` });
         }
+
+        const frameTimeline = extracted.samples.length
+          ? extracted.samples
+              .map((sample) => `- ${sample.label}`)
+              .join("\n")
+          : "";
 
         const userPrompt = [
           `## Task to plan`,
           `Title: "${task.title}"`,
           `Video source: ${task.videoUrl}`,
-          extracted.frames.length > 0
-            ? `\n## Demonstration frames\n${extracted.frames.length} still frames from the video are attached below, in chronological order. Read the actual manipulation from them.`
+          extracted.samples.length > 0
+            ? `\n## Demonstration frame timeline\n${frameTimeline}\n\nThe timestamped images are attached below in the same order. First identify the stage boundaries, then emit one atomic motion-policy JSON array that preserves the visible stages.`
             : "",
           task.transcript
             ? `\n## Operator description\n"${task.transcript}"\n\nUse this narration alongside the frames to resolve any ambiguity in contact points and spatial positions.`
-            : extracted.frames.length > 0
+            : extracted.samples.length > 0
               ? `\n## Note\nNo operator narration provided. Derive the steps from the frames.`
               : `\n## Note\nNo operator narration or readable video frames available. Infer a plausible pick-and-place policy from the task title alone. Use conservative speeds and add vision checks where part position is uncertain.`,
           `\n## Output`,
-          `Generate the JSON array of motion steps now. Follow all rules in the system prompt exactly.`,
+          `Generate the JSON array of motion steps now. Follow all rules in the system prompt exactly. Use enough steps to preserve all robot-relevant stages, up to the 30-step limit.`,
         ]
           .filter(Boolean)
           .join("\n");
@@ -488,11 +514,14 @@ export async function POST(
         // sampled frames as image blocks. Other providers receive text only.
         const claudeContent: Anthropic.MessageParam["content"] = [
           { type: "text", text: userPrompt },
-          ...extracted.frames.map(
-            (data): Anthropic.ImageBlockParam => ({
-              type: "image",
-              source: { type: "base64", media_type: extracted.mediaType, data },
-            }),
+          ...extracted.samples.flatMap(
+            (sample): Anthropic.ContentBlockParam[] => [
+              { type: "text", text: sample.label },
+              {
+                type: "image",
+                source: { type: "base64", media_type: extracted.mediaType, data: sample.data },
+              },
+            ],
           ),
         ];
 
@@ -592,13 +621,13 @@ export async function POST(
             send({
               type: "status",
               message: extracted.frames.length
-                ? `Sending ${extracted.frames.length} frames to Claude Code for analysis…`
+                ? `Sending ${extracted.samples.length} timestamped frames to Claude Code for analysis…`
                 : "Interpreting with Claude Code…",
             });
             const resultText = await runClaudeCodeCli({
               systemPrompt: SYSTEM_PROMPT,
               userText: userPrompt,
-              frames: extracted.frames,
+              samples: extracted.samples,
               mediaType: extracted.mediaType,
             });
             feedChunk(session, resultText);
