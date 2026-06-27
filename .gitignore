@@ -75,3 +75,6 @@ htmlcov/
 *.log
 *.tsbuildinfo
 tmp/
+
+# ─── Video files ─────────────────────
+video/
