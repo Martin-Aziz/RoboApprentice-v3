@@ -17,6 +17,25 @@ describe("adaptive video frame sampling", () => {
     );
   });
 
+  it("gives second-by-second coverage when the budget allows", () => {
+    const plan = buildAdaptiveSamplePlan(10, [], 40);
+    // Every integer second 1..9 has a sampled frame within half a second
+    // (some land as segment-midpoints rather than the uniform grid).
+    for (let second = 1; second <= 9; second += 1) {
+      const covered = plan.some(
+        (sample) => Math.abs(sample.timestampSeconds - second) <= 0.5,
+      );
+      expect(covered, `second ${second} should be covered`).toBe(true);
+    }
+  });
+
+  it("prioritises motion activity peaks above uniform coverage under the cap", () => {
+    const plan = buildAdaptiveSamplePlan(35, [5, 10, 15, 20, 25, 30], 24, [3.5, 12.1, 22.4]);
+    const actions = plan.filter((sample) => sample.reason === "action");
+    expect(actions.length).toBe(3);
+    expect(plan.length).toBeLessThanOrEqual(24);
+  });
+
   it("falls back to inferred temporal segments when scene detection is absent", () => {
     const plan = buildAdaptiveSamplePlan(35, [], 24);
     const midpoints = plan.filter((sample) => sample.reason === "segment-midpoint");

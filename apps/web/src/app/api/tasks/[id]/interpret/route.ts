@@ -15,7 +15,10 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "gemma4:latest";
 // API key). Disabled with CLAUDE_CODE_CLI=0. Uses a model alias the CLI accepts.
 const CLAUDE_CODE_CLI_ENABLED = process.env.CLAUDE_CODE_CLI !== "0";
 const CLAUDE_CODE_MODEL = process.env.CLAUDE_CODE_MODEL ?? "sonnet";
-const CLAUDE_CODE_TIMEOUT_MS = 120_000;
+const CLAUDE_CODE_TIMEOUT_MS = Number(process.env.CLAUDE_CODE_TIMEOUT_MS ?? 240_000);
+// How many evidence frames to sample. Defaults to ~1 frame/second coverage for a
+// typical demo (capped in video-frames at 64). Raise for longer or denser clips.
+const VISION_MAX_FRAMES = Math.max(8, Math.min(Number(process.env.VISION_MAX_FRAMES ?? 40), 64));
 
 interface RawStep {
   order: number;
@@ -279,6 +282,10 @@ const SYSTEM_PROMPT = `You are an expert industrial robotics motion planner with
 ## EVIDENCE
 If still frames sampled from the demonstration video are provided, they are your PRIMARY source of truth. The frames are timestamped and appear in chronological order. Preserve distinct stages that happen at different timestamps. Do not collapse a multi-stage warehouse or workcell video into a single pick/place cycle unless the evidence truly shows only one cycle. Ground every waypoint coordinate and step description in what the frames actually show. Use the title/narration only to fill gaps the frames leave ambiguous.
 
+A computer-vision motion pass may also be supplied:
+- A "Motion analysis" timeline derived from inter-frame optical difference. It reports, per segment, whether the dominant motion is a downward descent (approach/contact), an upward lift (retract after grip), a lateral transfer, or localised in-place manipulation, plus the on-screen location of the activity. Hard scene cuts in the timeline mark edits between potentially distinct workcell stages — never merge across a cut without checking the frames.
+- "(action)" frames sampled at motion peaks, each optionally followed by a "Zoom on activity region" inset cropped to the moving gripper/contact area. Read these insets to determine gripper open vs. closed and what object is held — this is how you decide pick (gripper closes on a part) versus place (gripper opens to release). When the wide frame is too small to tell, defer to the inset.
+
 ## ANTI-HALLUCINATION RULES
 - Do not name equipment, sensors, scanners, second robots, collaborative zones, or inspection systems unless they are clearly visible in the frames or stated in the operator description.
 - If a stage is ambiguous, describe it conservatively as "transition to next workcell position" or "hold at intermediate waypoint" instead of inventing a process.
@@ -385,6 +392,29 @@ Robot base frame. Origin at robot base center.
  * so the model sees the actual video without any Read-tool round-trips. Returns
  * the model's final text (a JSON array of steps, possibly fenced).
  */
+/**
+ * Build the content blocks for one sampled frame: the wide frame, plus the
+ * zoomed gripper/contact inset when the motion pass produced one. Shared by the
+ * Anthropic API and Claude Code CLI providers so both see identical evidence.
+ */
+function frameContentBlocks(sample: FrameSample, mediaType: string): Anthropic.ContentBlockParam[] {
+  const blocks: Anthropic.ContentBlockParam[] = [
+    { type: "text", text: sample.label },
+    {
+      type: "image",
+      source: { type: "base64", media_type: mediaType as "image/jpeg", data: sample.data },
+    },
+  ];
+  if (sample.roi) {
+    blocks.push({ type: "text", text: sample.roi.label });
+    blocks.push({
+      type: "image",
+      source: { type: "base64", media_type: mediaType as "image/jpeg", data: sample.roi.data },
+    });
+  }
+  return blocks;
+}
+
 function runClaudeCodeCli(opts: {
   systemPrompt: string;
   userText: string;
@@ -393,15 +423,7 @@ function runClaudeCodeCli(opts: {
 }): Promise<string> {
   const content: Anthropic.ContentBlockParam[] = [
     { type: "text", text: opts.userText },
-    ...opts.samples.flatMap(
-      (sample): Anthropic.ContentBlockParam[] => [
-        { type: "text", text: sample.label },
-        {
-          type: "image",
-          source: { type: "base64", media_type: opts.mediaType as "image/jpeg", data: sample.data },
-        },
-      ],
-    ),
+    ...opts.samples.flatMap((sample) => frameContentBlocks(sample, opts.mediaType)),
   ];
   const message = { type: "user", message: { role: "user", content } };
 
@@ -477,11 +499,16 @@ export async function POST(
         // Pull still frames from the demonstration video so Claude can derive
         // the policy from what actually happens on screen. Degrades to
         // text-only when the video isn't server-readable or ffmpeg is absent.
-        const extracted = await extractVideoFrames(task.videoUrl, { maxFrames: 24 });
+        const extracted = await extractVideoFrames(task.videoUrl, { maxFrames: VISION_MAX_FRAMES });
         if (extracted.samples.length > 0) {
           const durationText = extracted.durationSeconds ? ` across ${extracted.durationSeconds.toFixed(1)}s` : "";
           const sceneText = extracted.sceneChanges.length ? `; ${extracted.sceneChanges.length} scene changes detected` : "";
-          send({ type: "status", message: `Analyzing ${extracted.samples.length} timestamped frames${durationText}${sceneText}.` });
+          const actionFrames = extracted.samples.filter((s) => s.reason === "action").length;
+          const roiCount = extracted.samples.filter((s) => s.roi).length;
+          const motionText = actionFrames
+            ? `; ${actionFrames} motion-peak keyframe(s), ${roiCount} gripper zoom inset(s)`
+            : "";
+          send({ type: "status", message: `Analyzing ${extracted.samples.length} timestamped frames${durationText}${sceneText}${motionText}.` });
         } else if (extracted.note) {
           send({ type: "status", message: `Vision analysis skipped — interpreting from text. ${extracted.note}` });
         }
@@ -497,7 +524,10 @@ export async function POST(
           `Title: "${task.title}"`,
           `Video source: ${task.videoUrl}`,
           extracted.samples.length > 0
-            ? `\n## Demonstration frame timeline\n${frameTimeline}\n\nThe timestamped images are attached below in the same order. First identify the stage boundaries, then emit one atomic motion-policy JSON array that preserves the visible stages.`
+            ? `\n## Demonstration frame timeline\n${frameTimeline}\n\nThe timestamped images are attached below in the same order. Frames marked "(action)" sit at detected motion peaks (grasp/release/contact moments) and may be followed by a zoomed inset of the gripper/contact region — use those insets to read gripper open/closed state and the handled object. First identify the stage boundaries, then emit one atomic motion-policy JSON array that preserves the visible stages.`
+            : "",
+          extracted.motionSummary
+            ? `\n## Motion analysis\n${extracted.motionSummary}\n\nUse this motion timeline to order stages, distinguish descents (approach) from lifts (retract), and place grip/release at the activity peaks. The image evidence overrides this summary where they disagree.`
             : "",
           task.transcript
             ? `\n## Operator description\n"${task.transcript}"\n\nUse this narration alongside the frames to resolve any ambiguity in contact points and spatial positions.`
@@ -514,14 +544,8 @@ export async function POST(
         // sampled frames as image blocks. Other providers receive text only.
         const claudeContent: Anthropic.MessageParam["content"] = [
           { type: "text", text: userPrompt },
-          ...extracted.samples.flatMap(
-            (sample): Anthropic.ContentBlockParam[] => [
-              { type: "text", text: sample.label },
-              {
-                type: "image",
-                source: { type: "base64", media_type: extracted.mediaType, data: sample.data },
-              },
-            ],
+          ...extracted.samples.flatMap((sample) =>
+            frameContentBlocks(sample, extracted.mediaType),
           ),
         ];
 
@@ -595,7 +619,7 @@ export async function POST(
             const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
             const claudeStream = anthropic.messages.stream({
               model: ANTHROPIC_MODEL,
-              max_tokens: 4096,
+              max_tokens: 8192,
               system: SYSTEM_PROMPT,
               messages: [{ role: "user", content: claudeContent }],
             });

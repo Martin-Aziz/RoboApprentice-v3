@@ -78,3 +78,7 @@ tmp/
 
 # ─── Video files ─────────────────────
 video/
+
+# Local scratch + working test assets (do not commit)
+/scratchpad/
+/warehouse-multistep.mp4

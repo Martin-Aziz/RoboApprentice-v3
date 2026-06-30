@@ -18,6 +18,7 @@ import { existsSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { promisify } from "util";
+import { analyzeMotion, motionAt, summariseMotion, type MotionProfile } from "./video-motion";
 
 const execFileAsync = promisify(execFile);
 
@@ -33,6 +34,8 @@ export interface ExtractedFrames {
   durationSeconds: number | null;
   /** Scene-change timestamps detected by ffmpeg, used for multi-stage videos. */
   sceneChanges: number[];
+  /** Plain-language motion timeline derived from inter-frame optical difference. */
+  motionSummary: string;
   /** Human-readable explanation, surfaced to the operator when frames are absent. */
   note: string;
 }
@@ -42,7 +45,8 @@ export type SampleReason =
   | "end"
   | "scene-boundary"
   | "segment-midpoint"
-  | "uniform";
+  | "uniform"
+  | "action";
 
 export interface FrameSample {
   /** Base64-encoded JPEG frame. */
@@ -53,6 +57,12 @@ export interface FrameSample {
   reason: SampleReason;
   /** Human-readable label for model prompts and debug output. */
   label: string;
+  /**
+   * Optional zoomed crop centred on the moving region (gripper/contact) at this
+   * timestamp, as a base64 JPEG. Lets the model read gripper open/closed state
+   * and the handled object, which is unreadable in the wide frame.
+   */
+  roi?: { data: string; label: string };
 }
 
 export interface PlannedSample {
@@ -177,11 +187,25 @@ export function buildAdaptiveSamplePlan(
   durationSeconds: number | null,
   sceneChanges: number[],
   maxFrames: number,
+  activityPeaks: number[] = [],
 ): PlannedSample[] {
   const duration = durationSeconds && durationSeconds > 0 ? durationSeconds : maxFrames / 2;
-  const cappedMaxFrames = Math.max(6, Math.min(maxFrames, 32));
-  const minDistanceSeconds = duration > 20 ? 0.45 : 0.25;
+  const cappedMaxFrames = Math.max(6, Math.min(maxFrames, 64));
+  const minDistanceSeconds = duration > 45 ? 0.45 : 0.25;
   const samples: PlannedSample[] = [];
+
+  // Motion activity peaks are the highest-value evidence: the instants a grasp,
+  // release, or contact is most likely. Give them top priority so they always
+  // survive the frame cap.
+  activityPeaks
+    .filter((timestamp) => timestamp > 0.3 && timestamp < duration - 0.3)
+    .forEach((timestamp) => {
+      pushDeduped(samples, {
+        timestampSeconds: clampTimestamp(timestamp, duration),
+        reason: "action",
+        priority: -1,
+      }, minDistanceSeconds);
+    });
 
   pushDeduped(samples, {
     timestampSeconds: clampTimestamp(0.45, duration),
@@ -235,14 +259,28 @@ export function buildAdaptiveSamplePlan(
     }
   }
 
-  const uniformCount = cappedMaxFrames;
-  for (let index = 1; index <= uniformCount; index += 1) {
-    const timestamp = (duration * index) / (uniformCount + 1);
-    pushDeduped(samples, {
-      timestampSeconds: clampTimestamp(timestamp, duration),
-      reason: "uniform",
-      priority: 2,
-    }, minDistanceSeconds);
+  // Second-by-second baseline coverage: one uniform frame per integer second so
+  // no stage is missed between scene cuts. If the clip is longer than the frame
+  // budget, fall back to evenly spaced uniform frames. Action/scene frames keep
+  // higher priority, so dense uniform coverage never crowds out the key moments.
+  const secondGridFits = Math.floor(duration) <= cappedMaxFrames;
+  if (secondGridFits) {
+    for (let second = 1; second < duration; second += 1) {
+      pushDeduped(samples, {
+        timestampSeconds: clampTimestamp(second, duration),
+        reason: "uniform",
+        priority: 2,
+      }, minDistanceSeconds);
+    }
+  } else {
+    for (let index = 1; index <= cappedMaxFrames; index += 1) {
+      const timestamp = (duration * index) / (cappedMaxFrames + 1);
+      pushDeduped(samples, {
+        timestampSeconds: clampTimestamp(timestamp, duration),
+        reason: "uniform",
+        priority: 2,
+      }, minDistanceSeconds);
+    }
   }
 
   if (samples.length > cappedMaxFrames) {
@@ -255,12 +293,48 @@ export function buildAdaptiveSamplePlan(
   return samples.sort((a, b) => a.timestampSeconds - b.timestampSeconds);
 }
 
+/**
+ * Extract a zoomed crop centred on the moving region at this timestamp. The
+ * centroid comes from the motion field, so the inset frames the gripper/contact
+ * tightly enough that the model can read gripper open/closed and the part.
+ */
+async function extractRoiAt(
+  path: string,
+  timestampSeconds: number,
+  centroid: { x: number; y: number },
+  workDir: string,
+  index: number,
+): Promise<string | null> {
+  const cropFraction = 0.42;
+  const half = cropFraction / 2;
+  const cx = Math.min(Math.max(centroid.x, half), 1 - half);
+  const cy = Math.min(Math.max(centroid.y, half), 1 - half);
+  const output = join(workDir, `roi-${String(index + 1).padStart(3, "0")}.jpg`);
+  const crop = `crop=iw*${cropFraction}:ih*${cropFraction}:iw*${(cx - half).toFixed(4)}:ih*${(cy - half).toFixed(4)},scale=384:-1`;
+  try {
+    await execFileAsync("ffmpeg", [
+      "-y",
+      "-ss", timestampSeconds.toFixed(3),
+      "-i", path,
+      "-frames:v", "1",
+      "-vf", crop,
+      "-q:v", "3",
+      output,
+    ]);
+    const buf = await readFile(output);
+    return buf.toString("base64");
+  } catch {
+    return null;
+  }
+}
+
 async function extractFrameAt(
   path: string,
   sample: PlannedSample,
   width: number,
   workDir: string,
   index: number,
+  profile: MotionProfile | null,
 ): Promise<FrameSample | null> {
   const output = join(workDir, `f-${String(index + 1).padStart(3, "0")}.jpg`);
   try {
@@ -275,11 +349,30 @@ async function extractFrameAt(
     ]);
     const buf = await readFile(output);
     const timestamp = Number(sample.timestampSeconds.toFixed(2));
+
+    // Attach a zoomed gripper/contact inset for the moments that matter most —
+    // detected action peaks and scene-boundary frames — where reading the
+    // gripper state and handled object decides pick vs. place.
+    let roi: FrameSample["roi"];
+    if (profile && (sample.reason === "action" || sample.reason === "scene-boundary")) {
+      const motion = motionAt(profile, sample.timestampSeconds);
+      if (motion?.centroid) {
+        const data = await extractRoiAt(path, sample.timestampSeconds, motion.centroid, workDir, index);
+        if (data) {
+          roi = {
+            data,
+            label: `Zoom on activity region at ${timestamp.toFixed(2)}s (gripper/contact detail)`,
+          };
+        }
+      }
+    }
+
     return {
       data: buf.toString("base64"),
       timestampSeconds: timestamp,
       reason: sample.reason,
       label: `Frame ${index + 1} at ${timestamp.toFixed(2)}s (${sample.reason})`,
+      roi,
     };
   } catch {
     return null;
@@ -295,7 +388,7 @@ export async function extractVideoFrames(
   videoUrl: string,
   opts: { maxFrames?: number; width?: number; sceneThreshold?: number } = {},
 ): Promise<ExtractedFrames> {
-  const maxFrames = Math.max(6, Math.min(opts.maxFrames ?? 24, 32));
+  const maxFrames = Math.max(6, Math.min(opts.maxFrames ?? 32, 64));
   const width = opts.width ?? 512;
   const sceneThreshold = opts.sceneThreshold ?? 0.16;
   const { path, note } = resolveVideoPath(videoUrl);
@@ -307,20 +400,32 @@ export async function extractVideoFrames(
       sourcePath: null,
       durationSeconds: null,
       sceneChanges: [],
+      motionSummary: "",
       note,
     };
   }
 
   const duration = await probeDurationSeconds(path);
-  const sceneChanges = await detectSceneChanges(path, duration, sceneThreshold);
-  const plan = buildAdaptiveSamplePlan(duration, sceneChanges, maxFrames);
+  // Computer-vision motion pass: motion-aware keyframes, scene-cut detection,
+  // and per-frame regions of interest. Runs alongside the luma scene detector;
+  // either source of stage boundaries is merged into the sample plan.
+  const motion = await analyzeMotion(path, { durationSeconds: duration }).catch(() => null);
+  const sceneFromLuma = await detectSceneChanges(path, duration, sceneThreshold);
+  const sceneChanges = motion?.ok
+    ? [...new Set([...sceneFromLuma, ...motion.cuts])].sort((a, b) => a - b)
+    : sceneFromLuma;
+  const activityPeaks = motion?.ok ? motion.activityPeaks : [];
+  const motionSummary = motion?.ok ? summariseMotion(motion) : "";
+  const plan = buildAdaptiveSamplePlan(duration, sceneChanges, maxFrames, activityPeaks);
 
   let workDir: string | null = null;
   try {
     workDir = await mkdtemp(join(tmpdir(), "aurevix-frames-"));
     const samples = (
       await Promise.all(
-        plan.map((sample, index) => extractFrameAt(path, sample, width, workDir as string, index)),
+        plan.map((sample, index) =>
+          extractFrameAt(path, sample, width, workDir as string, index, motion?.ok ? motion : null),
+        ),
       )
     ).filter((sample): sample is FrameSample => Boolean(sample));
 
@@ -332,6 +437,7 @@ export async function extractVideoFrames(
         sourcePath: path,
         durationSeconds: duration,
         sceneChanges,
+        motionSummary,
         note: "ffmpeg produced no frames from the video.",
       };
     }
@@ -342,6 +448,7 @@ export async function extractVideoFrames(
       sourcePath: path,
       durationSeconds: duration,
       sceneChanges,
+      motionSummary,
       note: "",
     };
   } catch (error) {
@@ -353,6 +460,7 @@ export async function extractVideoFrames(
       sourcePath: path,
       durationSeconds: duration,
       sceneChanges,
+      motionSummary: "",
       note: `Could not extract frames (is ffmpeg installed?): ${reason}`,
     };
   } finally {
