@@ -56,6 +56,24 @@ export interface MotionSegment {
   summary: string;
 }
 
+/**
+ * A recurring spot on screen where motion keeps happening — a pick bin, a
+ * fixture, an inspection pad. Derived by clustering per-frame motion centroids
+ * over the whole clip, weighted by motion energy.
+ */
+export interface ActivityZone {
+  /** Normalised cluster centre (0–1 frame coordinates). */
+  x: number;
+  y: number;
+  /** Normalised spread of the cluster (approximate radius). */
+  radius: number;
+  /** Share of the clip's total motion energy in this zone, 0–1. */
+  strength: number;
+  /** First and last time activity was seen in the zone. */
+  firstSeconds: number;
+  lastSeconds: number;
+}
+
 export interface MotionProfile {
   fps: number;
   width: number;
@@ -66,6 +84,8 @@ export interface MotionProfile {
   segments: MotionSegment[];
   /** High-priority timestamps to sample (segment activity peaks). */
   activityPeaks: number[];
+  /** Recurring on-screen activity locations (pick zones, fixtures, stations). */
+  zones: ActivityZone[];
   /** Whether the analysis produced usable data. */
   ok: boolean;
 }
@@ -73,7 +93,7 @@ export interface MotionProfile {
 const MOTION_THRESHOLD = 28; // per-pixel luma delta counted as "moving"
 
 function emptyProfile(fps: number, width: number, height: number): MotionProfile {
-  return { fps, width, height, frames: [], cuts: [], segments: [], activityPeaks: [], ok: false };
+  return { fps, width, height, frames: [], cuts: [], segments: [], activityPeaks: [], zones: [], ok: false };
 }
 
 /**
@@ -229,6 +249,84 @@ export function buildSegments(frames: MotionFrame[], cuts: number[], durationSec
   return segments;
 }
 
+/**
+ * Clusters motion centroids into recurring activity zones with a single greedy
+ * pass: each energetic frame joins the nearest existing zone within reach or
+ * seeds a new one. Zones capture where in the frame work keeps happening —
+ * distinct pick/place/inspection locations — independent of when it happens.
+ */
+export function computeActivityZones(frames: MotionFrame[], maxZones = 4): ActivityZone[] {
+  interface Cluster {
+    sumX: number;
+    sumY: number;
+    sumR: number;
+    weight: number;
+    first: number;
+    last: number;
+  }
+  const JOIN_DISTANCE = 0.18; // normalised frame units
+  const clusters: Cluster[] = [];
+  let totalWeight = 0;
+
+  for (const frame of frames) {
+    if (frame.isCut || !frame.centroid || frame.energy < 1.5) continue;
+    const weight = frame.energy;
+    totalWeight += weight;
+
+    let best: Cluster | null = null;
+    let bestDistance = JOIN_DISTANCE;
+    for (const cluster of clusters) {
+      const cx = cluster.sumX / cluster.weight;
+      const cy = cluster.sumY / cluster.weight;
+      const distance = Math.hypot(frame.centroid.x - cx, frame.centroid.y - cy);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = cluster;
+      }
+    }
+
+    if (best) {
+      best.sumX += frame.centroid.x * weight;
+      best.sumY += frame.centroid.y * weight;
+      best.sumR += bestDistance * weight;
+      best.weight += weight;
+      best.first = Math.min(best.first, frame.t);
+      best.last = Math.max(best.last, frame.t);
+    } else {
+      clusters.push({
+        sumX: frame.centroid.x * weight,
+        sumY: frame.centroid.y * weight,
+        sumR: 0,
+        weight,
+        first: frame.t,
+        last: frame.t,
+      });
+    }
+  }
+
+  if (totalWeight <= 0) return [];
+
+  return clusters
+    .map((cluster) => ({
+      x: Number((cluster.sumX / cluster.weight).toFixed(3)),
+      y: Number((cluster.sumY / cluster.weight).toFixed(3)),
+      radius: Number(Math.max(0.05, cluster.sumR / cluster.weight).toFixed(3)),
+      strength: Number((cluster.weight / totalWeight).toFixed(3)),
+      firstSeconds: Number(cluster.first.toFixed(2)),
+      lastSeconds: Number(cluster.last.toFixed(2)),
+    }))
+    .filter((zone) => zone.strength >= 0.08)
+    .sort((a, b) => b.strength - a.strength)
+    .slice(0, maxZones);
+}
+
+/** Plain-language on-screen location for a normalised frame coordinate. */
+export function describeFramePosition(x: number, y: number): string {
+  const horizontal = x < 0.34 ? "left" : x > 0.66 ? "right" : "center";
+  const vertical = y < 0.34 ? "upper" : y > 0.66 ? "lower" : "mid";
+  return `${vertical}-${horizontal}`;
+}
+
 /** Nearest analysed motion frame to a timestamp, for ROI lookup at sample time. */
 export function motionAt(profile: MotionProfile, timestampSeconds: number): MotionFrame | null {
   if (!profile.frames.length) return null;
@@ -254,7 +352,16 @@ export function summariseMotion(profile: MotionProfile): string {
   const cutNote = profile.cuts.length
     ? `\n${profile.cuts.length} hard scene cut(s) detected at ${profile.cuts.map((t) => t.toFixed(1)).join(", ")}s — these are edits, not robot motion; treat each segment as a potentially distinct workcell stage.`
     : "";
-  return `Motion analysis (derived from inter-frame optical difference):\n${lines.join("\n")}${cutNote}`;
+  const zoneNote = profile.zones.length
+    ? `\nObject activity zones (recurring work locations on screen):\n${profile.zones
+        .map(
+          (zone, index) =>
+            `Zone ${index + 1}: ${describeFramePosition(zone.x, zone.y)} of frame at (${zone.x.toFixed(2)}, ${zone.y.toFixed(2)}), ` +
+            `${Math.round(zone.strength * 100)}% of motion, active ${zone.firstSeconds.toFixed(1)}–${zone.lastSeconds.toFixed(1)}s.`,
+        )
+        .join("\n")}\nDistinct zones usually mean distinct physical stations (pick area, container, fixture, inspection point) — map steps whose activity sits in different zones to different waypoints.`
+    : "";
+  return `Motion analysis (derived from inter-frame optical difference):\n${lines.join("\n")}${cutNote}${zoneNote}`;
 }
 
 export async function analyzeMotion(
@@ -295,6 +402,7 @@ export async function analyzeMotion(
   const activityPeaks = segments
     .filter((segment) => segment.peakEnergy >= 2.5)
     .map((segment) => segment.peakSeconds);
+  const zones = computeActivityZones(frames);
 
-  return { fps, width, height, frames, cuts, segments, activityPeaks, ok: true };
+  return { fps, width, height, frames, cuts, segments, activityPeaks, zones, ok: true };
 }

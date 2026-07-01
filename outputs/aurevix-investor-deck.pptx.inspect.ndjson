@@ -1,0 +1,1078 @@
+{"kind":"deck","id":"pr/3rupgy","name":"Deck"}
+{"kind":"layout","layoutId":"890a1c7f-14ce-4bdb-926c-35e54888f910","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"7e2908c8-7604-4ff3-9ff0-ba3b700a808b","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/fsf2hp","slide":1,"title":"AUREVIX","textShapes":12}
+{"kind":"shape","id":"sh/zed8v6ps","slide":1,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/oza1gvy9","slide":1,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/hk3q5o7q","slide":1,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/65wjudg7","slide":1,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/zqtcj6to","slide":1,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/obm58z25","slide":1,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/hwfyxobm","slide":1,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/a9w3m94f","slide":1,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/zupwb2hw","slide":1,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/7y1kre1w","slide":1,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/ed8v6psf","slide":1,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/p4r65wju","slide":1,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/wjudg7ad","slide":1,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/7qpg3ex0","slide":1,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/i5sneloj","slide":1,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/pwb2hwfy","slide":1,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/0bi9s36h","slide":1,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/7ed8bat4","slide":1,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/itgfmlkj","slide":1,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/qtcj6tov","slide":1,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/je9cvixc","slide":1,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/8z25kb6x","slide":1,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/1gvy90je","slide":1,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/q1orytsv","slide":1,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/fmlkjm1c","slide":1,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/87ed8bat","slide":1,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/xs72x4na","slide":1,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/qd4vmtwr","slide":1,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/fyxobm58","slide":1,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/5wjudg7a","slide":1,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/gbq1oryt","slide":1,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/nuxc3ylc","slide":1,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/y90je9cv","slide":1,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/58z25kb6","slide":1,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/gn29gr2p","slide":1,"text":"AUREVIX","textPreview":"AUREVIX","textChars":7,"textLines":1,"bbox":[72,56,210,34]}
+{"kind":"textbox","id":"sh/n29gr2p8","slide":1,"text":"by Agentic Convergent","textPreview":"by Agentic Convergent","textChars":21,"textLines":1,"bbox":[72,88,320,28]}
+{"kind":"textbox","id":"sh/yhgn29gr","slide":1,"text":"Own the task layer between people and industrial robots.","textPreview":"Own the task layer between people and industrial robots.","textChars":56,"textLines":1,"bbox":[72,174,980,124]}
+{"kind":"textbox","id":"sh/5kb6xkf6","slide":1,"text":"Aurevix turns a video demonstration into validated, auditable, robot-specific work across the robots a factory already owns.","textPreview":"Aurevix turns a video demonstration into validated, auditable, robot-specific work across the robots a factory already owns.","textChars":124,"textLines":1,"bbox":[74,318,805,86]}
+{"kind":"shape","id":"sh/czed8v6p","slide":1,"bbox":[72,478,238,118]}
+{"kind":"shape","id":"sh/k3q5o7qp","slide":1,"bbox":[72,478,16,0]}
+{"kind":"shape","id":"sh/donyd0z6","slide":1,"bbox":[72,478,0,16]}
+{"kind":"shape","id":"sh/2x4nap4r","slide":1,"bbox":[294,478,16,0]}
+{"kind":"shape","id":"sh/vixczed8","slide":1,"bbox":[310,478,0,16]}
+{"kind":"shape","id":"sh/kre1w7mp","slide":1,"bbox":[72,596,16,0]}
+{"kind":"shape","id":"sh/dcbulwva","slide":1,"bbox":[72,580,0,16]}
+{"kind":"shape","id":"sh/6psfil0r","slide":1,"bbox":[294,596,16,0]}
+{"kind":"shape","id":"sh/val87ed8","slide":1,"bbox":[310,580,0,16]}
+{"kind":"textbox","id":"sh/knih4byh","slide":1,"text":"Video","textPreview":"Video","textChars":5,"textLines":1,"bbox":[94,502,194,42]}
+{"kind":"textbox","id":"sh/d8bat47y","slide":1,"text":"captures task intent","textPreview":"captures task intent","textChars":20,"textLines":1,"bbox":[94,548,194,32]}
+{"kind":"shape","id":"sh/za1gvy90","slide":1,"bbox":[334,478,238,118]}
+{"kind":"shape","id":"sh/ap4r65wj","slide":1,"bbox":[334,478,16,0]}
+{"kind":"shape","id":"sh/hgn29gr2","slide":1,"bbox":[334,478,0,16]}
+{"kind":"shape","id":"sh/svu9knih","slide":1,"bbox":[556,478,16,0]}
+{"kind":"shape","id":"sh/zidonyd0","slide":1,"bbox":[572,478,0,16]}
+{"kind":"shape","id":"sh/a1gvy90j","slide":1,"bbox":[334,596,16,0]}
+{"kind":"shape","id":"sh/hoza1gvy","slide":1,"bbox":[334,580,0,16]}
+{"kind":"shape","id":"sh/s36hcrmh","slide":1,"bbox":[556,596,16,0]}
+{"kind":"shape","id":"sh/3m94fu18","slide":1,"bbox":[572,580,0,16]}
+{"kind":"textbox","id":"sh/a5gbq1or","slide":1,"text":"Gate","textPreview":"Gate","textChars":4,"textLines":1,"bbox":[356,502,194,42]}
+{"kind":"textbox","id":"sh/yxobm58z","slide":1,"text":"simulation + human review","textPreview":"simulation + human review","textChars":25,"textLines":1,"bbox":[356,548,194,32]}
+{"kind":"shape","id":"sh/nih4byhg","slide":1,"bbox":[596,478,238,118]}
+{"kind":"shape","id":"sh/g3ex0nux","slide":1,"bbox":[596,478,16,0]}
+{"kind":"shape","id":"sh/5o7qpg3e","slide":1,"bbox":[596,478,0,16]}
+{"kind":"shape","id":"sh/ylc7u54z","slide":1,"bbox":[818,478,16,0]}
+{"kind":"shape","id":"sh/r65wjudg","slide":1,"bbox":[834,478,0,16]}
+{"kind":"shape","id":"sh/gr2p8nqx","slide":1,"bbox":[596,596,16,0]}
+{"kind":"shape","id":"sh/9cvixcze","slide":1,"bbox":[596,580,0,16]}
+{"kind":"shape","id":"sh/yd0z6103","slide":1,"bbox":[818,596,16,0]}
+{"kind":"shape","id":"sh/rytsvu9k","slide":1,"bbox":[834,580,0,16]}
+{"kind":"textbox","id":"sh/d4vmtwra","slide":1,"text":"Passport","textPreview":"Passport","textChars":8,"textLines":1,"bbox":[618,502,194,42]}
+{"kind":"textbox","id":"sh/oj2t83it","slide":1,"text":"portable automation memory","textPreview":"portable automation memory","textChars":26,"textLines":1,"bbox":[618,548,194,32]}
+{"kind":"textbox","id":"sh/6dcbulwv","slide":1,"text":"Confidential · pre-seed investor discussion","textPreview":"Confidential · pre-seed investor discussion","textChars":43,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/dsji5sne","slide":1,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"image","id":"im/4nap4r65","slide":1,"name":"","geometry":"roundRect","alt":"Aurevix product home screen","bbox":[910,92,286,488]}
+{"kind":"notes","id":"nt/fsf2hp","slide":1,"text":""}
+{"kind":"slide","id":"sl/6qotf1","slide":2,"title":"THE SHIFT","textShapes":18}
+{"kind":"shape","id":"sh/r65wjudg","slide":2,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/gr2p8nqx","slide":2,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/9cvixcze","slide":2,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/yxobm58z","slide":2,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/nih4byhg","slide":2,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/g3ex0nux","slide":2,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/5o7qpg3e","slide":2,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/y1kre1w7","slide":2,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/rmhk3q5o","slide":2,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/fa9w3m94","slide":2,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/qpg3ex0n","slide":2,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/xczed8v6","slide":2,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/8v6psfil","slide":2,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/fyxobm58","slide":2,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/qd4vmtwr","slide":2,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/x4nap4r6","slide":2,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/8jqh0fep","slide":2,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/fmlkjm1c","slide":2,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/q1orytsv","slide":2,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/y1kre1w7","slide":2,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/rmhk3q5o","slide":2,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/g7adsji5","slide":2,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/9s36hcrm","slide":2,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/yd0z6103","slide":2,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/rytsvu9k","slide":2,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/gfmlkjm1","slide":2,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/90je9cvi","slide":2,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/ylc7u54z","slide":2,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/r65wjudg","slide":2,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/d8v6psfi","slide":2,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/onyd0z61","slide":2,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/z25kb6xk","slide":2,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/6hcrmhk3","slide":2,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/dg7adsji","slide":2,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/ovahoza1","slide":2,"text":"THE SHIFT","textPreview":"THE SHIFT","textChars":9,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/vahoza1g","slide":2,"text":"Factories bought robots for flexibility. The bottleneck moved to task changes.","textPreview":"Factories bought robots for flexibility. The bottleneck moved to task changes.","textChars":78,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"textbox","id":"sh/6tovahoz","slide":2,"text":"The hardware can move. The painful part is capturing, approving, reprogramming, and remembering what the task should be.","textPreview":"The hardware can move. The painful part is capturing, approving, reprogramming, and remembering what the task should be.","textChars":120,"textLines":1,"bbox":[74,202,830,72]}
+{"kind":"shape","id":"sh/dsji5sne","slide":2,"bbox":[72,318,322,210]}
+{"kind":"shape","id":"sh/o7qpg3ex","slide":2,"bbox":[72,318,16,0]}
+{"kind":"shape","id":"sh/wb2hwfyx","slide":2,"bbox":[72,318,0,16]}
+{"kind":"shape","id":"sh/lwval87e","slide":2,"bbox":[378,318,16,0]}
+{"kind":"shape","id":"sh/e9cvixcz","slide":2,"bbox":[394,318,0,16]}
+{"kind":"shape","id":"sh/3q5o7qpg","slide":2,"bbox":[72,528,16,0]}
+{"kind":"shape","id":"sh/w3m94fu1","slide":2,"bbox":[72,512,0,16]}
+{"kind":"shape","id":"sh/loj2t83i","slide":2,"bbox":[378,528,16,0]}
+{"kind":"shape","id":"sh/ex0nuxc3","slide":2,"bbox":[394,512,0,16]}
+{"kind":"textbox","id":"sh/3itgfmlk","slide":2,"text":"Today","textPreview":"Today","textChars":5,"textLines":1,"bbox":[98,346,160,30]}
+{"kind":"shape","id":"sh/szqtcj6t","slide":2,"bbox":[100,397,12,12]}
+{"kind":"textbox","id":"sh/lkjm1cfa","slide":2,"text":"Call the specialist","textPreview":"Call the specialist","textChars":19,"textLines":1,"bbox":[128,392,242,24]}
+{"kind":"textbox","id":"sh/bi9s36hc","slide":2,"text":"Retasking leaves the line and enters someone else's calendar.","textPreview":"Retasking leaves the line and enters someone else's calendar.","textChars":61,"textLines":1,"bbox":[128,420,242,42]}
+{"kind":"shape","id":"sh/ixczed8v","slide":2,"bbox":[100,459,12,12]}
+{"kind":"textbox","id":"sh/tovahoza","slide":2,"text":"Pay again","textPreview":"Pay again","textChars":9,"textLines":1,"bbox":[128,454,242,24]}
+{"kind":"textbox","id":"sh/032lszqt","slide":2,"text":"Every SKU change can become a new programming event.","textPreview":"Every SKU change can become a new programming event.","textChars":52,"textLines":1,"bbox":[128,482,242,42]}
+{"kind":"shape","id":"sh/bulwval8","slide":2,"bbox":[478,318,322,210]}
+{"kind":"shape","id":"sh/i9s36hcr","slide":2,"bbox":[478,318,16,0]}
+{"kind":"shape","id":"sh/p0bi9s36","slide":2,"bbox":[478,318,0,16]}
+{"kind":"shape","id":"sh/0fepkzup","slide":2,"bbox":[784,318,16,0]}
+{"kind":"shape","id":"sh/byhgn29g","slide":2,"bbox":[800,318,0,16]}
+{"kind":"shape","id":"sh/idonyd0z","slide":2,"bbox":[478,528,16,0]}
+{"kind":"shape","id":"sh/65wjudg7","slide":2,"bbox":[478,512,0,16]}
+{"kind":"shape","id":"sh/zqtcj6to","slide":2,"bbox":[784,528,16,0]}
+{"kind":"shape","id":"sh/obm58z25","slide":2,"bbox":[800,512,0,16]}
+{"kind":"textbox","id":"sh/hwfyxobm","slide":2,"text":"With Aurevix","textPreview":"With Aurevix","textChars":12,"textLines":1,"bbox":[504,346,210,30]}
+{"kind":"shape","id":"sh/6xkf6dcb","slide":2,"bbox":[506,397,12,12]}
+{"kind":"textbox","id":"sh/zed8v6ps","slide":2,"text":"Show the task","textPreview":"Show the task","textChars":13,"textLines":1,"bbox":[534,392,242,24]}
+{"kind":"textbox","id":"sh/oza1gvy9","slide":2,"text":"A worker demonstrates the process in the terms they already know.","textPreview":"A worker demonstrates the process in the terms they already know.","textChars":65,"textLines":1,"bbox":[534,420,242,42]}
+{"kind":"shape","id":"sh/hk3q5o7q","slide":2,"bbox":[506,459,12,12]}
+{"kind":"textbox","id":"sh/al87ed8b","slide":2,"text":"Review before motion","textPreview":"Review before motion","textChars":20,"textLines":1,"bbox":[534,454,242,24]}
+{"kind":"textbox","id":"sh/z61032ls","slide":2,"text":"Simulation, readiness checks, and human approval sit before hardware.","textPreview":"Simulation, readiness checks, and human approval sit before hardware.","textChars":69,"textLines":1,"bbox":[534,482,242,42]}
+{"kind":"shape","id":"sh/lc7u54zi","slide":2,"bbox":[884,318,322,210]}
+{"kind":"shape","id":"sh/wra5gbq1","slide":2,"bbox":[884,318,16,0]}
+{"kind":"shape","id":"sh/36hcrmhk","slide":2,"bbox":[884,318,0,16]}
+{"kind":"shape","id":"sh/eloj2t83","slide":2,"bbox":[1190,318,16,0]}
+{"kind":"shape","id":"sh/l0rqd4vm","slide":2,"bbox":[1206,318,0,16]}
+{"kind":"shape","id":"sh/wfyxobm5","slide":2,"bbox":[884,528,16,0]}
+{"kind":"shape","id":"sh/7u54zido","slide":2,"bbox":[884,512,0,16]}
+{"kind":"shape","id":"sh/ed8bat47","slide":2,"bbox":[1190,528,16,0]}
+{"kind":"shape","id":"sh/psfil0rq","slide":2,"bbox":[1206,512,0,16]}
+{"kind":"textbox","id":"sh/w7mp0bi9","slide":2,"text":"Company thesis","textPreview":"Company thesis","textChars":14,"textLines":1,"bbox":[910,346,220,30]}
+{"kind":"textbox","id":"sh/g7adsji5","slide":2,"text":"The durable company is not a prettier teach pendant. It is the task memory and deployment trust layer above every robot runtime.","textPreview":"The durable company is not a prettier teach pendant. It is the task memory and deployment trust layer above every robot runtime.","textChars":128,"textLines":1,"bbox":[910,394,260,96]}
+{"kind":"textbox","id":"sh/9s36hcrm","slide":2,"text":"Source basis: live site positioning; internal strategy brief; repo deployment trust layer.","textPreview":"Source basis: live site positioning; internal strategy brief; repo deployment trust layer.","textChars":90,"textLines":1,"bbox":[72,638,1000,24]}
+{"kind":"textbox","id":"sh/y1kre1w7","slide":2,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/rmhk3q5o","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"notes","id":"nt/6qotf1","slide":2,"text":""}
+{"kind":"slide","id":"sl/q2mnt4","slide":3,"title":"PROBLEM","textShapes":15}
+{"kind":"shape","id":"sh/yhgn29gr","slide":3,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/58z25kb6","slide":3,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/gn29gr2p","slide":3,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/nuxc3ylc","slide":3,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/y90je9cv","slide":3,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/5wjudg7a","slide":3,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/gbq1oryt","slide":3,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/nqxs72x4","slide":3,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/u54zidon","slide":3,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/cbulwval","slide":3,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/5sneloj2","slide":3,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/u54zidon","slide":3,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/nqxs72x4","slide":3,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/czed8v6p","slide":3,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/5kb6xkf6","slide":3,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/ytsvu9kn","slide":3,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/neloj2t8","slide":3,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/gn29gr2p","slide":3,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/58z25kb6","slide":3,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/tcj6tova","slide":3,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/0rqd4vmt","slide":3,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/b6xkf6dc","slide":3,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/il0rqd4v","slide":3,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/t47y1kre","slide":3,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/0je9cvix","slide":3,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/byhgn29g","slide":3,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/idonyd0z","slide":3,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/p0bi9s36","slide":3,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/0fepkzup","slide":3,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/e9cvixcz","slide":3,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/3q5o7qpg","slide":3,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/wb2hwfyx","slide":3,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/lwval87e","slide":3,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/ex0nuxc3","slide":3,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/3itgfmlk","slide":3,"text":"PROBLEM","textPreview":"PROBLEM","textChars":7,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/w3m94fu1","slide":3,"text":"The robot was not the expensive part. The programming was.","textPreview":"The robot was not the expensive part. The programming was.","textChars":58,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"textbox","id":"sh/loj2t83i","slide":3,"text":"Every layout change, fixture update, and process improvement can restart a specialist loop.","textPreview":"Every layout change, fixture update, and process improvement can restart a specialist loop.","textChars":91,"textLines":1,"bbox":[74,196,790,60]}
+{"kind":"shape","id":"sh/at47y1kr","slide":3,"bbox":[72,318,250,118]}
+{"kind":"shape","id":"sh/3ex0nuxc","slide":3,"bbox":[72,318,16,0]}
+{"kind":"shape","id":"sh/nap4r65w","slide":3,"bbox":[72,318,0,16]}
+{"kind":"shape","id":"sh/upwb2hwf","slide":3,"bbox":[306,318,16,0]}
+{"kind":"shape","id":"sh/5gbq1ory","slide":3,"bbox":[322,318,0,16]}
+{"kind":"shape","id":"sh/cvixczed","slide":3,"bbox":[72,436,16,0]}
+{"kind":"shape","id":"sh/nyd0z610","slide":3,"bbox":[72,420,0,16]}
+{"kind":"shape","id":"sh/udg7adsj","slide":3,"bbox":[306,436,16,0]}
+{"kind":"shape","id":"sh/54zidony","slide":3,"bbox":[322,420,0,16]}
+{"kind":"textbox","id":"sh/cj6tovah","slide":3,"text":"$5K-15K","textPreview":"$5K-15K","textChars":7,"textLines":1,"bbox":[94,342,206,42]}
+{"kind":"textbox","id":"sh/judg7ads","slide":3,"text":"typical task-change cost cited on website","textPreview":"typical task-change cost cited on website","textChars":41,"textLines":1,"bbox":[94,388,206,32]}
+{"kind":"shape","id":"sh/u9knih4b","slide":3,"bbox":[352,318,250,118]}
+{"kind":"shape","id":"sh/83itgfml","slide":3,"bbox":[352,318,16,0]}
+{"kind":"shape","id":"sh/xobm58z2","slide":3,"bbox":[352,318,0,16]}
+{"kind":"shape","id":"sh/qxs72x4n","slide":3,"bbox":[586,318,16,0]}
+{"kind":"shape","id":"sh/fil0rqd4","slide":3,"bbox":[602,318,0,16]}
+{"kind":"shape","id":"sh/4fu18jqh","slide":3,"bbox":[352,436,16,0]}
+{"kind":"shape","id":"sh/x0nuxc3y","slide":3,"bbox":[352,420,0,16]}
+{"kind":"shape","id":"sh/m94fu18j","slide":3,"bbox":[586,436,16,0]}
+{"kind":"shape","id":"sh/fu18jqh0","slide":3,"bbox":[602,420,0,16]}
+{"kind":"textbox","id":"sh/4r65wjud","slide":3,"text":"3-5 weeks","textPreview":"3-5 weeks","textChars":9,"textLines":1,"bbox":[374,342,206,42]}
+{"kind":"textbox","id":"sh/xc3ylc7u","slide":3,"text":"typical integrator task setup cited on website","textPreview":"typical integrator task setup cited on website","textChars":46,"textLines":1,"bbox":[374,388,206,32]}
+{"kind":"shape","id":"sh/x4nap4r6","slide":3,"bbox":[632,318,250,118]}
+{"kind":"shape","id":"sh/8jqh0fep","slide":3,"bbox":[632,318,16,0]}
+{"kind":"shape","id":"sh/fyxobm58","slide":3,"bbox":[632,318,0,16]}
+{"kind":"shape","id":"sh/qd4vmtwr","slide":3,"bbox":[866,318,16,0]}
+{"kind":"shape","id":"sh/xczed8v6","slide":3,"bbox":[882,318,0,16]}
+{"kind":"shape","id":"sh/8v6psfil","slide":3,"bbox":[632,436,16,0]}
+{"kind":"shape","id":"sh/fa9w3m94","slide":3,"bbox":[632,420,0,16]}
+{"kind":"shape","id":"sh/qpg3ex0n","slide":3,"bbox":[866,436,16,0]}
+{"kind":"shape","id":"sh/1gvy90je","slide":3,"bbox":[882,420,0,16]}
+{"kind":"textbox","id":"sh/8z25kb6x","slide":3,"text":"20-50%","textPreview":"20-50%","textChars":6,"textLines":1,"bbox":[654,342,206,42]}
+{"kind":"textbox","id":"sh/2hwfyxob","slide":3,"text":"programming and integration share cited on website","textPreview":"programming and integration share cited on website","textChars":50,"textLines":1,"bbox":[654,388,206,32]}
+{"kind":"shape","id":"sh/r2p8nqxs","slide":3,"bbox":[912,318,250,118]}
+{"kind":"shape","id":"sh/kjm1cfa9","slide":3,"bbox":[912,318,16,0]}
+{"kind":"shape","id":"sh/94fu18jq","slide":3,"bbox":[912,318,0,16]}
+{"kind":"shape","id":"sh/2p8nqxs7","slide":3,"bbox":[1146,318,16,0]}
+{"kind":"shape","id":"sh/ra5gbq1o","slide":3,"bbox":[1162,318,0,16]}
+{"kind":"shape","id":"sh/gvy90je9","slide":3,"bbox":[912,436,16,0]}
+{"kind":"shape","id":"sh/9gr2p8nq","slide":3,"bbox":[912,420,0,16]}
+{"kind":"shape","id":"sh/2t83itgf","slide":3,"bbox":[1146,436,16,0]}
+{"kind":"shape","id":"sh/re1w7mp0","slide":3,"bbox":[1162,420,0,16]}
+{"kind":"textbox","id":"sh/fyxobm58","slide":3,"text":"External","textPreview":"External","textChars":8,"textLines":1,"bbox":[934,342,206,42]}
+{"kind":"textbox","id":"sh/qd4vmtwr","slide":3,"text":"task knowledge stays with the specialist","textPreview":"task knowledge stays with the specialist","textChars":40,"textLines":1,"bbox":[934,388,206,32]}
+{"kind":"textbox","id":"sh/x4nap4r6","slide":3,"text":"This is a wedge with budget: retasking competes against integrator invoices, downtime, internal automation-engineer time, and delayed production changes.","textPreview":"This is a wedge with budget: retasking competes against integrator invoices, downtime, internal automation-engineer time, and delayed pro...","textChars":153,"textLines":1,"bbox":[120,510,1040,62]}
+{"kind":"textbox","id":"sh/8jqh0fep","slide":3,"text":"Website cites Standard Bots cost guide, Konica Minolta insights, and industry survey references. Verify exact source details before fundraising distribution.","textPreview":"Website cites Standard Bots cost guide, Konica Minolta insights, and industry survey references. Verify exact source details before fundr...","textChars":157,"textLines":1,"bbox":[72,638,1000,24]}
+{"kind":"textbox","id":"sh/fa9w3m94","slide":3,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/qpg3ex0n","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"notes","id":"nt/q2mnt4","slide":3,"text":""}
+{"kind":"slide","id":"sl/tpkxec","slide":4,"title":"WINNERS AND LOSERS","textShapes":18}
+{"kind":"shape","id":"sh/fyxobm58","slide":4,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/8jqh0fep","slide":4,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/x4nap4r6","slide":4,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/qpg3ex0n","slide":4,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/fa9w3m94","slide":4,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/8v6psfil","slide":4,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/xczed8v6","slide":4,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/qtcj6tov","slide":4,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/je9cvixc","slide":4,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/nih4byhg","slide":4,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/yxobm58z","slide":4,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/5o7qpg3e","slide":4,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/g3ex0nux","slide":4,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/r65wjudg","slide":4,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/ylc7u54z","slide":4,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/9cvixcze","slide":4,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/gr2p8nqx","slide":4,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/rytsvu9k","slide":4,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/yd0z6103","slide":4,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/a9w3m94f","slide":4,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/zupwb2hw","slide":4,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/sfil0rqd","slide":4,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/h0fepkzu","slide":4,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/al87ed8b","slide":4,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/z61032ls","slide":4,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/orytsvu9","slide":4,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/hcrmhk3q","slide":4,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/6xkf6dcb","slide":4,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/zed8v6ps","slide":4,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/pg3ex0nu","slide":4,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/wval87ed","slide":4,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/7adsji5s","slide":4,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/epkzupwb","slide":4,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/psfil0rq","slide":4,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/w7mp0bi9","slide":4,"text":"WINNERS AND LOSERS","textPreview":"WINNERS AND LOSERS","textChars":18,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/7mp0bi9s","slide":4,"text":"The factories that win will own their automation memory.","textPreview":"The factories that win will own their automation memory.","textChars":56,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"shape","id":"sh/e1w7mp0b","slide":4,"bbox":[72,216,530,320]}
+{"kind":"shape","id":"sh/l0rqd4vm","slide":4,"bbox":[72,216,16,0]}
+{"kind":"shape","id":"sh/wfyxobm5","slide":4,"bbox":[72,216,0,16]}
+{"kind":"shape","id":"sh/4nap4r65","slide":4,"bbox":[586,216,16,0]}
+{"kind":"shape","id":"sh/t83itgfm","slide":4,"bbox":[602,216,0,16]}
+{"kind":"shape","id":"sh/mhk3q5o7","slide":4,"bbox":[72,536,16,0]}
+{"kind":"shape","id":"sh/b2hwfyxo","slide":4,"bbox":[72,520,0,16]}
+{"kind":"shape","id":"sh/4byhgn29","slide":4,"bbox":[586,536,16,0]}
+{"kind":"shape","id":"sh/twra5gbq","slide":4,"bbox":[602,520,0,16]}
+{"kind":"textbox","id":"sh/m58z25kb","slide":4,"text":"Winners","textPreview":"Winners","textChars":7,"textLines":1,"bbox":[104,246,180,34]}
+{"kind":"shape","id":"sh/bq1oryts","slide":4,"bbox":[106,309,12,12]}
+{"kind":"textbox","id":"sh/47y1kre1","slide":4,"text":"High-mix teams","textPreview":"High-mix teams","textChars":14,"textLines":1,"bbox":[134,304,408,24]}
+{"kind":"textbox","id":"sh/tsvu9kni","slide":4,"text":"They can change tasks without waiting on a calendar.","textPreview":"They can change tasks without waiting on a calendar.","textChars":52,"textLines":1,"bbox":[134,332,408,42]}
+{"kind":"shape","id":"sh/jqh0fepk","slide":4,"bbox":[106,375,12,12]}
+{"kind":"textbox","id":"sh/q5o7qpg3","slide":4,"text":"Brownfield fleets","textPreview":"Brownfield fleets","textChars":17,"textLines":1,"bbox":[134,370,408,24]}
+{"kind":"textbox","id":"sh/1w7mp0bi","slide":4,"text":"They reuse UR, ABB, FANUC, KUKA, Techman, and Yaskawa cells.","textPreview":"They reuse UR, ABB, FANUC, KUKA, Techman, and Yaskawa cells.","textChars":60,"textLines":1,"bbox":[134,398,408,42]}
+{"kind":"shape","id":"sh/8bat47y1","slide":4,"bbox":[106,441,12,12]}
+{"kind":"textbox","id":"sh/j2t83itg","slide":4,"text":"Safety owners","textPreview":"Safety owners","textChars":13,"textLines":1,"bbox":[134,436,408,24]}
+{"kind":"textbox","id":"sh/qh0fepkz","slide":4,"text":"They get evidence packages and version-bound review records.","textPreview":"They get evidence packages and version-bound review records.","textChars":60,"textLines":1,"bbox":[134,464,408,42]}
+{"kind":"shape","id":"sh/18jqh0fe","slide":4,"bbox":[678,216,530,320]}
+{"kind":"shape","id":"sh/8nqxs72x","slide":4,"bbox":[678,216,16,0]}
+{"kind":"shape","id":"sh/j6tovaho","slide":4,"bbox":[678,216,0,16]}
+{"kind":"shape","id":"sh/ulwval87","slide":4,"bbox":[1192,216,16,0]}
+{"kind":"shape","id":"sh/ed8v6psf","slide":4,"bbox":[1208,216,0,16]}
+{"kind":"shape","id":"sh/7y1kre1w","slide":4,"bbox":[678,536,16,0]}
+{"kind":"shape","id":"sh/wjudg7ad","slide":4,"bbox":[678,520,0,16]}
+{"kind":"shape","id":"sh/p4r65wju","slide":4,"bbox":[1192,536,16,0]}
+{"kind":"shape","id":"sh/i5sneloj","slide":4,"bbox":[1208,520,0,16]}
+{"kind":"textbox","id":"sh/7qpg3ex0","slide":4,"text":"Losers","textPreview":"Losers","textChars":6,"textLines":1,"bbox":[710,246,180,34]}
+{"kind":"shape","id":"sh/0bi9s36h","slide":4,"bbox":[712,309,12,12]}
+{"kind":"textbox","id":"sh/pwb2hwfy","slide":4,"text":"Calendar dependency","textPreview":"Calendar dependency","textChars":19,"textLines":1,"bbox":[740,304,408,24]}
+{"kind":"textbox","id":"sh/itgfmlkj","slide":4,"text":"Routine changes still require a scarce outside expert.","textPreview":"Routine changes still require a scarce outside expert.","textChars":54,"textLines":1,"bbox":[740,332,408,42]}
+{"kind":"shape","id":"sh/7ed8bat4","slide":4,"bbox":[712,375,12,12]}
+{"kind":"textbox","id":"sh/xkf6dcbu","slide":4,"text":"Vendor lock-in","textPreview":"Vendor lock-in","textChars":14,"textLines":1,"bbox":[740,370,408,24]}
+{"kind":"textbox","id":"sh/4zidonyd","slide":4,"text":"Task knowledge is trapped in proprietary code or one robot brand.","textPreview":"Task knowledge is trapped in proprietary code or one robot brand.","textChars":65,"textLines":1,"bbox":[740,398,408,42]}
+{"kind":"shape","id":"sh/fepkzupw","slide":4,"bbox":[712,441,12,12]}
+{"kind":"textbox","id":"sh/mtwra5gb","slide":4,"text":"Black-box automation","textPreview":"Black-box automation","textChars":20,"textLines":1,"bbox":[740,436,408,24]}
+{"kind":"textbox","id":"sh/xc3ylc7u","slide":4,"text":"Motion without sign-off becomes a liability conversation.","textPreview":"Motion without sign-off becomes a liability conversation.","textChars":57,"textLines":1,"bbox":[740,464,408,42]}
+{"kind":"textbox","id":"sh/4r65wjud","slide":4,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/f6dcbulw","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"notes","id":"nt/tpkxec","slide":4,"text":""}
+{"kind":"slide","id":"sl/rx1a2z","slide":5,"title":"BEACHHEAD","textShapes":14}
+{"kind":"shape","id":"sh/m94fu18j","slide":5,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/x0nuxc3y","slide":5,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/4fu18jqh","slide":5,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/fil0rqd4","slide":5,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/qxs72x4n","slide":5,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/xobm58z2","slide":5,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/83itgfml","slide":5,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/fepkzupw","slide":5,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/mtwra5gb","slide":5,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/oj2t83it","slide":5,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/d4vmtwra","slide":5,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/6dcbulwv","slide":5,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/vy90je9c","slide":5,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/o7qpg3ex","slide":5,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/dsji5sne","slide":5,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/61032lsz","slide":5,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/vmtwra5g","slide":5,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/ovahoza1","slide":5,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/dg7adsji","slide":5,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/1kre1w7m","slide":5,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/c3ylc7u5","slide":5,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/ji5snelo","slide":5,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/uxc3ylc7","slide":5,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/1cfa9w3m","slide":5,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/crmhk3q5","slide":5,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/j6tovaho","slide":5,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/ulwval87","slide":5,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/18jqh0fe","slide":5,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/8nqxs72x","slide":5,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/mhk3q5o7","slide":5,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/b2hwfyxo","slide":5,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/4nap4r65","slide":5,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/t83itgfm","slide":5,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/m58z25kb","slide":5,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/bq1oryts","slide":5,"text":"BEACHHEAD","textPreview":"BEACHHEAD","textChars":9,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/4byhgn29","slide":5,"text":"Start with the plant team whose robot is idle until the next specialist arrives.","textPreview":"Start with the plant team whose robot is idle until the next specialist arrives.","textChars":80,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"textbox","id":"sh/twra5gbq","slide":5,"text":"Initial ICP assumption: high-mix SME factories with 1-10 cobot cells, recurring task changes, and existing automation spend.","textPreview":"Initial ICP assumption: high-mix SME factories with 1-10 cobot cells, recurring task changes, and existing automation spend.","textChars":124,"textLines":1,"bbox":[74,198,940,64]}
+{"kind":"shape","id":"sh/m1cfa9w3","slide":5,"bbox":[92,330,246,150]}
+{"kind":"shape","id":"sh/bm58z25k","slide":5,"bbox":[92,330,16,0]}
+{"kind":"shape","id":"sh/vixczed8","slide":5,"bbox":[92,330,0,16]}
+{"kind":"shape","id":"sh/2x4nap4r","slide":5,"bbox":[322,330,16,0]}
+{"kind":"shape","id":"sh/donyd0z6","slide":5,"bbox":[338,330,0,16]}
+{"kind":"shape","id":"sh/k3q5o7qp","slide":5,"bbox":[92,480,16,0]}
+{"kind":"shape","id":"sh/val87ed8","slide":5,"bbox":[92,464,0,16]}
+{"kind":"shape","id":"sh/6psfil0r","slide":5,"bbox":[322,480,16,0]}
+{"kind":"shape","id":"sh/dcbulwva","slide":5,"bbox":[338,464,0,16]}
+{"kind":"textbox","id":"sh/kre1w7mp","slide":5,"text":"Economic buyer","textPreview":"Economic buyer","textChars":14,"textLines":1,"bbox":[110,358,210,24]}
+{"kind":"textbox","id":"sh/v6psfil0","slide":5,"text":"Plant manager or operations owner","textPreview":"Plant manager or operations owner","textChars":33,"textLines":1,"bbox":[110,394,200,58]}
+{"kind":"shape","id":"sh/2lszqtcj","slide":5,"bbox":[384,330,246,150]}
+{"kind":"shape","id":"sh/gbq1oryt","slide":5,"bbox":[384,330,16,0]}
+{"kind":"shape","id":"sh/5wjudg7a","slide":5,"bbox":[384,330,0,16]}
+{"kind":"shape","id":"sh/y90je9cv","slide":5,"bbox":[614,330,16,0]}
+{"kind":"shape","id":"sh/nuxc3ylc","slide":5,"bbox":[630,330,0,16]}
+{"kind":"shape","id":"sh/gn29gr2p","slide":5,"bbox":[384,480,16,0]}
+{"kind":"shape","id":"sh/58z25kb6","slide":5,"bbox":[384,464,0,16]}
+{"kind":"shape","id":"sh/yhgn29gr","slide":5,"bbox":[614,480,16,0]}
+{"kind":"shape","id":"sh/n29gr2p8","slide":5,"bbox":[630,464,0,16]}
+{"kind":"textbox","id":"sh/czed8v6p","slide":5,"text":"Daily user","textPreview":"Daily user","textChars":10,"textLines":1,"bbox":[402,358,210,24]}
+{"kind":"textbox","id":"sh/5kb6xkf6","slide":5,"text":"Process technician or automation engineer","textPreview":"Process technician or automation engineer","textChars":41,"textLines":1,"bbox":[402,394,200,58]}
+{"kind":"shape","id":"sh/9cvixcze","slide":5,"bbox":[676,330,246,150]}
+{"kind":"shape","id":"sh/gr2p8nqx","slide":5,"bbox":[676,330,16,0]}
+{"kind":"shape","id":"sh/r65wjudg","slide":5,"bbox":[676,330,0,16]}
+{"kind":"shape","id":"sh/ylc7u54z","slide":5,"bbox":[906,330,16,0]}
+{"kind":"shape","id":"sh/5o7qpg3e","slide":5,"bbox":[922,330,0,16]}
+{"kind":"shape","id":"sh/g3ex0nux","slide":5,"bbox":[676,480,16,0]}
+{"kind":"shape","id":"sh/nih4byhg","slide":5,"bbox":[676,464,0,16]}
+{"kind":"shape","id":"sh/yxobm58z","slide":5,"bbox":[906,480,16,0]}
+{"kind":"shape","id":"sh/9s36hcrm","slide":5,"bbox":[922,464,0,16]}
+{"kind":"textbox","id":"sh/g7adsji5","slide":5,"text":"Validator","textPreview":"Validator","textChars":9,"textLines":1,"bbox":[694,358,210,24]}
+{"kind":"textbox","id":"sh/ap4r65wj","slide":5,"text":"Safety or automation owner","textPreview":"Safety or automation owner","textChars":26,"textLines":1,"bbox":[694,394,200,58]}
+{"kind":"shape","id":"sh/za1gvy90","slide":5,"bbox":[968,330,246,150]}
+{"kind":"shape","id":"sh/svu9knih","slide":5,"bbox":[968,330,16,0]}
+{"kind":"shape","id":"sh/hgn29gr2","slide":5,"bbox":[968,330,0,16]}
+{"kind":"shape","id":"sh/a1gvy90j","slide":5,"bbox":[1198,330,16,0]}
+{"kind":"shape","id":"sh/zidonyd0","slide":5,"bbox":[1214,330,0,16]}
+{"kind":"shape","id":"sh/s36hcrmh","slide":5,"bbox":[968,480,16,0]}
+{"kind":"shape","id":"sh/hoza1gvy","slide":5,"bbox":[968,464,0,16]}
+{"kind":"shape","id":"sh/a5gbq1or","slide":5,"bbox":[1198,480,16,0]}
+{"kind":"shape","id":"sh/3m94fu18","slide":5,"bbox":[1214,464,0,16]}
+{"kind":"textbox","id":"sh/r65wjudg","slide":5,"text":"Blocker","textPreview":"Blocker","textChars":7,"textLines":1,"bbox":[986,358,210,24]}
+{"kind":"textbox","id":"sh/ylc7u54z","slide":5,"text":"IT/OT, integrator, procurement","textPreview":"IT/OT, integrator, procurement","textChars":30,"textLines":1,"bbox":[986,394,200,58]}
+{"kind":"textbox","id":"sh/9cvixcze","slide":5,"text":"Investor proof needed next: named or anonymized design-partner profile, robot model, task, baseline time/cost, target date, success criteria, and permission level for reference calls.","textPreview":"Investor proof needed next: named or anonymized design-partner profile, robot model, task, baseline time/cost, target date, success crite...","textChars":183,"textLines":1,"bbox":[118,538,1040,58]}
+{"kind":"textbox","id":"sh/gr2p8nqx","slide":5,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/nih4byhg","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"notes","id":"nt/rx1a2z","slide":5,"text":""}
+{"kind":"slide","id":"sl/u1iy9i","slide":6,"title":"PRODUCT APPEARS","textShapes":21}
+{"kind":"shape","id":"sh/8z25kb6x","slide":6,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/je9cvixc","slide":6,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/qtcj6tov","slide":6,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/xs72x4na","slide":6,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/87ed8bat","slide":6,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/fmlkjm1c","slide":6,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/q1orytsv","slide":6,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/x4nap4r6","slide":6,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/8jqh0fep","slide":6,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/mp0bi9s3","slide":6,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/bat47y1k","slide":6,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/4vmtwra5","slide":6,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/tgfmlkjm","slide":6,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/m1cfa9w3","slide":6,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/bm58z25k","slide":6,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/47y1kre1","slide":6,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/tsvu9kni","slide":6,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/m58z25kb","slide":6,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/bq1oryts","slide":6,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/7mp0bi9s","slide":6,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/e1w7mp0b","slide":6,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/psfil0rq","slide":6,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/w7mp0bi9","slide":6,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/7adsji5s","slide":6,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/epkzupwb","slide":6,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/pg3ex0nu","slide":6,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/wval87ed","slide":6,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/36hcrmhk","slide":6,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/eloj2t83","slide":6,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/sfil0rqd","slide":6,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/h0fepkzu","slide":6,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/a9w3m94f","slide":6,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/zupwb2hw","slide":6,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/orytsvu9","slide":6,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/hcrmhk3q","slide":6,"text":"PRODUCT APPEARS","textPreview":"PRODUCT APPEARS","textChars":15,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/al87ed8b","slide":6,"text":"Aurevix turns task intent into robot-specific work, with review before motion.","textPreview":"Aurevix turns task intent into robot-specific work, with review before motion.","textChars":78,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"shape","id":"sh/z61032ls","slide":6,"bbox":[72,244,190,216]}
+{"kind":"shape","id":"sh/oza1gvy9","slide":6,"bbox":[72,244,16,0]}
+{"kind":"shape","id":"sh/hk3q5o7q","slide":6,"bbox":[72,244,0,16]}
+{"kind":"shape","id":"sh/donyd0z6","slide":6,"bbox":[246,244,16,0]}
+{"kind":"shape","id":"sh/k3q5o7qp","slide":6,"bbox":[262,244,0,16]}
+{"kind":"shape","id":"sh/vixczed8","slide":6,"bbox":[72,460,16,0]}
+{"kind":"shape","id":"sh/2x4nap4r","slide":6,"bbox":[72,444,0,16]}
+{"kind":"shape","id":"sh/dcbulwva","slide":6,"bbox":[246,460,16,0]}
+{"kind":"shape","id":"sh/kre1w7mp","slide":6,"bbox":[262,444,0,16]}
+{"kind":"textbox","id":"sh/val87ed8","slide":6,"text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[92,268,42,42]}
+{"kind":"textbox","id":"sh/6psfil0r","slide":6,"text":"Capture","textPreview":"Capture","textChars":7,"textLines":1,"bbox":[92,326,150,30]}
+{"kind":"textbox","id":"sh/d8bat47y","slide":6,"text":"Record the workflow with a phone or camera.","textPreview":"Record the workflow with a phone or camera.","textChars":43,"textLines":1,"bbox":[92,370,150,70]}
+{"kind":"shape","id":"sh/knih4byh","slide":6,"bbox":[306,244,190,216]}
+{"kind":"shape","id":"sh/yhgn29gr","slide":6,"bbox":[306,244,16,0]}
+{"kind":"shape","id":"sh/n29gr2p8","slide":6,"bbox":[306,244,0,16]}
+{"kind":"shape","id":"sh/gn29gr2p","slide":6,"bbox":[480,244,16,0]}
+{"kind":"shape","id":"sh/58z25kb6","slide":6,"bbox":[496,244,0,16]}
+{"kind":"shape","id":"sh/y90je9cv","slide":6,"bbox":[306,460,16,0]}
+{"kind":"shape","id":"sh/nuxc3ylc","slide":6,"bbox":[306,444,0,16]}
+{"kind":"shape","id":"sh/gbq1oryt","slide":6,"bbox":[480,460,16,0]}
+{"kind":"shape","id":"sh/5wjudg7a","slide":6,"bbox":[496,444,0,16]}
+{"kind":"textbox","id":"sh/u54zidon","slide":6,"text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[326,268,42,42]}
+{"kind":"textbox","id":"sh/nqxs72x4","slide":6,"text":"Understand","textPreview":"Understand","textChars":10,"textLines":1,"bbox":[326,326,150,30]}
+{"kind":"textbox","id":"sh/je9cvixc","slide":6,"text":"Extract task intent: pick, orient, place, wait, signal, release, repeat.","textPreview":"Extract task intent: pick, orient, place, wait, signal, release, repeat.","textChars":72,"textLines":1,"bbox":[326,370,150,70]}
+{"kind":"shape","id":"sh/qtcj6tov","slide":6,"bbox":[540,244,190,216]}
+{"kind":"shape","id":"sh/1gvy90je","slide":6,"bbox":[540,244,16,0]}
+{"kind":"shape","id":"sh/8z25kb6x","slide":6,"bbox":[540,244,0,16]}
+{"kind":"shape","id":"sh/fmlkjm1c","slide":6,"bbox":[714,244,16,0]}
+{"kind":"shape","id":"sh/q1orytsv","slide":6,"bbox":[730,244,0,16]}
+{"kind":"shape","id":"sh/xs72x4na","slide":6,"bbox":[540,460,16,0]}
+{"kind":"shape","id":"sh/87ed8bat","slide":6,"bbox":[540,444,0,16]}
+{"kind":"shape","id":"sh/fyxobm58","slide":6,"bbox":[714,460,16,0]}
+{"kind":"shape","id":"sh/qd4vmtwr","slide":6,"bbox":[730,444,0,16]}
+{"kind":"textbox","id":"sh/wjudg7ad","slide":6,"text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[560,268,42,42]}
+{"kind":"textbox","id":"sh/p4r65wju","slide":6,"text":"Simulate","textPreview":"Simulate","textChars":8,"textLines":1,"bbox":[560,326,150,30]}
+{"kind":"textbox","id":"sh/ed8v6psf","slide":6,"text":"Review the plan in 3D before hardware moves.","textPreview":"Review the plan in 3D before hardware moves.","textChars":44,"textLines":1,"bbox":[560,370,150,70]}
+{"kind":"shape","id":"sh/7y1kre1w","slide":6,"bbox":[774,244,190,216]}
+{"kind":"shape","id":"sh/0bi9s36h","slide":6,"bbox":[774,244,16,0]}
+{"kind":"shape","id":"sh/pwb2hwfy","slide":6,"bbox":[774,244,0,16]}
+{"kind":"shape","id":"sh/i5sneloj","slide":6,"bbox":[948,244,16,0]}
+{"kind":"shape","id":"sh/7qpg3ex0","slide":6,"bbox":[964,244,0,16]}
+{"kind":"shape","id":"sh/0z61032l","slide":6,"bbox":[774,460,16,0]}
+{"kind":"shape","id":"sh/pkzupwb2","slide":6,"bbox":[774,444,0,16]}
+{"kind":"shape","id":"sh/pg3ex0nu","slide":6,"bbox":[948,460,16,0]}
+{"kind":"shape","id":"sh/wval87ed","slide":6,"bbox":[964,444,0,16]}
+{"kind":"textbox","id":"sh/7adsji5s","slide":6,"text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[794,268,42,42]}
+{"kind":"textbox","id":"sh/epkzupwb","slide":6,"text":"Export","textPreview":"Export","textChars":6,"textLines":1,"bbox":[794,326,150,30]}
+{"kind":"textbox","id":"sh/psfil0rq","slide":6,"text":"Generate native code for supported robot workflows.","textPreview":"Generate native code for supported robot workflows.","textChars":51,"textLines":1,"bbox":[794,370,150,70]}
+{"kind":"shape","id":"sh/w7mp0bi9","slide":6,"bbox":[1008,244,190,216]}
+{"kind":"shape","id":"sh/7mp0bi9s","slide":6,"bbox":[1008,244,16,0]}
+{"kind":"shape","id":"sh/e1w7mp0b","slide":6,"bbox":[1008,244,0,16]}
+{"kind":"shape","id":"sh/l0rqd4vm","slide":6,"bbox":[1182,244,16,0]}
+{"kind":"shape","id":"sh/wfyxobm5","slide":6,"bbox":[1198,244,0,16]}
+{"kind":"shape","id":"sh/a9w3m94f","slide":6,"bbox":[1008,460,16,0]}
+{"kind":"shape","id":"sh/zupwb2hw","slide":6,"bbox":[1008,444,0,16]}
+{"kind":"shape","id":"sh/sfil0rqd","slide":6,"bbox":[1182,460,16,0]}
+{"kind":"shape","id":"sh/h0fepkzu","slide":6,"bbox":[1198,444,0,16]}
+{"kind":"textbox","id":"sh/al87ed8b","slide":6,"text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[1028,268,42,42]}
+{"kind":"textbox","id":"sh/z61032ls","slide":6,"text":"Validate","textPreview":"Validate","textChars":8,"textLines":1,"bbox":[1028,326,150,30]}
+{"kind":"textbox","id":"sh/orytsvu9","slide":6,"text":"Deploy through the customer's safety process.","textPreview":"Deploy through the customer's safety process.","textChars":45,"textLines":1,"bbox":[1028,370,150,70]}
+{"kind":"textbox","id":"sh/hcrmhk3q","slide":6,"text":"Important: Aurevix does not claim to copy human motion directly. It extracts intent, binds it to workcell constraints, and replans for robot kinematics.","textPreview":"Important: Aurevix does not claim to copy human motion directly. It extracts intent, binds it to workcell constraints, and replans for ro...","textChars":152,"textLines":1,"bbox":[112,526,1040,48]}
+{"kind":"textbox","id":"sh/6xkf6dcb","slide":6,"text":"Source basis: live site FAQ and repo AGENTS.md core data flow.","textPreview":"Source basis: live site FAQ and repo AGENTS.md core data flow.","textChars":62,"textLines":1,"bbox":[72,638,1000,24]}
+{"kind":"textbox","id":"sh/zed8v6ps","slide":6,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/o7qpg3ex","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"notes","id":"nt/u1iy9i","slide":6,"text":""}
+{"kind":"slide","id":"sl/j6u3np","slide":7,"title":"TRUST LAYER","textShapes":11}
+{"kind":"shape","id":"sh/orytsvu9","slide":7,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/z61032ls","slide":7,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/al87ed8b","slide":7,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/h0fepkzu","slide":7,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/sfil0rqd","slide":7,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/zupwb2hw","slide":7,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/a9w3m94f","slide":7,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/hwfyxobm","slide":7,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/obm58z25","slide":7,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/e1w7mp0b","slide":7,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/7mp0bi9s","slide":7,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/w7mp0bi9","slide":7,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/psfil0rq","slide":7,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/epkzupwb","slide":7,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/7adsji5s","slide":7,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/wval87ed","slide":7,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/pg3ex0nu","slide":7,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/eloj2t83","slide":7,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/36hcrmhk","slide":7,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/zupwb2hw","slide":7,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/a9w3m94f","slide":7,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/h0fepkzu","slide":7,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/sfil0rqd","slide":7,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/z61032ls","slide":7,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/al87ed8b","slide":7,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/hcrmhk3q","slide":7,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/orytsvu9","slide":7,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/zed8v6ps","slide":7,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/6xkf6dcb","slide":7,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/g3ex0nux","slide":7,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/5o7qpg3e","slide":7,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/yxobm58z","slide":7,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/nih4byhg","slide":7,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/gr2p8nqx","slide":7,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/9cvixcze","slide":7,"text":"TRUST LAYER","textPreview":"TRUST LAYER","textChars":11,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/ylc7u54z","slide":7,"text":"The product is designed to make AI-generated automation reviewable.","textPreview":"The product is designed to make AI-generated automation reviewable.","textChars":67,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"shape","id":"sh/gfmlkjm1","slide":7,"bbox":[72,190,560,330]}
+{"kind":"shape","id":"sh/90je9cvi","slide":7,"bbox":[72,190,16,0]}
+{"kind":"shape","id":"sh/hgn29gr2","slide":7,"bbox":[72,190,0,16]}
+{"kind":"shape","id":"sh/svu9knih","slide":7,"bbox":[616,190,16,0]}
+{"kind":"shape","id":"sh/za1gvy90","slide":7,"bbox":[632,190,0,16]}
+{"kind":"shape","id":"sh/ap4r65wj","slide":7,"bbox":[72,520,16,0]}
+{"kind":"shape","id":"sh/hoza1gvy","slide":7,"bbox":[72,504,0,16]}
+{"kind":"shape","id":"sh/s36hcrmh","slide":7,"bbox":[616,520,16,0]}
+{"kind":"shape","id":"sh/zidonyd0","slide":7,"bbox":[632,504,0,16]}
+{"kind":"shape","id":"sh/a1gvy90j","slide":7,"bbox":[110,237,12,12]}
+{"kind":"textbox","id":"sh/lszqtcj6","slide":7,"text":"Version-bound review","textPreview":"Version-bound review","textChars":20,"textLines":1,"bbox":[138,232,447,24]}
+{"kind":"textbox","id":"sh/s72x4nap","slide":7,"text":"A trust record binds to the exact task version and policy fingerprint.","textPreview":"A trust record binds to the exact task version and policy fingerprint.","textChars":70,"textLines":1,"bbox":[138,260,447,48]}
+{"kind":"shape","id":"sh/29gr2p8n","slide":7,"bbox":[110,319,12,12]}
+{"kind":"textbox","id":"sh/vu9knih4","slide":7,"text":"Required evidence","textPreview":"Required evidence","textChars":17,"textLines":1,"bbox":[138,314,447,24]}
+{"kind":"textbox","id":"sh/kf6dcbul","slide":7,"text":"Simulation review, risk assessment, safeguards, emergency behavior, supervised trial.","textPreview":"Simulation review, risk assessment, safeguards, emergency behavior, supervised trial.","textChars":85,"textLines":1,"bbox":[138,342,447,48]}
+{"kind":"shape","id":"sh/d0z61032","slide":7,"bbox":[110,401,12,12]}
+{"kind":"textbox","id":"sh/2lszqtcj","slide":7,"text":"Qualified decision","textPreview":"Qualified decision","textChars":18,"textLines":1,"bbox":[138,396,447,24]}
+{"kind":"textbox","id":"sh/v6psfil0","slide":7,"text":"Approval or rejection is appended to an audit history; changed policies invalidate approval.","textPreview":"Approval or rejection is appended to an audit history; changed policies invalidate approval.","textChars":92,"textLines":1,"bbox":[138,424,447,48]}
+{"kind":"textbox","id":"sh/knih4byh","slide":7,"text":"Source basis: docs/DEPLOYMENT_TRUST_LAYER.md.","textPreview":"Source basis: docs/DEPLOYMENT_TRUST_LAYER.md.","textChars":45,"textLines":1,"bbox":[72,638,1000,24]}
+{"kind":"textbox","id":"sh/d8bat47y","slide":7,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/6psfil0r","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"image","id":"im/0bi9s36h","slide":7,"name":"","geometry":"roundRect","alt":"Aurevix workcell and robot simulation screen","bbox":[714,164,470,346]}
+{"kind":"notes","id":"nt/j6u3np","slide":7,"text":""}
+{"kind":"slide","id":"sl/18a122","slide":8,"title":"MOAT","textShapes":14}
+{"kind":"shape","id":"sh/36hcrmhk","slide":8,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/wra5gbq1","slide":8,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/lc7u54zi","slide":8,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/ed8bat47","slide":8,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/7u54zido","slide":8,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/wfyxobm5","slide":8,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/l0rqd4vm","slide":8,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/e1w7mp0b","slide":8,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/7mp0bi9s","slide":8,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/zed8v6ps","slide":8,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/6xkf6dcb","slide":8,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/hk3q5o7q","slide":8,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/oza1gvy9","slide":8,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/zqtcj6to","slide":8,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/65wjudg7","slide":8,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/hwfyxobm","slide":8,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/obm58z25","slide":8,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/zupwb2hw","slide":8,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/a9w3m94f","slide":8,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/eloj2t83","slide":8,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/36hcrmhk","slide":8,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/wra5gbq1","slide":8,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/lc7u54zi","slide":8,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/ed8bat47","slide":8,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/7u54zido","slide":8,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/wfyxobm5","slide":8,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/l0rqd4vm","slide":8,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/e1w7mp0b","slide":8,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/7mp0bi9s","slide":8,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/tsvu9kni","slide":8,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/47y1kre1","slide":8,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/bm58z25k","slide":8,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/m1cfa9w3","slide":8,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/tgfmlkjm","slide":8,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/4vmtwra5","slide":8,"text":"MOAT","textPreview":"MOAT","textChars":4,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/bat47y1k","slide":8,"text":"The Automation Passport is the memory layer that compounds.","textPreview":"The Automation Passport is the memory layer that compounds.","textChars":59,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"textbox","id":"sh/mp0bi9s3","slide":8,"text":"Video teaching is the wedge. The durable asset is a portable record of task intent, constraints, validation, changes, and approvals.","textPreview":"Video teaching is the wedge. The durable asset is a portable record of task intent, constraints, validation, changes, and approvals.","textChars":132,"textLines":1,"bbox":[74,194,940,76]}
+{"kind":"shape","id":"sh/t83itgfm","slide":8,"bbox":[102,326,486,94]}
+{"kind":"shape","id":"sh/4nap4r65","slide":8,"bbox":[102,326,16,0]}
+{"kind":"shape","id":"sh/8jqh0fep","slide":8,"bbox":[102,326,0,16]}
+{"kind":"shape","id":"sh/x4nap4r6","slide":8,"bbox":[572,326,16,0]}
+{"kind":"shape","id":"sh/qd4vmtwr","slide":8,"bbox":[588,326,0,16]}
+{"kind":"shape","id":"sh/fyxobm58","slide":8,"bbox":[102,420,16,0]}
+{"kind":"shape","id":"sh/8v6psfil","slide":8,"bbox":[102,404,0,16]}
+{"kind":"shape","id":"sh/xczed8v6","slide":8,"bbox":[572,420,16,0]}
+{"kind":"shape","id":"sh/qpg3ex0n","slide":8,"bbox":[588,404,0,16]}
+{"kind":"textbox","id":"sh/fa9w3m94","slide":8,"text":"Task intent","textPreview":"Task intent","textChars":11,"textLines":1,"bbox":[126,344,210,26]}
+{"kind":"textbox","id":"sh/8z25kb6x","slide":8,"text":"What the work is supposed to accomplish, not only waypoints.","textPreview":"What the work is supposed to accomplish, not only waypoints.","textChars":60,"textLines":1,"bbox":[126,374,420,28]}
+{"kind":"shape","id":"sh/1gvy90je","slide":8,"bbox":[646,326,486,94]}
+{"kind":"shape","id":"sh/nqxs72x4","slide":8,"bbox":[646,326,16,0]}
+{"kind":"shape","id":"sh/u54zidon","slide":8,"bbox":[646,326,0,16]}
+{"kind":"shape","id":"sh/5sneloj2","slide":8,"bbox":[1116,326,16,0]}
+{"kind":"shape","id":"sh/cbulwval","slide":8,"bbox":[1132,326,0,16]}
+{"kind":"shape","id":"sh/neloj2t8","slide":8,"bbox":[646,420,16,0]}
+{"kind":"shape","id":"sh/ytsvu9kn","slide":8,"bbox":[646,404,0,16]}
+{"kind":"shape","id":"sh/5kb6xkf6","slide":8,"bbox":[1116,420,16,0]}
+{"kind":"shape","id":"sh/czed8v6p","slide":8,"bbox":[1132,404,0,16]}
+{"kind":"textbox","id":"sh/n29gr2p8","slide":8,"text":"Cell constraints","textPreview":"Cell constraints","textChars":16,"textLines":1,"bbox":[670,344,210,26]}
+{"kind":"textbox","id":"sh/yhgn29gr","slide":8,"text":"Robot, gripper, frames, I/O, fixtures, safety limits.","textPreview":"Robot, gripper, frames, I/O, fixtures, safety limits.","textChars":53,"textLines":1,"bbox":[670,374,420,28]}
+{"kind":"shape","id":"sh/6hcrmhk3","slide":8,"bbox":[102,458,486,94]}
+{"kind":"shape","id":"sh/z25kb6xk","slide":8,"bbox":[102,458,16,0]}
+{"kind":"shape","id":"sh/onyd0z61","slide":8,"bbox":[102,458,0,16]}
+{"kind":"shape","id":"sh/d8v6psfi","slide":8,"bbox":[572,458,16,0]}
+{"kind":"shape","id":"sh/6tovahoz","slide":8,"bbox":[588,458,0,16]}
+{"kind":"shape","id":"sh/vahoza1g","slide":8,"bbox":[102,552,16,0]}
+{"kind":"shape","id":"sh/ovahoza1","slide":8,"bbox":[102,536,0,16]}
+{"kind":"shape","id":"sh/dg7adsji","slide":8,"bbox":[572,552,16,0]}
+{"kind":"shape","id":"sh/61032lsz","slide":8,"bbox":[588,536,0,16]}
+{"kind":"textbox","id":"sh/vmtwra5g","slide":8,"text":"Validation history","textPreview":"Validation history","textChars":18,"textLines":1,"bbox":[126,476,210,26]}
+{"kind":"textbox","id":"sh/loj2t83i","slide":8,"text":"What passed, what failed, who approved, and when.","textPreview":"What passed, what failed, who approved, and when.","textChars":49,"textLines":1,"bbox":[126,506,420,28]}
+{"kind":"shape","id":"sh/w3m94fu1","slide":8,"bbox":[646,458,486,94]}
+{"kind":"shape","id":"sh/3itgfmlk","slide":8,"bbox":[646,458,16,0]}
+{"kind":"shape","id":"sh/ex0nuxc3","slide":8,"bbox":[646,458,0,16]}
+{"kind":"shape","id":"sh/lwval87e","slide":8,"bbox":[1116,458,16,0]}
+{"kind":"shape","id":"sh/wb2hwfyx","slide":8,"bbox":[1132,458,0,16]}
+{"kind":"shape","id":"sh/3q5o7qpg","slide":8,"bbox":[646,552,16,0]}
+{"kind":"shape","id":"sh/e9cvixcz","slide":8,"bbox":[646,536,0,16]}
+{"kind":"shape","id":"sh/l87ed8ba","slide":8,"bbox":[1116,552,16,0]}
+{"kind":"shape","id":"sh/sneloj2t","slide":8,"bbox":[1132,536,0,16]}
+{"kind":"textbox","id":"sh/wra5gbq1","slide":8,"text":"Cross-brand export","textPreview":"Cross-brand export","textChars":18,"textLines":1,"bbox":[670,476,210,26]}
+{"kind":"textbox","id":"sh/lc7u54zi","slide":8,"text":"Reuse the task record across supported robots and workcells.","textPreview":"Reuse the task record across supported robots and workcells.","textChars":60,"textLines":1,"bbox":[670,506,420,28]}
+{"kind":"textbox","id":"sh/eloj2t83","slide":8,"text":"Moat claim to prove: customers grant data rights and the system learns from real validation outcomes across tasks and robot brands.","textPreview":"Moat claim to prove: customers grant data rights and the system learns from real validation outcomes across tasks and robot brands.","textChars":131,"textLines":1,"bbox":[126,590,970,34]}
+{"kind":"textbox","id":"sh/36hcrmhk","slide":8,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/wfyxobm5","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"notes","id":"nt/18a122","slide":8,"text":""}
+{"kind":"slide","id":"sl/xcqxm0","slide":9,"title":"TRACTION","textShapes":15}
+{"kind":"shape","id":"sh/pg3ex0nu","slide":9,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/epkzupwb","slide":9,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/7adsji5s","slide":9,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/w7mp0bi9","slide":9,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/psfil0rq","slide":9,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/e1w7mp0b","slide":9,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/7mp0bi9s","slide":9,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/wfyxobm5","slide":9,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/l0rqd4vm","slide":9,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/hk3q5o7q","slide":9,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/oza1gvy9","slide":9,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/zed8v6ps","slide":9,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/6xkf6dcb","slide":9,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/hwfyxobm","slide":9,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/obm58z25","slide":9,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/zqtcj6to","slide":9,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/65wjudg7","slide":9,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/h0fepkzu","slide":9,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/sfil0rqd","slide":9,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/onyd0z61","slide":9,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/d8v6psfi","slide":9,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/6hcrmhk3","slide":9,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/z25kb6xk","slide":9,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/ovahoza1","slide":9,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/dg7adsji","slide":9,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/6tovahoz","slide":9,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/vahoza1g","slide":9,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/o7qpg3ex","slide":9,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/dsji5sne","slide":9,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/3q5o7qpg","slide":9,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/e9cvixcz","slide":9,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/lwval87e","slide":9,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/wb2hwfyx","slide":9,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/3itgfmlk","slide":9,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/ex0nuxc3","slide":9,"text":"TRACTION","textPreview":"TRACTION","textChars":8,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/loj2t83i","slide":9,"text":"The first design partnership is signed. Now convert it into quantified deployment proof.","textPreview":"The first design partnership is signed. Now convert it into quantified deployment proof.","textChars":88,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"shape","id":"sh/w3m94fu1","slide":9,"bbox":[80,230,420,262]}
+{"kind":"shape","id":"sh/3ex0nuxc","slide":9,"bbox":[80,230,16,0]}
+{"kind":"shape","id":"sh/at47y1kr","slide":9,"bbox":[80,230,0,16]}
+{"kind":"shape","id":"sh/upwb2hwf","slide":9,"bbox":[484,230,16,0]}
+{"kind":"shape","id":"sh/nap4r65w","slide":9,"bbox":[500,230,0,16]}
+{"kind":"shape","id":"sh/cvixczed","slide":9,"bbox":[80,492,16,0]}
+{"kind":"shape","id":"sh/5gbq1ory","slide":9,"bbox":[80,476,0,16]}
+{"kind":"shape","id":"sh/udg7adsj","slide":9,"bbox":[484,492,16,0]}
+{"kind":"shape","id":"sh/nyd0z610","slide":9,"bbox":[500,476,0,16]}
+{"kind":"textbox","id":"sh/cj6tovah","slide":9,"text":"Known signal","textPreview":"Known signal","textChars":12,"textLines":1,"bbox":[110,260,250,28]}
+{"kind":"textbox","id":"sh/54zidony","slide":9,"text":"First industrial design partner","textPreview":"First industrial design partner","textChars":31,"textLines":1,"bbox":[110,300,330,62]}
+{"kind":"textbox","id":"sh/u9knih4b","slide":9,"text":"Machine tool and automation profile, with names announced only after approval.","textPreview":"Machine tool and automation profile, with names announced only after approval.","textChars":78,"textLines":1,"bbox":[110,384,320,58]}
+{"kind":"shape","id":"sh/judg7ads","slide":9,"bbox":[554,230,646,262]}
+{"kind":"shape","id":"sh/9w3m94fu","slide":9,"bbox":[554,230,16,0]}
+{"kind":"shape","id":"sh/kb6xkf6d","slide":9,"bbox":[554,230,0,16]}
+{"kind":"shape","id":"sh/rqd4vmtw","slide":9,"bbox":[1184,230,16,0]}
+{"kind":"shape","id":"sh/25kb6xkf","slide":9,"bbox":[1200,230,0,16]}
+{"kind":"shape","id":"sh/9knih4by","slide":9,"bbox":[554,492,16,0]}
+{"kind":"shape","id":"sh/kzupwb2h","slide":9,"bbox":[554,476,0,16]}
+{"kind":"shape","id":"sh/re1w7mp0","slide":9,"bbox":[1184,492,16,0]}
+{"kind":"shape","id":"sh/2t83itgf","slide":9,"bbox":[1200,476,0,16]}
+{"kind":"textbox","id":"sh/9gr2p8nq","slide":9,"text":"Investor-grade proof package","textPreview":"Investor-grade proof package","textChars":28,"textLines":1,"bbox":[584,260,350,28]}
+{"kind":"shape","id":"sh/gvy90je9","slide":9,"bbox":[586,311,12,12]}
+{"kind":"textbox","id":"sh/wra5gbq1","slide":9,"text":"Paid / unpaid","textPreview":"Paid / unpaid","textChars":13,"textLines":1,"bbox":[614,306,534,24]}
+{"kind":"textbox","id":"sh/lc7u54zi","slide":9,"text":"State precisely. Do not inflate design access into ARR.","textPreview":"State precisely. Do not inflate design access into ARR.","textChars":55,"textLines":1,"bbox":[614,334,534,30]}
+{"kind":"shape","id":"sh/eloj2t83","slide":9,"bbox":[586,369,12,12]}
+{"kind":"textbox","id":"sh/36hcrmhk","slide":9,"text":"Scoped and scheduled","textPreview":"Scoped and scheduled","textChars":20,"textLines":1,"bbox":[614,364,534,24]}
+{"kind":"textbox","id":"sh/wfyxobm5","slide":9,"text":"Robot model, task, gripper, baseline, target deployment date.","textPreview":"Robot model, task, gripper, baseline, target deployment date.","textChars":61,"textLines":1,"bbox":[614,392,534,30]}
+{"kind":"shape","id":"sh/l0rqd4vm","slide":9,"bbox":[586,427,12,12]}
+{"kind":"textbox","id":"sh/ed8bat47","slide":9,"text":"Measured before/after","textPreview":"Measured before/after","textChars":21,"textLines":1,"bbox":[614,422,534,24]}
+{"kind":"textbox","id":"sh/7u54zido","slide":9,"text":"Baseline retasking time vs. Aurevix time, attempts, failures, review time.","textPreview":"Baseline retasking time vs. Aurevix time, attempts, failures, review time.","textChars":74,"textLines":1,"bbox":[614,450,534,30]}
+{"kind":"textbox","id":"sh/w7mp0bi9","slide":9,"text":"Source basis: live site design-partner section and docs/pitch-stress-test.md.","textPreview":"Source basis: live site design-partner section and docs/pitch-stress-test.md.","textChars":77,"textLines":1,"bbox":[72,638,1000,24]}
+{"kind":"textbox","id":"sh/psfil0rq","slide":9,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/fil0rqd4","slide":9,"text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"notes","id":"nt/xcqxm0","slide":9,"text":""}
+{"kind":"slide","id":"sl/fo42ix","slide":10,"title":"WHY NOW","textShapes":13}
+{"kind":"shape","id":"sh/y1kre1w7","slide":10,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/9s36hcrm","slide":10,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/g7adsji5","slide":10,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/rytsvu9k","slide":10,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/yd0z6103","slide":10,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/90je9cvi","slide":10,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/gfmlkjm1","slide":10,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/r65wjudg","slide":10,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/ylc7u54z","slide":10,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/g7adsji5","slide":10,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/9s36hcrm","slide":10,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/y1kre1w7","slide":10,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/rmhk3q5o","slide":10,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/gfmlkjm1","slide":10,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/90je9cvi","slide":10,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/yd0z6103","slide":10,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/rytsvu9k","slide":10,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/gr2p8nqx","slide":10,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/9cvixcze","slide":10,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/tovahoza","slide":10,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/032lszqt","slide":10,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/bi9s36hc","slide":10,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/ixczed8v","slide":10,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/p0bi9s36","slide":10,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/0fepkzup","slide":10,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/bulwval8","slide":10,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/i9s36hcr","slide":10,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/t47y1kre","slide":10,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/0je9cvix","slide":10,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/ahoza1gv","slide":10,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/32lszqtc","slide":10,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/sneloj2t","slide":10,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/l87ed8ba","slide":10,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/at47y1kr","slide":10,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/3ex0nuxc","slide":10,"text":"WHY NOW","textPreview":"WHY NOW","textChars":7,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/szqtcj6t","slide":10,"text":"Physical AI makes motion easier. Factories still need trust, ownership, and proof.","textPreview":"Physical AI makes motion easier. Factories still need trust, ownership, and proof.","textChars":82,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"textbox","id":"sh/lkjm1cfa","slide":10,"text":"The opening is above the model: capture the task, validate it, preserve it, and export it into the robot runtime the customer already owns.","textPreview":"The opening is above the model: capture the task, validate it, preserve it, and export it into the robot runtime the customer already owns.","textChars":139,"textLines":1,"bbox":[74,192,960,82]}
+{"kind":"shape","id":"sh/3itgfmlk","slide":10,"bbox":[90,269,12,12]}
+{"kind":"textbox","id":"sh/72x4nap4","slide":10,"text":"Robotics labor gap","textPreview":"Robotics labor gap","textChars":18,"textLines":1,"bbox":[118,264,542,24]}
+{"kind":"textbox","id":"sh/ih4byhgn","slide":10,"text":"Factories need more automation without more scarce robot programmers.","textPreview":"Factories need more automation without more scarce robot programmers.","textChars":69,"textLines":1,"bbox":[118,292,542,42]}
+{"kind":"shape","id":"sh/p8nqxs72","slide":10,"bbox":[90,339,12,12]}
+{"kind":"textbox","id":"sh/0nuxc3yl","slide":10,"text":"Foundation-model tailwind","textPreview":"Foundation-model tailwind","textChars":25,"textLines":1,"bbox":[118,334,542,24]}
+{"kind":"textbox","id":"sh/7ed8bat4","slide":10,"text":"VLA progress creates belief that task teaching is possible.","textPreview":"VLA progress creates belief that task teaching is possible.","textChars":59,"textLines":1,"bbox":[118,362,542,42]}
+{"kind":"shape","id":"sh/itgfmlkj","slide":10,"bbox":[90,409,12,12]}
+{"kind":"textbox","id":"sh/pkzupwb2","slide":10,"text":"Safety pressure","textPreview":"Safety pressure","textChars":15,"textLines":1,"bbox":[118,404,542,24]}
+{"kind":"textbox","id":"sh/0z61032l","slide":10,"text":"More autonomy raises the need for human oversight, audit trails, and versioned approvals.","textPreview":"More autonomy raises the need for human oversight, audit trails, and versioned approvals.","textChars":89,"textLines":1,"bbox":[118,432,542,42]}
+{"kind":"shape","id":"sh/7qpg3ex0","slide":10,"bbox":[90,479,12,12]}
+{"kind":"textbox","id":"sh/i5sneloj","slide":10,"text":"Installed-base wedge","textPreview":"Installed-base wedge","textChars":20,"textLines":1,"bbox":[118,474,542,24]}
+{"kind":"textbox","id":"sh/obm58z25","slide":10,"text":"Brownfield factories want flexibility without buying one vendor's new hardware stack.","textPreview":"Brownfield factories want flexibility without buying one vendor's new hardware stack.","textChars":85,"textLines":1,"bbox":[118,502,542,42]}
+{"kind":"textbox","id":"sh/hwfyxobm","slide":10,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/65wjudg7","slide":10,"text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"image","id":"im/x4nap4r6","slide":10,"name":"","geometry":"roundRect","alt":"Aurevix teaching workflow screenshot","bbox":[754,244,410,284]}
+{"kind":"notes","id":"nt/fo42ix","slide":10,"text":""}
+{"kind":"slide","id":"sl/nvwub7","slide":11,"title":"COMPETITION","textShapes":15}
+{"kind":"shape","id":"sh/r65wjudg","slide":11,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/gr2p8nqx","slide":11,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/9cvixcze","slide":11,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/yxobm58z","slide":11,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/nih4byhg","slide":11,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/g3ex0nux","slide":11,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/5o7qpg3e","slide":11,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/y1kre1w7","slide":11,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/rmhk3q5o","slide":11,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/fa9w3m94","slide":11,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/qpg3ex0n","slide":11,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/xczed8v6","slide":11,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/8v6psfil","slide":11,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/fyxobm58","slide":11,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/qd4vmtwr","slide":11,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/x4nap4r6","slide":11,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/8jqh0fep","slide":11,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/fmlkjm1c","slide":11,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/q1orytsv","slide":11,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/y1kre1w7","slide":11,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/rmhk3q5o","slide":11,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/g7adsji5","slide":11,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/9s36hcrm","slide":11,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/yd0z6103","slide":11,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/rytsvu9k","slide":11,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/gfmlkjm1","slide":11,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/90je9cvi","slide":11,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/ylc7u54z","slide":11,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/r65wjudg","slide":11,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/d8v6psfi","slide":11,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/onyd0z61","slide":11,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/z25kb6xk","slide":11,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/6hcrmhk3","slide":11,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/dg7adsji","slide":11,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/ovahoza1","slide":11,"text":"COMPETITION","textPreview":"COMPETITION","textChars":11,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/vahoza1g","slide":11,"text":"Aurevix is not trying to be a universal robot OS.","textPreview":"Aurevix is not trying to be a universal robot OS.","textChars":49,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"textbox","id":"sh/6tovahoz","slide":11,"text":"The wedge is narrower and more survivable: own the task-intent and deployment-trust layer, then export into the runtime.","textPreview":"The wedge is narrower and more survivable: own the task-intent and deployment-trust layer, then export into the runtime.","textChars":120,"textLines":1,"bbox":[74,190,960,72]}
+{"kind":"shape","id":"sh/dsji5sne","slide":11,"bbox":[86,292,326,224]}
+{"kind":"shape","id":"sh/o7qpg3ex","slide":11,"bbox":[86,292,16,0]}
+{"kind":"shape","id":"sh/wb2hwfyx","slide":11,"bbox":[86,292,0,16]}
+{"kind":"shape","id":"sh/lwval87e","slide":11,"bbox":[396,292,16,0]}
+{"kind":"shape","id":"sh/e9cvixcz","slide":11,"bbox":[412,292,0,16]}
+{"kind":"shape","id":"sh/3q5o7qpg","slide":11,"bbox":[86,516,16,0]}
+{"kind":"shape","id":"sh/w3m94fu1","slide":11,"bbox":[86,500,0,16]}
+{"kind":"shape","id":"sh/loj2t83i","slide":11,"bbox":[396,516,16,0]}
+{"kind":"shape","id":"sh/ex0nuxc3","slide":11,"bbox":[412,500,0,16]}
+{"kind":"textbox","id":"sh/3itgfmlk","slide":11,"text":"Hardware players","textPreview":"Hardware players","textChars":16,"textLines":1,"bbox":[110,322,260,34]}
+{"kind":"textbox","id":"sh/szqtcj6t","slide":11,"text":"Standard Bots, OEMs","textPreview":"Standard Bots, OEMs","textChars":19,"textLines":1,"bbox":[110,372,260,26]}
+{"kind":"textbox","id":"sh/lkjm1cfa","slide":11,"text":"Strong distribution, but locked to their own cells or brand economics.","textPreview":"Strong distribution, but locked to their own cells or brand economics.","textChars":70,"textLines":1,"bbox":[110,420,260,64]}
+{"kind":"shape","id":"sh/bi9s36hc","slide":11,"bbox":[472,292,326,224]}
+{"kind":"shape","id":"sh/ixczed8v","slide":11,"bbox":[472,292,16,0]}
+{"kind":"shape","id":"sh/tovahoza","slide":11,"bbox":[472,292,0,16]}
+{"kind":"shape","id":"sh/032lszqt","slide":11,"bbox":[782,292,16,0]}
+{"kind":"shape","id":"sh/bulwval8","slide":11,"bbox":[798,292,0,16]}
+{"kind":"shape","id":"sh/i9s36hcr","slide":11,"bbox":[472,516,16,0]}
+{"kind":"shape","id":"sh/p0bi9s36","slide":11,"bbox":[472,500,0,16]}
+{"kind":"shape","id":"sh/0fepkzup","slide":11,"bbox":[782,516,16,0]}
+{"kind":"shape","id":"sh/byhgn29g","slide":11,"bbox":[798,500,0,16]}
+{"kind":"textbox","id":"sh/idonyd0z","slide":11,"text":"Platform players","textPreview":"Platform players","textChars":16,"textLines":1,"bbox":[496,322,260,34]}
+{"kind":"textbox","id":"sh/65wjudg7","slide":11,"text":"Wandelbots, Intrinsic, RoboDK","textPreview":"Wandelbots, Intrinsic, RoboDK","textChars":29,"textLines":1,"bbox":[496,372,260,26]}
+{"kind":"textbox","id":"sh/zqtcj6to","slide":11,"text":"Broad tooling, but oriented to engineers, digital twins, or offline programming.","textPreview":"Broad tooling, but oriented to engineers, digital twins, or offline programming.","textChars":80,"textLines":1,"bbox":[496,420,260,64]}
+{"kind":"shape","id":"sh/obm58z25","slide":11,"bbox":[858,292,326,224]}
+{"kind":"shape","id":"sh/hwfyxobm","slide":11,"bbox":[858,292,16,0]}
+{"kind":"shape","id":"sh/6xkf6dcb","slide":11,"bbox":[858,292,0,16]}
+{"kind":"shape","id":"sh/zed8v6ps","slide":11,"bbox":[1168,292,16,0]}
+{"kind":"shape","id":"sh/oza1gvy9","slide":11,"bbox":[1184,292,0,16]}
+{"kind":"shape","id":"sh/hk3q5o7q","slide":11,"bbox":[858,516,16,0]}
+{"kind":"shape","id":"sh/al87ed8b","slide":11,"bbox":[858,500,0,16]}
+{"kind":"shape","id":"sh/z61032ls","slide":11,"bbox":[1168,516,16,0]}
+{"kind":"shape","id":"sh/lc7u54zi","slide":11,"bbox":[1184,500,0,16]}
+{"kind":"textbox","id":"sh/wra5gbq1","slide":11,"text":"Aurevix lane","textPreview":"Aurevix lane","textChars":12,"textLines":1,"bbox":[882,322,260,34]}
+{"kind":"textbox","id":"sh/36hcrmhk","slide":11,"text":"Operator-owned task memory","textPreview":"Operator-owned task memory","textChars":26,"textLines":1,"bbox":[882,372,260,26]}
+{"kind":"textbox","id":"sh/eloj2t83","slide":11,"text":"Video-native intent capture + deploy-readiness gate + Automation Passport.","textPreview":"Video-native intent capture + deploy-readiness gate + Automation Passport.","textChars":74,"textLines":1,"bbox":[882,420,260,64]}
+{"kind":"textbox","id":"sh/l0rqd4vm","slide":11,"text":"Competitive claim should be verified against current public positioning before sending to funds. The deck avoids unsourced vendor benchmark claims.","textPreview":"Competitive claim should be verified against current public positioning before sending to funds. The deck avoids unsourced vendor benchma...","textChars":147,"textLines":1,"bbox":[128,582,980,34]}
+{"kind":"textbox","id":"sh/wfyxobm5","slide":11,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/7u54zido","slide":11,"text":"11","textPreview":"11","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"notes","id":"nt/nvwub7","slide":11,"text":""}
+{"kind":"slide","id":"sl/4ixxkj","slide":12,"title":"BUSINESS MODEL","textShapes":15}
+{"kind":"shape","id":"sh/0fepkzup","slide":12,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/bulwval8","slide":12,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/i9s36hcr","slide":12,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/tovahoza","slide":12,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/032lszqt","slide":12,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/bi9s36hc","slide":12,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/ixczed8v","slide":12,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/tcj6tova","slide":12,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/0rqd4vmt","slide":12,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/i9s36hcr","slide":12,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/bulwval8","slide":12,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/0fepkzup","slide":12,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/p0bi9s36","slide":12,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/ixczed8v","slide":12,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/bi9s36hc","slide":12,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/032lszqt","slide":12,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/tovahoza","slide":12,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/il0rqd4v","slide":12,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/b6xkf6dc","slide":12,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/32lszqtc","slide":12,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/ahoza1gv","slide":12,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/l87ed8ba","slide":12,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/sneloj2t","slide":12,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/3ex0nuxc","slide":12,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/at47y1kr","slide":12,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/lkjm1cfa","slide":12,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/szqtcj6t","slide":12,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/3itgfmlk","slide":12,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/ex0nuxc3","slide":12,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/ovahoza1","slide":12,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/dg7adsji","slide":12,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/6tovahoz","slide":12,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/vahoza1g","slide":12,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/onyd0z61","slide":12,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/d8v6psfi","slide":12,"text":"BUSINESS MODEL","textPreview":"BUSINESS MODEL","textChars":14,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/6hcrmhk3","slide":12,"text":"Pricing should capture avoided retasking cost without creating per-task anxiety.","textPreview":"Pricing should capture avoided retasking cost without creating per-task anxiety.","textChars":80,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"shape","id":"sh/z25kb6xk","slide":12,"bbox":[74,220,350,250]}
+{"kind":"shape","id":"sh/oj2t83it","slide":12,"bbox":[74,220,16,0]}
+{"kind":"shape","id":"sh/d4vmtwra","slide":12,"bbox":[74,220,0,16]}
+{"kind":"shape","id":"sh/9s36hcrm","slide":12,"bbox":[408,220,16,0]}
+{"kind":"shape","id":"sh/g7adsji5","slide":12,"bbox":[424,220,0,16]}
+{"kind":"shape","id":"sh/rmhk3q5o","slide":12,"bbox":[74,470,16,0]}
+{"kind":"shape","id":"sh/y1kre1w7","slide":12,"bbox":[74,454,0,16]}
+{"kind":"shape","id":"sh/90je9cvi","slide":12,"bbox":[408,470,16,0]}
+{"kind":"shape","id":"sh/gfmlkjm1","slide":12,"bbox":[424,454,0,16]}
+{"kind":"textbox","id":"sh/rytsvu9k","slide":12,"text":"Starter","textPreview":"Starter","textChars":7,"textLines":1,"bbox":[104,254,200,30]}
+{"kind":"textbox","id":"sh/yd0z6103","slide":12,"text":"One factory, one robot, core video teaching, unlimited task changes.","textPreview":"One factory, one robot, core video teaching, unlimited task changes.","textChars":68,"textLines":1,"bbox":[104,310,278,76]}
+{"kind":"shape","id":"sh/9cvixcze","slide":12,"bbox":[104,404,178,32]}
+{"kind":"textbox","id":"sh/gr2p8nqx","slide":12,"text":"NO PER-TASK FEES","textPreview":"NO PER-TASK FEES","textChars":16,"textLines":1,"bbox":[114,411,158,18]}
+{"kind":"shape","id":"sh/a5gbq1or","slide":12,"bbox":[465,220,350,250]}
+{"kind":"shape","id":"sh/3m94fu18","slide":12,"bbox":[465,220,16,0]}
+{"kind":"shape","id":"sh/s72x4nap","slide":12,"bbox":[465,220,0,16]}
+{"kind":"shape","id":"sh/lszqtcj6","slide":12,"bbox":[799,220,16,0]}
+{"kind":"shape","id":"sh/adsji5sn","slide":12,"bbox":[815,220,0,16]}
+{"kind":"shape","id":"sh/3ylc7u54","slide":12,"bbox":[465,470,16,0]}
+{"kind":"shape","id":"sh/sji5snel","slide":12,"bbox":[465,454,0,16]}
+{"kind":"shape","id":"sh/h4byhgn2","slide":12,"bbox":[799,470,16,0]}
+{"kind":"shape","id":"sh/ap4r65wj","slide":12,"bbox":[815,454,0,16]}
+{"kind":"textbox","id":"sh/za1gvy90","slide":12,"text":"Professional","textPreview":"Professional","textChars":12,"textLines":1,"bbox":[495,254,230,30]}
+{"kind":"textbox","id":"sh/ra5gbq1o","slide":12,"text":"Up to five robots, grippers, multi-step sequencing, guided onboarding.","textPreview":"Up to five robots, grippers, multi-step sequencing, guided onboarding.","textChars":70,"textLines":1,"bbox":[495,310,278,76]}
+{"kind":"shape","id":"sh/2p8nqxs7","slide":12,"bbox":[495,404,150,32]}
+{"kind":"textbox","id":"sh/9gr2p8nq","slide":12,"text":"RECOMMENDED","textPreview":"RECOMMENDED","textChars":11,"textLines":1,"bbox":[505,411,130,18]}
+{"kind":"shape","id":"sh/gvy90je9","slide":12,"bbox":[856,220,350,250]}
+{"kind":"shape","id":"sh/r2p8nqxs","slide":12,"bbox":[856,220,16,0]}
+{"kind":"shape","id":"sh/2hwfyxob","slide":12,"bbox":[856,220,0,16]}
+{"kind":"shape","id":"sh/94fu18jq","slide":12,"bbox":[1190,220,16,0]}
+{"kind":"shape","id":"sh/kjm1cfa9","slide":12,"bbox":[1206,220,0,16]}
+{"kind":"shape","id":"sh/rqd4vmtw","slide":12,"bbox":[856,470,16,0]}
+{"kind":"shape","id":"sh/25kb6xkf","slide":12,"bbox":[856,454,0,16]}
+{"kind":"shape","id":"sh/c7u54zid","slide":12,"bbox":[1190,470,16,0]}
+{"kind":"shape","id":"sh/1orytsvu","slide":12,"bbox":[1206,454,0,16]}
+{"kind":"textbox","id":"sh/u18jqh0f","slide":12,"text":"Integrator","textPreview":"Integrator","textChars":10,"textLines":1,"bbox":[886,254,230,30]}
+{"kind":"textbox","id":"sh/jm1cfa9w","slide":12,"text":"Partner enablement, co-deployment support, channel margin, volume pricing.","textPreview":"Partner enablement, co-deployment support, channel margin, volume pricing.","textChars":74,"textLines":1,"bbox":[886,310,278,76]}
+{"kind":"shape","id":"sh/cfa9w3m9","slide":12,"bbox":[886,404,150,32]}
+{"kind":"textbox","id":"sh/1032lszq","slide":12,"text":"CHANNEL PATH","textPreview":"CHANNEL PATH","textChars":12,"textLines":1,"bbox":[896,411,130,18]}
+{"kind":"textbox","id":"sh/u9knih4b","slide":12,"text":"Next proof: disclose ACV targets, support cost, expected gross margin, and the replacement budget for the first ten customers.","textPreview":"Next proof: disclose ACV targets, support cost, expected gross margin, and the replacement budget for the first ten customers.","textChars":126,"textLines":1,"bbox":[128,538,980,42]}
+{"kind":"textbox","id":"sh/judg7ads","slide":12,"text":"Source basis: live site pricing section. Exact prices are under design-partner review and not claimed here.","textPreview":"Source basis: live site pricing section. Exact prices are under design-partner review and not claimed here.","textChars":107,"textLines":1,"bbox":[72,638,1000,24]}
+{"kind":"textbox","id":"sh/cj6tovah","slide":12,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/54zidony","slide":12,"text":"12","textPreview":"12","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"notes","id":"nt/4ixxkj","slide":12,"text":""}
+{"kind":"slide","id":"sl/tml154","slide":13,"title":"MILESTONES","textShapes":14}
+{"kind":"shape","id":"sh/1orytsvu","slide":13,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/u18jqh0f","slide":13,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/jm1cfa9w","slide":13,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/cfa9w3m9","slide":13,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/1032lszq","slide":13,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/u9knih4b","slide":13,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/judg7ads","slide":13,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/cj6tovah","slide":13,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/54zidony","slide":13,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/t47y1kre","slide":13,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/0je9cvix","slide":13,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/byhgn29g","slide":13,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/idonyd0z","slide":13,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/tcj6tova","slide":13,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/0rqd4vmt","slide":13,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/b6xkf6dc","slide":13,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/il0rqd4v","slide":13,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/tovahoza","slide":13,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/032lszqt","slide":13,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/czed8v6p","slide":13,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/5kb6xkf6","slide":13,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/ytsvu9kn","slide":13,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/neloj2t8","slide":13,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/cbulwval","slide":13,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/5sneloj2","slide":13,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/u54zidon","slide":13,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/nqxs72x4","slide":13,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/gbq1oryt","slide":13,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/5wjudg7a","slide":13,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/v6psfil0","slide":13,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/2lszqtcj","slide":13,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/d8bat47y","slide":13,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/knih4byh","slide":13,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/vu9knih4","slide":13,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/29gr2p8n","slide":13,"text":"MILESTONES","textPreview":"MILESTONES","textChars":10,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/d0z61032","slide":13,"text":"A pre-seed round should buy deployment proof, not just more demo surface.","textPreview":"A pre-seed round should buy deployment proof, not just more demo surface.","textChars":73,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"shape","id":"sh/kf6dcbul","slide":13,"bbox":[92,236,1080,86]}
+{"kind":"shape","id":"sh/vixczed8","slide":13,"bbox":[92,236,16,0]}
+{"kind":"shape","id":"sh/2x4nap4r","slide":13,"bbox":[92,236,0,16]}
+{"kind":"shape","id":"sh/m1cfa9w3","slide":13,"bbox":[1156,236,16,0]}
+{"kind":"shape","id":"sh/bm58z25k","slide":13,"bbox":[1172,236,0,16]}
+{"kind":"shape","id":"sh/47y1kre1","slide":13,"bbox":[92,322,16,0]}
+{"kind":"shape","id":"sh/tsvu9kni","slide":13,"bbox":[92,306,0,16]}
+{"kind":"shape","id":"sh/mp0bi9s3","slide":13,"bbox":[1156,322,16,0]}
+{"kind":"shape","id":"sh/bat47y1k","slide":13,"bbox":[1172,306,0,16]}
+{"kind":"textbox","id":"sh/4vmtwra5","slide":13,"text":"0-3 months","textPreview":"0-3 months","textChars":10,"textLines":1,"bbox":[122,262,160,26]}
+{"kind":"textbox","id":"sh/tgfmlkjm","slide":13,"text":"Design-partner proof","textPreview":"Design-partner proof","textChars":20,"textLines":1,"bbox":[318,255,260,32]}
+{"kind":"textbox","id":"sh/mhk3q5o7","slide":13,"text":"One scoped task: baseline, generated plan, simulation, human review, supervised result.","textPreview":"One scoped task: baseline, generated plan, simulation, human review, supervised result.","textChars":87,"textLines":1,"bbox":[606,257,520,42]}
+{"kind":"shape","id":"sh/b2hwfyxo","slide":13,"bbox":[92,354,1080,86]}
+{"kind":"shape","id":"sh/18jqh0fe","slide":13,"bbox":[92,354,16,0]}
+{"kind":"shape","id":"sh/8nqxs72x","slide":13,"bbox":[92,354,0,16]}
+{"kind":"shape","id":"sh/j2t83itg","slide":13,"bbox":[1156,354,16,0]}
+{"kind":"shape","id":"sh/qh0fepkz","slide":13,"bbox":[1172,354,0,16]}
+{"kind":"shape","id":"sh/1w7mp0bi","slide":13,"bbox":[92,440,16,0]}
+{"kind":"shape","id":"sh/8bat47y1","slide":13,"bbox":[92,424,0,16]}
+{"kind":"shape","id":"sh/jqh0fepk","slide":13,"bbox":[1156,440,16,0]}
+{"kind":"shape","id":"sh/q5o7qpg3","slide":13,"bbox":[1172,424,0,16]}
+{"kind":"textbox","id":"sh/1kre1w7m","slide":13,"text":"3-9 months","textPreview":"3-9 months","textChars":10,"textLines":1,"bbox":[122,380,160,26]}
+{"kind":"textbox","id":"sh/c3ylc7u5","slide":13,"text":"Repeatability","textPreview":"Repeatability","textChars":13,"textLines":1,"bbox":[318,373,260,32]}
+{"kind":"textbox","id":"sh/orytsvu9","slide":13,"text":"Five paid deployments, 20 validated task records, two supported task families.","textPreview":"Five paid deployments, 20 validated task records, two supported task families.","textChars":78,"textLines":1,"bbox":[606,375,520,42]}
+{"kind":"shape","id":"sh/hcrmhk3q","slide":13,"bbox":[92,472,1080,86]}
+{"kind":"shape","id":"sh/al87ed8b","slide":13,"bbox":[92,472,16,0]}
+{"kind":"shape","id":"sh/z61032ls","slide":13,"bbox":[92,472,0,16]}
+{"kind":"shape","id":"sh/sfil0rqd","slide":13,"bbox":[1156,472,16,0]}
+{"kind":"shape","id":"sh/h0fepkzu","slide":13,"bbox":[1172,472,0,16]}
+{"kind":"shape","id":"sh/a9w3m94f","slide":13,"bbox":[92,558,16,0]}
+{"kind":"shape","id":"sh/zupwb2hw","slide":13,"bbox":[92,542,0,16]}
+{"kind":"shape","id":"sh/obm58z25","slide":13,"bbox":[1156,558,16,0]}
+{"kind":"shape","id":"sh/hwfyxobm","slide":13,"bbox":[1172,542,0,16]}
+{"kind":"textbox","id":"sh/7u54zido","slide":13,"text":"9-18 months","textPreview":"9-18 months","textChars":11,"textLines":1,"bbox":[122,498,160,26]}
+{"kind":"textbox","id":"sh/ed8bat47","slide":13,"text":"Seed readiness","textPreview":"Seed readiness","textChars":14,"textLines":1,"bbox":[318,491,260,32]}
+{"kind":"textbox","id":"sh/l0rqd4vm","slide":13,"text":"$250K ARR target, measurable support load, data-rights template, repeatable channel.","textPreview":"$250K ARR target, measurable support load, data-rights template, repeatable channel.","textChars":84,"textLines":1,"bbox":[606,493,520,42]}
+{"kind":"textbox","id":"sh/wfyxobm5","slide":13,"text":"Ask placeholder: raise enough to convert signed access into measured deployment evidence. Insert round size, valuation logic, and runway once confirmed.","textPreview":"Ask placeholder: raise enough to convert signed access into measured deployment evidence. Insert round size, valuation logic, and runway ...","textChars":152,"textLines":1,"bbox":[130,604,960,38]}
+{"kind":"textbox","id":"sh/36hcrmhk","slide":13,"text":"Aurevix by Agentic Convergent · investor deck","textPreview":"Aurevix by Agentic Convergent · investor deck","textChars":45,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/eloj2t83","slide":13,"text":"13","textPreview":"13","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"notes","id":"nt/tml154","slide":13,"text":""}
+{"kind":"slide","id":"sl/bxvdd0","slide":14,"title":"CLOSE","textShapes":7}
+{"kind":"shape","id":"sh/yxobm58z","slide":14,"bbox":[56,0,0,720]}
+{"kind":"shape","id":"sh/5o7qpg3e","slide":14,"bbox":[112,0,0,720]}
+{"kind":"shape","id":"sh/g3ex0nux","slide":14,"bbox":[168,0,0,720]}
+{"kind":"shape","id":"sh/r65wjudg","slide":14,"bbox":[224,0,0,720]}
+{"kind":"shape","id":"sh/ylc7u54z","slide":14,"bbox":[280,0,0,720]}
+{"kind":"shape","id":"sh/9cvixcze","slide":14,"bbox":[336,0,0,720]}
+{"kind":"shape","id":"sh/gr2p8nqx","slide":14,"bbox":[392,0,0,720]}
+{"kind":"shape","id":"sh/rytsvu9k","slide":14,"bbox":[448,0,0,720]}
+{"kind":"shape","id":"sh/yd0z6103","slide":14,"bbox":[504,0,0,720]}
+{"kind":"shape","id":"sh/wb2hwfyx","slide":14,"bbox":[560,0,0,720]}
+{"kind":"shape","id":"sh/lwval87e","slide":14,"bbox":[616,0,0,720]}
+{"kind":"shape","id":"sh/e9cvixcz","slide":14,"bbox":[672,0,0,720]}
+{"kind":"shape","id":"sh/3q5o7qpg","slide":14,"bbox":[728,0,0,720]}
+{"kind":"shape","id":"sh/w3m94fu1","slide":14,"bbox":[784,0,0,720]}
+{"kind":"shape","id":"sh/loj2t83i","slide":14,"bbox":[840,0,0,720]}
+{"kind":"shape","id":"sh/ex0nuxc3","slide":14,"bbox":[896,0,0,720]}
+{"kind":"shape","id":"sh/3itgfmlk","slide":14,"bbox":[952,0,0,720]}
+{"kind":"shape","id":"sh/szqtcj6t","slide":14,"bbox":[1008,0,0,720]}
+{"kind":"shape","id":"sh/lkjm1cfa","slide":14,"bbox":[1064,0,0,720]}
+{"kind":"shape","id":"sh/lc7u54zi","slide":14,"bbox":[1120,0,0,720]}
+{"kind":"shape","id":"sh/wra5gbq1","slide":14,"bbox":[1176,0,0,720]}
+{"kind":"shape","id":"sh/36hcrmhk","slide":14,"bbox":[1232,0,0,720]}
+{"kind":"shape","id":"sh/eloj2t83","slide":14,"bbox":[0,56,1280,0]}
+{"kind":"shape","id":"sh/l0rqd4vm","slide":14,"bbox":[0,112,1280,0]}
+{"kind":"shape","id":"sh/wfyxobm5","slide":14,"bbox":[0,168,1280,0]}
+{"kind":"shape","id":"sh/7u54zido","slide":14,"bbox":[0,224,1280,0]}
+{"kind":"shape","id":"sh/ed8bat47","slide":14,"bbox":[0,280,1280,0]}
+{"kind":"shape","id":"sh/psfil0rq","slide":14,"bbox":[0,336,1280,0]}
+{"kind":"shape","id":"sh/w7mp0bi9","slide":14,"bbox":[0,392,1280,0]}
+{"kind":"shape","id":"sh/65wjudg7","slide":14,"bbox":[0,448,1280,0]}
+{"kind":"shape","id":"sh/zqtcj6to","slide":14,"bbox":[0,504,1280,0]}
+{"kind":"shape","id":"sh/obm58z25","slide":14,"bbox":[0,560,1280,0]}
+{"kind":"shape","id":"sh/hwfyxobm","slide":14,"bbox":[0,616,1280,0]}
+{"kind":"shape","id":"sh/6xkf6dcb","slide":14,"bbox":[0,672,1280,0]}
+{"kind":"textbox","id":"sh/zed8v6ps","slide":14,"text":"CLOSE","textPreview":"CLOSE","textChars":5,"textLines":1,"bbox":[72,44,760,28]}
+{"kind":"textbox","id":"sh/oza1gvy9","slide":14,"text":"Start by retasking one robot from a video. End with the factory's automation memory.","textPreview":"Start by retasking one robot from a video. End with the factory's automation memory.","textChars":84,"textLines":1,"bbox":[72,82,980,118]}
+{"kind":"shape","id":"sh/al87ed8b","slide":14,"bbox":[82,248,544,204]}
+{"kind":"shape","id":"sh/z61032ls","slide":14,"bbox":[82,248,16,0]}
+{"kind":"shape","id":"sh/fa9w3m94","slide":14,"bbox":[82,248,0,16]}
+{"kind":"shape","id":"sh/qpg3ex0n","slide":14,"bbox":[610,248,16,0]}
+{"kind":"shape","id":"sh/xczed8v6","slide":14,"bbox":[626,248,0,16]}
+{"kind":"shape","id":"sh/8v6psfil","slide":14,"bbox":[82,452,16,0]}
+{"kind":"shape","id":"sh/fyxobm58","slide":14,"bbox":[82,436,0,16]}
+{"kind":"shape","id":"sh/qd4vmtwr","slide":14,"bbox":[610,452,16,0]}
+{"kind":"shape","id":"sh/x4nap4r6","slide":14,"bbox":[626,436,0,16]}
+{"kind":"textbox","id":"sh/8jqh0fep","slide":14,"text":"What we believe","textPreview":"What we believe","textChars":15,"textLines":1,"bbox":[116,280,260,26]}
+{"kind":"textbox","id":"sh/fmlkjm1c","slide":14,"text":"The next industrial software platform will not be the company with the most impressive demo. It will be the company factories trust to capture, validate, approve, and remember work.","textPreview":"The next industrial software platform will not be the company with the most impressive demo. It will be the company factories trust to ca...","textChars":181,"textLines":1,"bbox":[116,324,464,86]}
+{"kind":"textbox","id":"sh/q1orytsv","slide":14,"text":"Assumptions to verify before sending: paid/scoped/scheduled/referenceable design-partner status; bottom-up SAM; ACV and support costs; customer data-rights; exact round ask.","textPreview":"Assumptions to verify before sending: paid/scoped/scheduled/referenceable design-partner status; bottom-up SAM; ACV and support costs; cu...","textChars":173,"textLines":1,"bbox":[116,520,980,54]}
+{"kind":"textbox","id":"sh/kjm1cfa9","slide":14,"text":"Aurevix · confidential · assumptions marked for founder verification","textPreview":"Aurevix · confidential · assumptions marked for founder verification","textChars":68,"textLines":1,"bbox":[72,668,820,24]}
+{"kind":"textbox","id":"sh/94fu18jq","slide":14,"text":"14","textPreview":"14","textChars":2,"textLines":1,"bbox":[1156,662,52,28]}
+{"kind":"image","id":"im/ap4r65wj","slide":14,"name":"","geometry":"roundRect","alt":"Automation export screen","bbox":[742,146,420,324]}
+{"kind":"notes","id":"nt/bxvdd0","slide":14,"text":""}

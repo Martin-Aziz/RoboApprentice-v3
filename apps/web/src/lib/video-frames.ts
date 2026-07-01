@@ -46,7 +46,9 @@ export type SampleReason =
   | "scene-boundary"
   | "segment-midpoint"
   | "uniform"
-  | "action";
+  | "action"
+  | "action-pre"
+  | "action-post";
 
 export interface FrameSample {
   /** Base64-encoded JPEG frame. */
@@ -196,7 +198,10 @@ export function buildAdaptiveSamplePlan(
 
   // Motion activity peaks are the highest-value evidence: the instants a grasp,
   // release, or contact is most likely. Give them top priority so they always
-  // survive the frame cap.
+  // survive the frame cap, and bracket each peak with a before/after frame so
+  // the model can read the state transition (open→closed, held→released), not
+  // just the instant of contact.
+  const PEAK_BRACKET_SECONDS = 0.45;
   activityPeaks
     .filter((timestamp) => timestamp > 0.3 && timestamp < duration - 0.3)
     .forEach((timestamp) => {
@@ -204,6 +209,16 @@ export function buildAdaptiveSamplePlan(
         timestampSeconds: clampTimestamp(timestamp, duration),
         reason: "action",
         priority: -1,
+      }, minDistanceSeconds);
+      pushDeduped(samples, {
+        timestampSeconds: clampTimestamp(timestamp - PEAK_BRACKET_SECONDS, duration),
+        reason: "action-pre",
+        priority: 0,
+      }, minDistanceSeconds);
+      pushDeduped(samples, {
+        timestampSeconds: clampTimestamp(timestamp + PEAK_BRACKET_SECONDS, duration),
+        reason: "action-post",
+        priority: 0,
       }, minDistanceSeconds);
     });
 

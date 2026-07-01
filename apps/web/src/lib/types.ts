@@ -487,11 +487,71 @@ export interface TaskStep {
   notes?: string;
 }
 
+/** What an interpreted workcell object does in the demonstrated task. */
+export type SceneObjectRole =
+  | "source"
+  | "workpiece"
+  | "destination"
+  | "fixture"
+  | "container"
+  | "inspection_surface"
+  | "tool"
+  | "unknown";
+
+/** Geometric proxy class the simulator renders for an interpreted object. */
+export type SceneObjectCategory =
+  | "box"
+  | "bin"
+  | "tote"
+  | "tray"
+  | "cylinder"
+  | "bracket"
+  | "machined_part"
+  | "fixture"
+  | "station"
+  | "surface"
+  | "unknown";
+
+export type SceneMaterialHint = "metal" | "plastic" | "rubber" | "wood" | "cardboard" | "unknown";
+
+/**
+ * One physical object interpreted from the demonstration video. Sizes are in
+ * meters; poses are in the robot base frame (x forward, y left, z up), matching
+ * step targets. All hints are best-effort: the renderer degrades to a neutral
+ * proxy when a hint is missing.
+ */
+export interface SceneObject {
+  id: string;
+  role: SceneObjectRole;
+  category: SceneObjectCategory;
+  label: string;
+  colorHint?: string;
+  materialHint?: SceneMaterialHint;
+  /** Approximate bounding size in meters, robot frame (z is vertical height). */
+  sizeHint?: { x: number; y: number; z: number };
+  /** Approximate resting pose in the robot base frame. */
+  poseHint?: { x: number; y: number; z: number; yaw?: number };
+  /** IDs of the policy steps this object participates in (pick/place/inspect). */
+  relatedStepIds: string[];
+  confidence: number; // 0–1
+}
+
+/** Structured scene understanding derived from the demonstration video. */
+export interface WorkcellScene {
+  objects: SceneObject[];
+  confidence: number; // 0–1 overall scene confidence
+  warnings: string[];
+  /** How the scene was produced: multimodal video evidence or step-text fallback. */
+  source: "video" | "derived";
+}
+
 export interface TaskPolicy {
   steps: TaskStep[];
   toolFrame: string; // e.g., "tcp_default"
   workspaceBounds?: { xMin: number; xMax: number; yMin: number; yMax: number; zMin: number; zMax: number };
   estimatedCycleSeconds: number;
+  /** Optional structured scene model interpreted alongside the steps. */
+  scene?: WorkcellScene;
 }
 
 export type FeedbackVerdict = "success" | "partial" | "failed";

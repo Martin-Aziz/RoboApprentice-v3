@@ -36,6 +36,19 @@ describe("adaptive video frame sampling", () => {
     expect(plan.length).toBeLessThanOrEqual(24);
   });
 
+  it("brackets each motion peak with before/after frames", () => {
+    const plan = buildAdaptiveSamplePlan(35, [], 40, [12.0]);
+    const pre = plan.find((sample) => sample.reason === "action-pre");
+    const post = plan.find((sample) => sample.reason === "action-post");
+    expect(pre).toBeDefined();
+    expect(post).toBeDefined();
+    expect(pre!.timestampSeconds).toBeLessThan(12);
+    expect(post!.timestampSeconds).toBeGreaterThan(12);
+    // The bracket frames sit close enough to capture the same grasp/release transition.
+    expect(Math.abs(pre!.timestampSeconds - 12)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(post!.timestampSeconds - 12)).toBeLessThanOrEqual(0.5);
+  });
+
   it("falls back to inferred temporal segments when scene detection is absent", () => {
     const plan = buildAdaptiveSamplePlan(35, [], 24);
     const midpoints = plan.filter((sample) => sample.reason === "segment-midpoint");

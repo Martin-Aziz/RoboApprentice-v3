@@ -5,7 +5,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getTask, updateTask } from "@/lib/task-store-db";
 import { processPolicyPipeline } from "@/lib/policy-pipeline";
 import { extractVideoFrames, type FrameSample } from "@/lib/video-frames";
-import type { GripperState, RobotAction, TaskPolicy, TaskStep, Waypoint } from "@/lib/types";
+import {
+  deriveSceneFromSteps,
+  extractFirstJsonArray,
+  extractSceneJson,
+  validateWorkcellScene,
+} from "@/lib/scene-model";
+import type { GripperState, RobotAction, TaskPolicy, TaskStep, Waypoint, WorkcellScene } from "@/lib/types";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
@@ -285,6 +291,8 @@ If still frames sampled from the demonstration video are provided, they are your
 A computer-vision motion pass may also be supplied:
 - A "Motion analysis" timeline derived from inter-frame optical difference. It reports, per segment, whether the dominant motion is a downward descent (approach/contact), an upward lift (retract after grip), a lateral transfer, or localised in-place manipulation, plus the on-screen location of the activity. Hard scene cuts in the timeline mark edits between potentially distinct workcell stages — never merge across a cut without checking the frames.
 - "(action)" frames sampled at motion peaks, each optionally followed by a "Zoom on activity region" inset cropped to the moving gripper/contact area. Read these insets to determine gripper open vs. closed and what object is held — this is how you decide pick (gripper closes on a part) versus place (gripper opens to release). When the wide frame is too small to tell, defer to the inset.
+- "(action-pre)" and "(action-post)" frames bracket each motion peak roughly half a second before and after. Compare the pre/post pair around a peak to read the state transition: an object present before and gone after means a pick; empty gripper before and object resting after means a place.
+- "Object activity zones" in the motion analysis list where on screen work keeps recurring. Distinct zones usually correspond to distinct physical stations (pick area, container, fixture, inspection point) — map steps in different zones to different waypoints instead of reusing one location.
 
 ## ANTI-HALLUCINATION RULES
 - Do not name equipment, sensors, scanners, second robots, collaborative zones, or inspection systems unless they are clearly visible in the frames or stated in the operator description.
@@ -303,7 +311,7 @@ Before generating output, reason through these questions mentally:
 6. What safety clearances and approach vectors are needed to avoid collisions?
 
 ## OUTPUT FORMAT
-Respond with ONLY a valid JSON array. No markdown fences, no commentary, no prose before or after.
+Respond with ONLY a valid JSON array of steps, followed by ONE scene-model JSON object on a new line (described in SCENE MODEL OUTPUT below). No markdown fences, no commentary, no prose before, between, or after.
 
 Each step object must have exactly this shape:
 {
@@ -317,6 +325,33 @@ Each step object must have exactly this shape:
   "requires_vision": <boolean>,
   "notes": "<safety note, tolerance, or sensor trigger condition — omit if not needed>"
 }
+
+## SCENE MODEL OUTPUT
+Immediately after the closing "]" of the steps array, output exactly one JSON object describing the physical objects visible in the demonstration:
+
+{"scene": {"objects": [
+  {
+    "id": "obj-1",
+    "role": "source" | "workpiece" | "destination" | "fixture" | "container" | "inspection_surface" | "tool" | "unknown",
+    "category": "box" | "bin" | "tote" | "tray" | "cylinder" | "bracket" | "machined_part" | "fixture" | "station" | "surface" | "unknown",
+    "label": "<short human label, e.g. 'gray tote', 'aluminum bracket'>",
+    "color_hint": "<dominant color word, omit if unclear>",
+    "material_hint": "metal" | "plastic" | "rubber" | "wood" | "cardboard" | "unknown",
+    "size_hint": { "x": <meters>, "y": <meters>, "z": <meters, vertical height> },
+    "pose_hint": { "x": <meters>, "y": <meters>, "z": <meters> },
+    "related_step_orders": [<step order numbers this object participates in>],
+    "confidence": <0..1>
+  }
+], "confidence": <0..1 overall>, "warnings": ["<anything ambiguous about the scene>"]}}
+
+Scene-model rules:
+- Include ONLY objects visibly present in the frames or explicitly stated by the operator. Maximum 10 objects.
+- Every carried part should appear as one "workpiece" object whose related_step_orders include its grip step.
+- Every drop-off receptacle (tote, tray, fixture, inspection surface, station) should appear with related_step_orders including its release or inspect step.
+- pose_hint must be consistent with the step targets the object relates to (same coordinate frame as step "target").
+- Approximate sizes honestly in meters; a tote is typically 0.2–0.6m wide, a small machined part 0.03–0.15m.
+- When unsure of what an object is, use category "unknown" with a descriptive label and lower confidence — never invent a specific object class.
+- If the video shows no identifiable objects, output {"scene": {"objects": [], "confidence": 0, "warnings": ["No distinct objects identified"]}}.
 
 ## COORDINATE SYSTEM
 Robot base frame. Origin at robot base center.
@@ -383,7 +418,8 @@ Robot base frame. Origin at robot base center.
 ✓ Gripper state changes ONLY on grip/release actions
 ✓ Descriptions are precise and action-oriented
 ✓ Multi-stage videos preserve each distinct visible stage
-✓ Output is valid JSON array only — no surrounding text`;
+✓ Scene object lists every carried part and every drop-off receptacle, linked to step orders
+✓ Output is the steps JSON array followed by the single scene JSON object — no surrounding text`;
 
 /**
  * Run the interpretation through the locally-installed Claude Code CLI, which
@@ -535,7 +571,7 @@ export async function POST(
               ? `\n## Note\nNo operator narration provided. Derive the steps from the frames.`
               : `\n## Note\nNo operator narration or readable video frames available. Infer a plausible pick-and-place policy from the task title alone. Use conservative speeds and add vision checks where part position is uncertain.`,
           `\n## Output`,
-          `Generate the JSON array of motion steps now. Follow all rules in the system prompt exactly. Use enough steps to preserve all robot-relevant stages, up to the 30-step limit.`,
+          `Generate the JSON array of motion steps now, followed by the single scene-model JSON object. Follow all rules in the system prompt exactly. Use enough steps to preserve all robot-relevant stages, up to the 30-step limit.`,
         ]
           .filter(Boolean)
           .join("\n");
@@ -574,10 +610,12 @@ export async function POST(
         const finalizeAndRespond = async (session: ReturnType<typeof newSession>) => {
           let finalSteps = session.collected;
           try {
-            const start = session.fullText.indexOf("[");
-            const end = session.fullText.lastIndexOf("]") + 1;
-            if (start >= 0 && end > start) {
-              const parsed = JSON.parse(session.fullText.slice(start, end)) as RawStep[];
+            // Balanced-scan extraction: the model output is now a steps array
+            // followed by a scene object (which itself contains arrays), so
+            // naive first-"["/last-"]" slicing would swallow the scene.
+            const arrayText = extractFirstJsonArray(session.fullText);
+            if (arrayText) {
+              const parsed = JSON.parse(arrayText) as RawStep[];
               const remapped = parsed.map((raw, i) => {
                 const existing = session.collected.find((s) => s.order === raw.order);
                 const normalized = normalizeStep(raw, i + 1);
@@ -592,24 +630,43 @@ export async function POST(
           const rawPolicy = buildPolicy(finalSteps);
           const { policy, warnings, errors } = processPolicyPipeline(rawPolicy);
 
+          // Structured scene understanding: prefer the model's scene (validated
+          // and clamped); degrade to a scene derived from step text so the
+          // simulator always has role-appropriate objects to render.
+          const modelScene = validateWorkcellScene(extractSceneJson(session.fullText), policy.steps);
+          const scene: WorkcellScene = modelScene ?? deriveSceneFromSteps(policy.steps);
+          policy.scene = scene;
+          warnings.push(...scene.warnings);
+          if (scene.objects.length > 0) {
+            send({
+              type: "status",
+              message: modelScene
+                ? `Scene understanding: ${scene.objects.length} workcell object(s) identified from video evidence.`
+                : `Scene understanding: ${scene.objects.length} workcell object(s) inferred from the interpreted steps.`,
+            });
+          }
+
           if (errors.length > 0) {
             send({ type: "warning", message: `Policy validation errors: ${errors.join("; ")}` });
           }
 
           await updateTask(id, { steps: policy.steps, policy, status: "done" });
-          send({ type: "done", steps: policy.steps, policy, warnings });
+          send({ type: "done", steps: policy.steps, policy, warnings, scene });
         };
 
         const runDeterministicFallback = async (reason: string) => {
           const rawPolicy = buildPolicy(buildDeterministicSteps(task.title, task.transcript));
           const { policy, warnings, errors } = processPolicyPipeline(rawPolicy);
+          const scene = deriveSceneFromSteps(policy.steps);
+          policy.scene = scene;
+          warnings.push(...scene.warnings);
           await updateTask(id, { steps: policy.steps, policy, status: "done" });
           send({
             type: "warning",
             message: `No LLM provider available; deterministic interpreter used. ${reason}`,
           });
           for (const step of policy.steps) send({ type: "step", step });
-          send({ type: "done", steps: policy.steps, policy, warnings, errors, fallback: "deterministic" });
+          send({ type: "done", steps: policy.steps, policy, warnings, errors, scene, fallback: "deterministic" });
         };
 
         // ── 1. Try Claude (Anthropic) — primary provider ───────────────────

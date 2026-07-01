@@ -11,7 +11,17 @@ import { cn } from "@/lib/utils";
 import { solveCcdIk, type IKJoint } from "@/lib/ik-solver";
 import type { GripperType } from "@/lib/workcell-config";
 import type { Pose } from "@/lib/robot-viewport-types";
-import type { GripperState, TaskPolicy, TaskStep } from "@/lib/types";
+import type { GripperState, SceneMaterialHint, SceneObject, SceneObjectCategory, TaskPolicy, TaskStep } from "@/lib/types";
+import {
+  DESTINATION_ROLES,
+  WORKPIECE_ROLES,
+  classifyDestination,
+  classifyWorkpiece,
+  extractColorWord,
+  findCarryPairs,
+  resolveSceneForPolicy,
+  sceneObjectForStep,
+} from "@/lib/scene-model";
 import {
   createBrushedMetalTexture,
   createContactShadow,
@@ -285,226 +295,418 @@ function segmentDurationSeconds(from: Pose, to: Pose, policy: TaskPolicy | undef
   return clamp(seconds, 0.5, 3.5) / Math.max(playbackSpeed, 0.1);
 }
 
-/** One pick-and-place operation: gripper closes at `pickIndex` and re-opens at `placeIndex`. */
-interface CarryPair {
-  pickIndex: number;
-  placeIndex: number;
-}
-
-/**
- * Scans the policy for grip(close) -> release(open) pairs. Each pair represents one
- * part being picked up somewhere and carried to somewhere else -- the policy's own
- * gripper-discipline rules guarantee these never nest or overlap.
- */
-function extractCarryPairs(policy: TaskPolicy | undefined): CarryPair[] {
-  const pairs: CarryPair[] = [];
-  let openPick: number | null = null;
-  policy?.steps.forEach((step, index) => {
-    if (step.gripper === "closed" && openPick === null) {
-      openPick = index;
-    } else if (step.gripper === "open" && openPick !== null) {
-      pairs.push({ pickIndex: openPick, placeIndex: index });
-      openPick = null;
-    }
-  });
-  return pairs;
-}
-
 /** A prop mesh assigned to one pick-and-place pair, tracking its pickup/drop-off points. */
 interface CarrySlot {
   pickIndex: number;
   placeIndex: number;
   propIndex: number;
-  destinationKind: DestinationKind;
   home: THREE.Vector3;
   place: THREE.Vector3;
   carrying: boolean;
 }
 
-/** Pool of distinctly-coloured props available to represent simultaneous/sequential pick-and-place pairs. */
-const CARRY_PROP_COLORS = [0x0284c7, 0xd97706, 0x7c3aed];
+/** Accent colours used to visually distinguish sequential pick-and-place pairs. */
+const CARRY_PROP_COLORS = [0x0284c7, 0xd97706, 0x7c3aed, 0x059669];
 
-/** Height of a carried workpiece, so callers can rest it on a surface. */
-const WORKPIECE_HEIGHT = 0.07;
-/** Height of a fixture block's base, so the part can be dropped to rest in its cradle. */
-const FIXTURE_BASE_HEIGHT = 0.028;
-type DestinationKind = "fixture" | "tote" | "inspection" | "station";
+// ---------------------------------------------------------------------------
+// Procedural scene-object meshes
+//
+// The renderer no longer hardcodes one workpiece and four destination shapes.
+// It builds a proxy mesh per interpreted `SceneObject` — category picks the
+// geometry recipe, color/material/size hints refine it, and everything
+// degrades to a neutral labelled proxy when hints are missing.
+// ---------------------------------------------------------------------------
 
-/**
- * A small machined workpiece: a brushed-metal block with a coloured locating
- * boss on top. The boss makes the part's orientation legible while it is
- * carried and rotated, and distinguishes one part from another in a multi-part
- * demonstration. Its origin sits at the part's centre, like a plain mesh, so it
- * drops in for the existing pick/carry/place attach logic unchanged.
- */
-function buildWorkpiece(accent: number, metalTexture: THREE.Texture): THREE.Group {
-  const part = new THREE.Group();
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xb9c2cc, metalness: 0.78, roughness: 0.34, roughnessMap: metalTexture, envMapIntensity: 1.1 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.074, WORKPIECE_HEIGHT, 0.05), bodyMat);
-  body.castShadow = true;
-  body.receiveShadow = true;
-  part.add(body);
+const COLOR_HEX: Record<string, number> = {
+  black: 0x24282e, white: 0xe8eaee, gray: 0x6b7280, grey: 0x6b7280, silver: 0xb9c2cc,
+  red: 0xb91c1c, orange: 0xd97706, amber: 0xd97706, yellow: 0xca8a04, green: 0x15803d,
+  teal: 0x0f766e, cyan: 0x0e7490, blue: 0x1d4ed8, navy: 0x1e3a8a, purple: 0x6d28d9,
+  violet: 0x6d28d9, brown: 0x8a5a3b, tan: 0xb08968, beige: 0xcfc4ae,
+};
 
-  // Chamfered shoulder so it reads as a machined part rather than a plain cube.
-  const shoulder = new THREE.Mesh(new THREE.BoxGeometry(0.082, 0.014, 0.058), bodyMat);
-  shoulder.position.y = -WORKPIECE_HEIGHT / 2 + 0.007;
-  shoulder.castShadow = true;
-  shoulder.receiveShadow = true;
-  part.add(shoulder);
-
-  const boss = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.013, 0.013, 0.016, 24),
-    new THREE.MeshStandardMaterial({ color: accent, metalness: 0.2, roughness: 0.5, emissive: accent, emissiveIntensity: 0.18 }),
-  );
-  boss.position.y = WORKPIECE_HEIGHT / 2 + 0.008;
-  boss.castShadow = true;
-  part.add(boss);
-  return part;
+/** Resolves a scene-model color hint ("gray", "dark blue", "#3355aa") to a hex color. */
+function parseColorHint(hint?: string): number | null {
+  if (!hint) return null;
+  const lower = hint.toLowerCase().trim();
+  const hexMatch = lower.match(/#([0-9a-f]{6})\b/);
+  if (hexMatch) return parseInt(hexMatch[1], 16);
+  for (const [name, hex] of Object.entries(COLOR_HEX)) {
+    if (new RegExp(`\\b${name}\\b`).test(lower)) return hex;
+  }
+  return null;
 }
 
-/**
- * A slotted fixture block: a metal base with two raised rails forming a cradle
- * that a carried workpiece is set down into, with an accent inlay matching the
- * part it receives. Origin sits at the block's footprint centre on the table.
- */
-function buildFixtureBlock(accent: number, metalTexture: THREE.Texture): THREE.Group {
-  const fixture = new THREE.Group();
-  const steelMat = new THREE.MeshStandardMaterial({ color: 0x7c8896, metalness: 0.72, roughness: 0.4, roughnessMap: metalTexture, envMapIntensity: 1 });
-  const base = new THREE.Mesh(new THREE.BoxGeometry(0.12, FIXTURE_BASE_HEIGHT, 0.13), steelMat);
-  base.position.y = FIXTURE_BASE_HEIGHT / 2;
-  base.castShadow = true;
-  base.receiveShadow = true;
-  fixture.add(base);
-
-  const railGeo = new THREE.BoxGeometry(0.12, 0.05, 0.022);
-  for (const sign of [-1, 1]) {
-    const rail = new THREE.Mesh(railGeo, steelMat);
-    rail.position.set(0, FIXTURE_BASE_HEIGHT + 0.025, sign * 0.044);
-    rail.castShadow = true;
-    rail.receiveShadow = true;
-    fixture.add(rail);
-  }
-
-  const inlay = new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, 0.004, 0.05),
-    new THREE.MeshStandardMaterial({ color: accent, metalness: 0.2, roughness: 0.55, emissive: accent, emissiveIntensity: 0.12 }),
-  );
-  inlay.position.y = FIXTURE_BASE_HEIGHT + 0.002;
-  inlay.receiveShadow = true;
-  fixture.add(inlay);
-  return fixture;
+interface CategoryStyle {
+  color: number;
+  material: SceneMaterialHint;
+  /** Default bounding size in meters, robot frame (z = vertical height). */
+  size: { x: number; y: number; z: number };
 }
 
-function buildToteBin(accent: number): THREE.Group {
-  const tote = new THREE.Group();
-  const plastic = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.05, roughness: 0.62 });
-  const base = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.012, 0.13), plastic);
-  base.position.y = 0.006;
-  base.castShadow = true;
-  base.receiveShadow = true;
-  tote.add(base);
+const CATEGORY_STYLE: Record<SceneObjectCategory, CategoryStyle> = {
+  tote: { color: 0x2563a8, material: "plastic", size: { x: 0.2, y: 0.15, z: 0.09 } },
+  bin: { color: 0x525c66, material: "plastic", size: { x: 0.17, y: 0.13, z: 0.08 } },
+  tray: { color: 0x8a929c, material: "plastic", size: { x: 0.2, y: 0.15, z: 0.03 } },
+  surface: { color: 0x1f2937, material: "rubber", size: { x: 0.18, y: 0.13, z: 0.012 } },
+  fixture: { color: 0x7c8896, material: "metal", size: { x: 0.12, y: 0.13, z: 0.08 } },
+  station: { color: 0x8b95a1, material: "metal", size: { x: 0.15, y: 0.15, z: 0.02 } },
+  box: { color: 0xb08968, material: "cardboard", size: { x: 0.1, y: 0.08, z: 0.08 } },
+  cylinder: { color: 0x9aa4af, material: "metal", size: { x: 0.05, y: 0.05, z: 0.09 } },
+  bracket: { color: 0xb9c2cc, material: "metal", size: { x: 0.09, y: 0.06, z: 0.05 } },
+  machined_part: { color: 0xb9c2cc, material: "metal", size: { x: 0.074, y: 0.05, z: 0.07 } },
+  unknown: { color: 0x94a3b8, material: "unknown", size: { x: 0.08, y: 0.08, z: 0.06 } },
+};
 
-  const wallGeometry = new THREE.BoxGeometry(0.17, 0.055, 0.012);
-  for (const sign of [-1, 1]) {
-    const wall = new THREE.Mesh(wallGeometry, plastic);
-    wall.position.set(0, 0.035, sign * 0.065);
-    wall.castShadow = true;
-    wall.receiveShadow = true;
-    tote.add(wall);
+function sceneObjectMaterial(color: number, hint: SceneMaterialHint, metalTexture: THREE.Texture): THREE.MeshStandardMaterial {
+  switch (hint) {
+    case "metal":
+      return new THREE.MeshStandardMaterial({ color, metalness: 0.78, roughness: 0.35, roughnessMap: metalTexture, envMapIntensity: 1.05 });
+    case "rubber":
+      return new THREE.MeshStandardMaterial({ color, metalness: 0.02, roughness: 0.95 });
+    case "wood":
+      return new THREE.MeshStandardMaterial({ color, metalness: 0, roughness: 0.72 });
+    case "cardboard":
+      return new THREE.MeshStandardMaterial({ color, metalness: 0, roughness: 0.85 });
+    case "plastic":
+      return new THREE.MeshStandardMaterial({ color, metalness: 0.06, roughness: 0.55 });
+    default:
+      return new THREE.MeshStandardMaterial({ color, metalness: 0.15, roughness: 0.6 });
   }
-
-  const endWallGeometry = new THREE.BoxGeometry(0.012, 0.055, 0.13);
-  for (const sign of [-1, 1]) {
-    const wall = new THREE.Mesh(endWallGeometry, plastic);
-    wall.position.set(sign * 0.085, 0.035, 0);
-    wall.castShadow = true;
-    wall.receiveShadow = true;
-    tote.add(wall);
-  }
-
-  const label = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 0.003, 0.026),
-    new THREE.MeshStandardMaterial({ color: accent, metalness: 0.1, roughness: 0.42, emissive: accent, emissiveIntensity: 0.12 }),
-  );
-  label.position.set(0, 0.064, -0.071);
-  tote.add(label);
-  return tote;
 }
 
-function buildInspectionPad(accent: number): THREE.Group {
-  const pad = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.18, roughness: 0.55 });
-  const base = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.01, 0.13), mat);
-  base.position.y = 0.005;
-  base.castShadow = true;
-  base.receiveShadow = true;
-  pad.add(base);
+function accentMaterial(accent: number): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color: accent, metalness: 0.2, roughness: 0.5, emissive: accent, emissiveIntensity: 0.14 });
+}
+
+/** Scene-frame footprint/height for an object: robot-frame x/y → width/depth, z → height. */
+function resolveObjectSize(
+  object: SceneObject,
+  bounds: { min: number; max: number; hMin: number; hMax: number },
+): { w: number; d: number; h: number } {
+  const style = CATEGORY_STYLE[object.category] ?? CATEGORY_STYLE.unknown;
+  const size = object.sizeHint ?? style.size;
+  const clampAxis = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+  return {
+    w: clampAxis(size.x, bounds.min, bounds.max),
+    d: clampAxis(size.y, bounds.min, bounds.max),
+    h: clampAxis(size.z, bounds.hMin, bounds.hMax),
+  };
+}
+
+function shadowed<T extends THREE.Mesh>(mesh: T): T {
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+/** Open-top container (tote/bin/tray): floor, four walls, rim lip, accent label. */
+function buildContainerMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const wall = Math.min(0.012, w * 0.08);
+  const floorThickness = Math.min(0.012, h * 0.3);
+
+  const floor = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w, floorThickness, d), mat));
+  floor.position.y = floorThickness / 2;
+  group.add(floor);
+
+  for (const sign of [-1, 1]) {
+    const side = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w, h, wall), mat));
+    side.position.set(0, h / 2, sign * (d / 2 - wall / 2));
+    group.add(side);
+    const end = shadowed(new THREE.Mesh(new THREE.BoxGeometry(wall, h, d), mat));
+    end.position.set(sign * (w / 2 - wall / 2), h / 2, 0);
+    group.add(end);
+  }
+
+  // Rim lip: containers read as injection-moulded totes, not five planes.
+  const rim = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w + wall, wall * 0.9, d + wall, 2, wall * 0.3), mat));
+  rim.position.y = h - wall * 0.45;
+  group.add(rim);
+
+  const label = new THREE.Mesh(new THREE.BoxGeometry(Math.min(0.06, w * 0.4), 0.003, Math.min(0.026, d * 0.25)), accentMaterial(accent));
+  label.position.set(0, h + 0.002, -(d / 2 - wall / 2));
+  group.add(label);
+  return group;
+}
+
+/** Dark inspection pad with scan lines and corner registration marks. */
+function buildInspectionSurfaceMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const base = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 2, Math.min(0.004, h * 0.3)), mat));
+  base.position.y = h / 2;
+  group.add(base);
 
   const lineMat = new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0.7 });
-  for (const z of [-0.035, 0, 0.035]) {
-    const line = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.002, 0.003), lineMat);
-    line.position.set(0, 0.012, z);
-    pad.add(line);
+  for (const fraction of [-0.28, 0, 0.28]) {
+    const line = new THREE.Mesh(new THREE.BoxGeometry(w * 0.78, 0.002, 0.003), lineMat);
+    line.position.set(0, h + 0.002, fraction * d);
+    group.add(line);
   }
-  return pad;
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const mark = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.002, 0.012), lineMat);
+      mark.position.set(sx * (w / 2 - 0.014), h + 0.002, sz * (d / 2 - 0.014));
+      group.add(mark);
+    }
+  }
+  return group;
 }
 
-function buildPlacementStation(accent: number, metalTexture: THREE.Texture): THREE.Group {
-  const station = new THREE.Group();
-  const steel = new THREE.MeshStandardMaterial({ color: 0x8b95a1, metalness: 0.7, roughness: 0.35, roughnessMap: metalTexture, envMapIntensity: 1 });
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.075, 0.018, 36), steel);
-  base.position.y = 0.009;
-  base.castShadow = true;
-  base.receiveShadow = true;
-  station.add(base);
+/** Slotted fixture: base plate, cradle rails, locating pins, accent inlay. */
+function buildFixtureMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const baseH = Math.min(0.028, h * 0.45);
+  const base = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, baseH, d, 2, 0.004), mat));
+  base.position.y = baseH / 2;
+  group.add(base);
 
-  const pegMat = new THREE.MeshStandardMaterial({ color: accent, metalness: 0.28, roughness: 0.42, emissive: accent, emissiveIntensity: 0.12 });
-  for (const x of [-0.035, 0.035]) {
-    const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.055, 18), pegMat);
-    peg.position.set(x, 0.045, 0);
-    peg.castShadow = true;
-    station.add(peg);
+  const railH = Math.max(h - baseH, 0.02);
+  for (const sign of [-1, 1]) {
+    const rail = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w, railH, Math.min(0.022, d * 0.18)), mat));
+    rail.position.set(0, baseH + railH / 2, sign * d * 0.34);
+    group.add(rail);
   }
-  return station;
+
+  for (const sign of [-1, 1]) {
+    const pin = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.02, 12), mat));
+    pin.position.set(sign * w * 0.32, baseH + 0.01, 0);
+    group.add(pin);
+  }
+
+  const inlay = new THREE.Mesh(new THREE.BoxGeometry(w, 0.004, d * 0.38), accentMaterial(accent));
+  inlay.position.y = baseH + 0.002;
+  inlay.receiveShadow = true;
+  group.add(inlay);
+  group.userData.surfaceY = baseH;
+  return group;
 }
 
-function buildDestinationProp(accent: number, metalTexture: THREE.Texture): THREE.Group {
-  const root = new THREE.Group();
-  const variants: Record<DestinationKind, THREE.Group> = {
-    fixture: buildFixtureBlock(accent, metalTexture),
-    tote: buildToteBin(accent),
-    inspection: buildInspectionPad(accent),
-    station: buildPlacementStation(accent, metalTexture),
+/** Final placement station: chamfered base plate, nest ring, locating pegs. */
+function buildStationMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const radius = Math.max(w, d) / 2;
+  const base = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.94, radius, h, 36), mat));
+  base.position.y = h / 2;
+  group.add(base);
+
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.62, 0.004, 8, 36), accentMaterial(accent));
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = h + 0.002;
+  group.add(ring);
+
+  for (const sign of [-1, 1]) {
+    const peg = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.05, 16), mat));
+    peg.position.set(sign * radius * 0.5, h + 0.025, 0);
+    group.add(peg);
+  }
+  return group;
+}
+
+/** Closed carton/case with a tape stripe. */
+function buildBoxMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const body = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 2, Math.min(0.006, h * 0.12)), mat));
+  body.position.y = h / 2;
+  group.add(body);
+  const tape = new THREE.Mesh(new THREE.BoxGeometry(Math.min(0.03, w * 0.3), 0.002, d + 0.002), accentMaterial(accent));
+  tape.position.y = h + 0.001;
+  group.add(tape);
+  return group;
+}
+
+/** Standing cylindrical part with a top chamfer cap. */
+function buildCylinderMesh(w: number, d: number, h: number, mat: THREE.Material): THREE.Group {
+  const group = new THREE.Group();
+  const radius = Math.max(w, d) / 2;
+  const body = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.96, radius, h, 28), mat));
+  body.position.y = h / 2;
+  group.add(body);
+  const cap = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.7, radius * 0.9, h * 0.08, 28), mat));
+  cap.position.y = h + h * 0.04;
+  group.add(cap);
+  return group;
+}
+
+/** L-shaped bracket with bolt bosses. */
+function buildBracketMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const flangeH = Math.min(0.016, h * 0.35);
+  const base = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w, flangeH, d), mat));
+  base.position.y = flangeH / 2;
+  group.add(base);
+  const upright = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w * 0.22, h, d), mat));
+  upright.position.set(-w / 2 + w * 0.11, h / 2, 0);
+  group.add(upright);
+  const boltMat = accentMaterial(accent);
+  for (const sign of [-1, 1]) {
+    const boss = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, flangeH + 0.004, 12), boltMat));
+    boss.position.set(w * 0.2, flangeH / 2, sign * d * 0.28);
+    group.add(boss);
+  }
+  return group;
+}
+
+/** Machined block: body, chamfered shoulder, accent locating boss. */
+function buildMachinedPartMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const body = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat));
+  body.position.y = h / 2;
+  group.add(body);
+  const shoulder = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w * 1.1, h * 0.2, d * 1.14), mat));
+  shoulder.position.y = h * 0.1;
+  group.add(shoulder);
+  const boss = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(Math.min(0.013, w * 0.2), Math.min(0.013, w * 0.2), 0.016, 24), accentMaterial(accent)));
+  boss.position.y = h + 0.008;
+  group.add(boss);
+  return group;
+}
+
+/** Neutral proxy for unclassified objects: rounded block plus accent ring. */
+function buildUnknownMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const body = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, Math.min(0.008, h * 0.2)), mat));
+  body.position.y = h / 2;
+  group.add(body);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(Math.min(w, d) * 0.28, 0.003, 8, 28), accentMaterial(accent));
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = h + 0.003;
+  group.add(ring);
+  return group;
+}
+
+interface BuiltSceneMesh {
+  group: THREE.Group;
+  /** Local height (above the group's footprint origin) where a placed part rests. */
+  surfaceY: number;
+}
+
+/**
+ * Builds a procedural proxy mesh for an interpreted scene object. The group's
+ * origin sits at the object's footprint centre on the supporting surface, and
+ * `surfaceY` reports where a carried part comes to rest on/in this object.
+ */
+function buildSceneObjectMesh(object: SceneObject, accent: number, metalTexture: THREE.Texture): BuiltSceneMesh {
+  const style = CATEGORY_STYLE[object.category] ?? CATEGORY_STYLE.unknown;
+  const color = parseColorHint(object.colorHint) ?? style.color;
+  const materialHint = object.materialHint && object.materialHint !== "unknown" ? object.materialHint : style.material;
+  const { w, d, h } = resolveObjectSize(object, { min: 0.05, max: 0.4, hMin: 0.008, hMax: 0.3 });
+  const mat = sceneObjectMaterial(color, materialHint, metalTexture);
+
+  switch (object.category) {
+    case "tote":
+    case "bin":
+    case "tray": {
+      const group = buildContainerMesh(w, d, h, mat, accent);
+      return { group, surfaceY: Math.min(0.012, h * 0.3) };
+    }
+    case "surface":
+      return { group: buildInspectionSurfaceMesh(w, d, h, mat, accent), surfaceY: h };
+    case "fixture": {
+      const group = buildFixtureMesh(w, d, h, mat, accent);
+      return { group, surfaceY: (group.userData.surfaceY as number) ?? h * 0.4 };
+    }
+    case "station":
+      return { group: buildStationMesh(w, d, Math.min(h, 0.03), mat, accent), surfaceY: Math.min(h, 0.03) };
+    case "box":
+      return { group: buildBoxMesh(w, d, h, mat, accent), surfaceY: h };
+    case "cylinder":
+      return { group: buildCylinderMesh(w, d, h, mat), surfaceY: h };
+    case "bracket":
+      return { group: buildBracketMesh(w, d, h, mat, accent), surfaceY: Math.min(0.016, h * 0.35) };
+    case "machined_part":
+      return { group: buildMachinedPartMesh(w, d, h, mat, accent), surfaceY: h };
+    default:
+      return { group: buildUnknownMesh(w, d, h, mat, accent), surfaceY: h };
+  }
+}
+
+/**
+ * Builds the mesh for a carried workpiece from its interpreted scene object.
+ * Origin is at the part's volumetric centre (so gripper attach logic and yaw
+ * rotation behave like a plain mesh); returns the half-height for resting the
+ * part on surfaces.
+ */
+function buildCarriedPartMesh(object: SceneObject, accent: number, metalTexture: THREE.Texture): { group: THREE.Group; halfHeight: number } {
+  const style = CATEGORY_STYLE[object.category] ?? CATEGORY_STYLE.unknown;
+  const color = parseColorHint(object.colorHint) ?? style.color;
+  const materialHint = object.materialHint && object.materialHint !== "unknown" ? object.materialHint : style.material;
+  const { w, d, h } = resolveObjectSize(object, { min: 0.02, max: 0.16, hMin: 0.015, hMax: 0.16 });
+  const mat = sceneObjectMaterial(color, materialHint, metalTexture);
+
+  let footprintGroup: THREE.Group;
+  switch (object.category) {
+    case "box":
+      footprintGroup = buildBoxMesh(w, d, h, mat, accent);
+      break;
+    case "cylinder":
+      footprintGroup = buildCylinderMesh(w, d, h, mat);
+      break;
+    case "bracket":
+      footprintGroup = buildBracketMesh(w, d, h, mat, accent);
+      break;
+    case "tray": {
+      // Flat panel/sheet part.
+      const flat = new THREE.Group();
+      flat.add(shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, Math.min(h, 0.02), d, 2, 0.003), mat)));
+      flat.children[0].position.y = Math.min(h, 0.02) / 2;
+      footprintGroup = flat;
+      break;
+    }
+    case "machined_part":
+      footprintGroup = buildMachinedPartMesh(w, d, h, mat, accent);
+      break;
+    default:
+      footprintGroup = buildUnknownMesh(w, d, h, mat, accent);
+      break;
+  }
+
+  // Recenter: footprint-origin recipes get wrapped so the carried part's origin
+  // sits at its centre, matching the gripper attach/seat logic.
+  const wrapper = new THREE.Group();
+  footprintGroup.position.y = -h / 2;
+  wrapper.add(footprintGroup);
+  return { group: wrapper, halfHeight: h / 2 };
+}
+
+/** Disposes all geometries/materials under a prop (shared textures excluded). */
+function disposeObject3D(root: THREE.Object3D) {
+  root.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.geometry?.dispose();
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    materials.forEach((material) => material?.dispose());
+  });
+}
+
+/** Synthetic scene object for a pick step the scene model didn't cover. */
+function synthesizeWorkpieceObject(step: TaskStep | undefined, index: number): SceneObject {
+  const text = `${step?.description ?? ""} ${step?.notes ?? ""}`;
+  const cls = classifyWorkpiece(text);
+  return {
+    id: `synth-workpiece-${index + 1}`,
+    role: "workpiece",
+    category: cls.category,
+    label: cls.label,
+    colorHint: extractColorWord(text),
+    relatedStepIds: step ? [step.id] : [],
+    confidence: 0.35,
   };
-  Object.entries(variants).forEach(([kind, object]) => {
-    object.name = `destination-${kind}`;
-    object.visible = kind === "fixture";
-    root.add(object);
-  });
-  root.userData.destinationKind = "fixture";
-  return root;
 }
 
-function destinationKindForStep(step?: TaskStep): DestinationKind {
-  const text = `${step?.description ?? ""} ${step?.action ?? ""}`.toLowerCase();
-  if (/\b(tote|bin|container|tray)\b/.test(text)) return "tote";
-  if (/\b(inspect|inspection|camera|scan|table|surface)\b/.test(text)) return "inspection";
-  if (/\b(final|station|assembly|cell|nest)\b/.test(text)) return "station";
-  return "fixture";
-}
-
-function restHeightForDestination(kind: DestinationKind, tableTop: number) {
-  if (kind === "tote") return tableTop + 0.012 + WORKPIECE_HEIGHT / 2 + 0.001;
-  if (kind === "inspection") return tableTop + 0.01 + WORKPIECE_HEIGHT / 2 + 0.001;
-  if (kind === "station") return tableTop + 0.018 + WORKPIECE_HEIGHT / 2 + 0.001;
-  return tableTop + FIXTURE_BASE_HEIGHT + WORKPIECE_HEIGHT / 2 + 0.001;
-}
-
-function setDestinationKind(object: THREE.Object3D, kind: DestinationKind) {
-  object.userData.destinationKind = kind;
-  object.children.forEach((child) => {
-    child.visible = child.name === `destination-${kind}`;
-  });
+/** Synthetic scene object for a place step the scene model didn't cover. */
+function synthesizeDestinationObject(step: TaskStep | undefined, index: number): SceneObject {
+  const text = `${step?.description ?? ""} ${step?.notes ?? ""}`;
+  const cls = classifyDestination(text);
+  return {
+    id: `synth-destination-${index + 1}`,
+    role: cls.role,
+    category: cls.category,
+    label: cls.label,
+    colorHint: extractColorWord(text),
+    relatedStepIds: step ? [step.id] : [],
+    confidence: 0.35,
+  };
 }
 
 function buildRobotArm(robotType: RobotType): THREE.Group {
@@ -1019,9 +1221,15 @@ export function RobotViewport({
     step: number;
     anim: PlaybackAnim | null;
     props: THREE.Object3D[];
+    /** Half-heights of the carried props, for resting them on surfaces. */
+    propHalfHeights: number[];
     fixtures: THREE.Object3D[];
+    ambientProps: THREE.Object3D[];
     carrySlots: CarrySlot[];
     scanRing: THREE.Mesh | null;
+    metalTexture: THREE.Texture | null;
+    /** Signature of the last-built scene props, to skip no-op rebuilds while streaming. */
+    sceneSignature: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [webglUnavailable, setWebglUnavailable] = useState(false);
@@ -1137,8 +1345,7 @@ export function RobotViewport({
     );
     const workcell = { tableTop: TABLE_TOP_Y, tableBox, floorY: FLOOR_Y };
 
-    let props: THREE.Object3D[] = [];
-    let fixtures: THREE.Object3D[] = [];
+    const sharedMetalTexture = createBrushedMetalTexture();
     let scanRing: THREE.Mesh | null = null;
     if (showWorkcell) {
       const tableMat = new THREE.MeshPhysicalMaterial({
@@ -1159,7 +1366,7 @@ export function RobotViewport({
       tableShadow.position.set(0, TABLE_TOP_Y + 0.001, 0);
       scene.add(tableShadow);
 
-      const aluminumTexture = createBrushedMetalTexture();
+      const aluminumTexture = sharedMetalTexture;
       const mountPlate = new THREE.Mesh(
         new THREE.CylinderGeometry(0.13, 0.14, 0.018, 40),
         new THREE.MeshStandardMaterial({ color: 0x6b7888, metalness: 0.75, roughness: 0.32, roughnessMap: aluminumTexture, envMapIntensity: 1 }),
@@ -1182,26 +1389,9 @@ export function RobotViewport({
         leg.receiveShadow = true;
         scene.add(leg);
       });
-      // A small pool of machined parts -- a later effect assigns one per
-      // pick-and-place pair found in the policy and positions/reveals them at
-      // that pair's actual pickup/drop-off waypoints. Each part is a brushed
-      // metal block with a coloured locating boss on top (so the operator can
-      // tell distinct parts apart and read its orientation as it is rotated),
-      // mirroring the kind of small workpiece seen in the demonstration video.
-      props = CARRY_PROP_COLORS.map((color) => buildWorkpiece(color, aluminumTexture));
-      props.forEach((prop) => {
-        prop.visible = false;
-        scene.add(prop);
-      });
-
-      // A matching pool of semantic destination props. A later effect chooses
-      // the visible shape per drop-off step: tote/bin, inspection pad, final
-      // station, or generic slotted fixture.
-      fixtures = CARRY_PROP_COLORS.map((color) => buildDestinationProp(color, aluminumTexture));
-      fixtures.forEach((fixture) => {
-        fixture.visible = false;
-        scene.add(fixture);
-      });
+      // Workcell props (carried parts, destination containers/fixtures, ambient
+      // objects) are built per-policy by the scene-model effect below, from the
+      // interpreted `WorkcellScene` rather than a fixed pool of shapes.
 
       // Pulsing ring shown under the gripper during "inspect" steps, to
       // visually distinguish a vision/inspection dwell from a plain move.
@@ -1245,10 +1435,14 @@ export function RobotViewport({
       frame: 0,
       step: 0,
       anim: null,
-      props,
-      fixtures,
+      props: [],
+      propHalfHeights: [],
+      fixtures: [],
+      ambientProps: [],
       carrySlots: [],
       scanRing,
+      metalTexture: sharedMetalTexture,
+      sceneSignature: "",
     };
     setJoints(parsed);
     setLoading(false);
@@ -1277,6 +1471,7 @@ export function RobotViewport({
       window.removeEventListener("resize", onResize);
       composer.dispose();
       environment.dispose();
+      sharedMetalTexture.dispose();
       const background = scene.background;
       if (background instanceof THREE.Texture) background.dispose();
       renderer.dispose();
@@ -1284,68 +1479,138 @@ export function RobotViewport({
     };
   }, [robotType, showWorkcell]);
 
-  // Re-derive which props represent which pick-and-place pair whenever the policy
-  // changes (e.g. as interpretation streams in new steps). Pairs with identical
-  // pickup/drop-off coordinates share a prop (the common "same part, repeating
-  // cycle" case); pairs at distinct locations each get their own prop, so a
-  // multi-step demo visibly moves multiple different things to multiple places.
+  // Rebuild the workcell props from the interpreted scene model whenever the
+  // policy (or its scene) changes — e.g. as interpretation streams in new
+  // steps. Each pick-and-place pair gets a carried-part mesh and a destination
+  // mesh chosen from the scene objects the interpreter identified (tote, tray,
+  // fixture, inspection surface, station, ...); pairs with identical
+  // pickup/drop-off coordinates share a prop (the "same part, repeating cycle"
+  // case). Scene objects not tied to a carry pair render as ambient props. A
+  // signature guard keeps expensive mesh rebuilds out of no-op policy updates.
   useEffect(() => {
     const state = runtime.current;
-    if (!state || state.props.length === 0) return;
+    if (!state || !showWorkcell || !state.metalTexture) return;
+
+    const steps = policy?.steps ?? [];
+    const scene = resolveSceneForPolicy(policy);
+    const pairs = findCarryPairs(steps).slice(0, 6);
+
+    const signature = JSON.stringify({
+      pairs: pairs.map((pair) => [steps[pair.pickIndex]?.target, steps[pair.placeIndex]?.target, steps[pair.placeIndex]?.description]),
+      objects: scene.objects.map((o) => [o.id, o.role, o.category, o.colorHint, o.materialHint, o.sizeHint, o.poseHint, o.relatedStepIds]),
+    });
+    if (signature === state.sceneSignature) return;
+    state.sceneSignature = signature;
 
     const tableTop = state.workcell.tableTop;
-    // Height at which a placed part rests on the inferred destination prop, and
-    // the height of a part sitting directly on the table before pickup.
-    const tableRestY = tableTop + WORKPIECE_HEIGHT / 2;
+    const metalTexture = state.metalTexture;
+    const gripperGroup = state.robot.getObjectByName("targetGripper") as THREE.Group | null;
+    const previousSlots = state.carrySlots;
 
-    const pairs = extractCarryPairs(policy);
-    const signatureToProp = new Map<string, number>();
-    const slots: CarrySlot[] = pairs.map((pair) => {
-      const destinationKind = destinationKindForStep(policy?.steps[pair.placeIndex]);
+    // Tear down the previous prop set completely; meshes are cheap to rebuild
+    // at policy-change frequency and this keeps geometry/material leaks out of
+    // long streaming sessions.
+    for (const prop of [...state.props, ...state.fixtures, ...state.ambientProps]) {
+      prop.parent?.remove(prop);
+      disposeObject3D(prop);
+    }
+    state.props = [];
+    state.propHalfHeights = [];
+    state.fixtures = [];
+    state.ambientProps = [];
+
+    const claimed = new Set<string>();
+    const propKeyToIndex = new Map<string, number>();
+    const slots: CarrySlot[] = [];
+
+    pairs.forEach((pair) => {
+      const pickStep = steps[pair.pickIndex];
+      const placeStep = steps[pair.placeIndex];
       const home = sceneVector(waypointToPose(policy, pair.pickIndex));
       const place = sceneVector(waypointToPose(policy, pair.placeIndex));
-      // Land the part on the inferred destination surface rather than at the
-      // bare drop-off waypoint height, which is where the gripper releases.
-      place.y = restHeightForDestination(destinationKind, tableTop);
-      const signature = `${home.toArray().map((n) => n.toFixed(3)).join(",")}|${place.toArray().map((n) => n.toFixed(3)).join(",")}`;
-      let propIndex = signatureToProp.get(signature);
+      const key = `${home.toArray().map((n) => n.toFixed(3)).join(",")}|${place.toArray().map((n) => n.toFixed(3)).join(",")}`;
+
+      let propIndex = propKeyToIndex.get(key);
       if (propIndex === undefined) {
-        propIndex = signatureToProp.size % state.props.length;
-        signatureToProp.set(signature, propIndex);
+        propIndex = state.props.length;
+        propKeyToIndex.set(key, propIndex);
+        const accent = CARRY_PROP_COLORS[propIndex % CARRY_PROP_COLORS.length];
+
+        const workpieceObject =
+          sceneObjectForStep(scene, pickStep, WORKPIECE_ROLES, claimed) ??
+          synthesizeWorkpieceObject(pickStep, propIndex);
+        claimed.add(workpieceObject.id);
+        const part = buildCarriedPartMesh(workpieceObject, accent, metalTexture);
+        state.props.push(part.group);
+        state.propHalfHeights.push(part.halfHeight);
+        state.scene.add(part.group);
+
+        const destinationObject =
+          sceneObjectForStep(scene, placeStep, DESTINATION_ROLES, claimed) ??
+          synthesizeDestinationObject(placeStep, propIndex);
+        claimed.add(destinationObject.id);
+        const destination = buildSceneObjectMesh(destinationObject, accent, metalTexture);
+        destination.group.userData.surfaceY = destination.surfaceY;
+        state.fixtures.push(destination.group);
+        state.scene.add(destination.group);
       }
-      const previous = state.carrySlots.find((s) => s.propIndex === propIndex && s.carrying);
-      return { pickIndex: pair.pickIndex, placeIndex: pair.placeIndex, propIndex, destinationKind, home, place, carrying: Boolean(previous) };
+
+      const halfHeight = state.propHalfHeights[propIndex];
+      const surfaceY = (state.fixtures[propIndex]?.userData.surfaceY as number | undefined) ?? 0;
+      // Land the part on the destination's resting surface rather than at the
+      // bare drop-off waypoint height, which is where the gripper releases.
+      place.y = tableTop + surfaceY + halfHeight + 0.001;
+
+      const previous = previousSlots.find((s) => s.propIndex === propIndex && s.carrying);
+      slots.push({ pickIndex: pair.pickIndex, placeIndex: pair.placeIndex, propIndex, home, place, carrying: Boolean(previous) });
     });
     state.carrySlots = slots;
 
-    const usedProps = new Map(slots.map((slot) => [slot.propIndex, slot]));
+    // Position parts and destinations. A part mid-carry when the rebuild
+    // happened re-attaches to the gripper so streaming updates don't visibly
+    // drop the payload.
+    const slotByProp = new Map(slots.map((slot) => [slot.propIndex, slot]));
     state.props.forEach((prop, index) => {
-      const slot = usedProps.get(index);
-      if (!slot) {
-        prop.visible = false;
-        if (prop.parent && prop.parent !== state.scene) state.scene.attach(prop);
-        return;
-      }
-      prop.visible = true;
-      if (!slot.carrying && prop.parent === state.scene) {
+      const slot = slotByProp.get(index);
+      if (!slot) return;
+      if (slot.carrying && gripperGroup) {
+        gripperGroup.updateWorldMatrix(true, false);
+        const gripperWorld = gripperGroup.getWorldPosition(new THREE.Vector3());
+        prop.position.set(gripperWorld.x, gripperWorld.y - 0.12, gripperWorld.z);
+        gripperGroup.attach(prop);
+      } else {
         // At rest before pickup the part sits on the table at its pickup spot.
-        prop.position.set(slot.home.x, tableRestY, slot.home.z);
+        prop.position.set(slot.home.x, tableTop + state.propHalfHeights[index] + 0.001, slot.home.z);
         prop.rotation.set(0, 0, 0);
       }
     });
-
-    // Park each used fixture block on the table directly under its part's
-    // drop-off point; hide the rest.
     state.fixtures.forEach((fixture, index) => {
-      const slot = usedProps.get(index);
-      if (!slot) {
-        fixture.visible = false;
-        return;
-      }
-      fixture.visible = true;
+      const slot = slotByProp.get(index);
+      if (!slot) return;
       fixture.position.set(slot.place.x, tableTop, slot.place.z);
-      setDestinationKind(fixture, slot.destinationKind);
     });
+
+    // Ambient scene objects: anything the interpreter saw that isn't already a
+    // carried part or a carry destination (extra containers, standalone
+    // inspection surfaces, fixtures in view), parked at their interpreted pose.
+    const tableHalfX = TABLE_SIZE.x / 2 - 0.07;
+    const tableHalfZ = TABLE_SIZE.z / 2 - 0.06;
+    scene.objects
+      .filter((object) => !claimed.has(object.id) && object.poseHint && object.role !== "tool")
+      .slice(0, 5)
+      .forEach((object, index) => {
+        const built = buildSceneObjectMesh(object, CARRY_PROP_COLORS[(state.props.length + index) % CARRY_PROP_COLORS.length], metalTexture);
+        const pose = object.poseHint as { x: number; y: number; z: number; yaw?: number };
+        const x = clamp(pose.x, TABLE_CENTER.x - tableHalfX, TABLE_CENTER.x + tableHalfX);
+        const z = clamp(-pose.y, TABLE_CENTER.z - tableHalfZ, TABLE_CENTER.z + tableHalfZ);
+        // Keep clear of the robot base at the table origin.
+        const fromBase = Math.hypot(x, z);
+        const clearX = fromBase < 0.18 ? x + (x >= 0 ? 0.18 : -0.18) : x;
+        built.group.position.set(clearX, tableTop, z);
+        if (pose.yaw) built.group.rotation.y = -pose.yaw;
+        state.ambientProps.push(built.group);
+        state.scene.add(built.group);
+      });
   }, [policy, robotType, showWorkcell]);
 
   useEffect(() => {
