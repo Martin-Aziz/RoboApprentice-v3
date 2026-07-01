@@ -67,6 +67,60 @@ function stepTypeTone(type: SequenceStepType) {
   return "border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] text-[rgb(var(--bone-2))]";
 }
 
+function buildClientPolicy(steps: TaskStep[]): TaskPolicy {
+  if (steps.length === 0) return FALLBACK_POLICY;
+  const xs = steps.map((step) => step.target.x);
+  const ys = steps.map((step) => step.target.y);
+  const zs = steps.map((step) => step.target.z);
+  return {
+    ...FALLBACK_POLICY,
+    steps,
+    toolFrame: "tcp_adaptive_demo",
+    workspaceBounds: {
+      xMin: Math.min(...xs),
+      xMax: Math.max(...xs),
+      yMin: Math.min(...ys),
+      yMax: Math.max(...ys),
+      zMin: Math.min(...zs),
+      zMax: Math.max(...zs),
+    },
+    estimatedCycleSeconds: steps.reduce((sum, step) => sum + step.duration, 0),
+  };
+}
+
+function sequenceTypeForStep(step: TaskStep): SequenceStepType {
+  if (step.action === "wait") return "WAIT_FOR_SIGNAL";
+  if (step.action === "inspect") return "INSPECTION";
+  if (step.action === "grip" || step.action === "release") return "GRIPPER_ACTUATE";
+  return "MOTION";
+}
+
+function derivePolicySequence(steps: TaskStep[], activeStep: number, done: boolean): SequenceStep[] {
+  const keySteps = steps
+    .map((step, index) => ({ step, index }))
+    .filter(({ step }) => ["grip", "release", "inspect", "wait"].includes(step.action));
+
+  const anchors = keySteps.length
+    ? keySteps
+    : steps.map((step, index) => ({ step, index })).filter((_, index) => index > 0 && index < steps.length - 1 && index % 5 === 0);
+
+  return anchors.map(({ step, index }, stageIndex) => ({
+    id: `policy-stage-${step.id}`,
+    label: step.description,
+    type: sequenceTypeForStep(step),
+    status: done || index <= activeStep ? "complete" : index === activeStep + 1 ? "analysing" : "pending",
+    gateAfter: step.requiresVision
+      ? { type: "inspection_pass", signalPort: 3, elseAction: "retry" }
+      : undefined,
+    toolStationId: stageIndex === 0 ? "station-gripper" : undefined,
+  }));
+}
+
+function formatSeconds(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "pending";
+  return seconds >= 60 ? `${Math.round(seconds)}s` : `${Number(seconds.toFixed(1))}s`;
+}
+
 export default function TeachPage() {
   const { t } = useLocale();
   const { addSkill, robots } = useDemoData();
@@ -80,16 +134,24 @@ export default function TeachPage() {
   const [robotType, setRobotType] = useState<DemoRobot>("ur5e");
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [interpretedPolicy, setInterpretedPolicy] = useState<TaskPolicy | null>(null);
   const [sequence, setSequence] = useState<SequenceStep[]>(DEFAULT_SEQUENCE);
   const [activeSequenceIndex, setActiveSequenceIndex] = useState(-1);
   const [workcellConfig, setWorkcellConfig] = useState<WorkcellConfig>(DEFAULT_WORKCELL_CONFIG);
   const [toolChangerConfig, setToolChangerConfig] = useState<ToolChangerConfig>(DEFAULT_TOOL_CHANGER_CONFIG);
   const [safeDemoMode, setSafeDemoMode] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const policy = useMemo<TaskPolicy>(() => ({ ...FALLBACK_POLICY, steps }), [steps]);
+  const policy = useMemo<TaskPolicy>(() => interpretedPolicy ?? buildClientPolicy(steps), [interpretedPolicy, steps]);
+  const displaySequence = useMemo(
+    () => (steps.length ? derivePolicySequence(steps, activeStep, done) : sequence),
+    [activeStep, done, sequence, steps],
+  );
   const selectedRobot = ROBOT_OPTIONS.find((robot) => robot.value === robotType) ?? ROBOT_OPTIONS[0];
-  const totalMotionSteps = Math.max(sequence.length * FALLBACK_STEPS.length, FALLBACK_STEPS.length);
-  const completedSequenceSteps = sequence.filter((step) => step.status === "complete").length;
+  const totalMotionSteps = steps.length ? steps.length : Math.max(sequence.length * FALLBACK_STEPS.length, FALLBACK_STEPS.length);
+  const completedMotionSteps = Math.min(Math.max(activeStep + 1, 0), totalMotionSteps);
+  const displayActiveSequenceIndex = steps.length
+    ? displaySequence.findIndex((step) => step.status === "analysing")
+    : activeSequenceIndex;
   const gripperMode = isPneumaticGripper(workcellConfig.gripperType) ? "Pneumatic" : "Electric";
 
   useEffect(() => {
@@ -125,7 +187,7 @@ export default function TeachPage() {
       const createRes = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "Bench pick-rotate-place demonstration", videoUrl: DEMO_VIDEO_URL }),
+        body: JSON.stringify({ title: "Warehouse multi-step workcell demonstration", videoUrl: DEMO_VIDEO_URL }),
       });
       if (!createRes.ok) throw new Error(`task create failed: ${createRes.status}`);
       const task = (await createRes.json()) as { id: string };
@@ -156,13 +218,16 @@ export default function TeachPage() {
             setStatusMessage(payload.message ?? null);
           } else if (payload.type === "step" && payload.step) {
             collected.push(payload.step);
-            setSteps([...collected]);
+            const nextSteps = [...collected];
+            setSteps(nextSteps);
+            setInterpretedPolicy(buildClientPolicy(nextSteps));
             setActiveStep(collected.length - 1);
             markSequenceProgress(Math.min(collected.length / 10, 0.95));
           } else if (payload.type === "done") {
             sawDone = true;
             const finalSteps = payload.policy?.steps ?? payload.steps ?? collected;
             setSteps(finalSteps);
+            setInterpretedPolicy(payload.policy ?? buildClientPolicy(finalSteps));
             setActiveStep(finalSteps.length - 1);
           } else if (payload.type === "error") {
             throw new Error(payload.message ?? "interpretation error");
@@ -198,6 +263,7 @@ export default function TeachPage() {
     const run = async () => {
       setDone(false);
       setSteps([]);
+      setInterpretedPolicy(null);
       setActiveStep(-1);
       setActiveSequenceIndex(0);
       setStatusMessage(null);
@@ -210,6 +276,7 @@ export default function TeachPage() {
         console.warn("[teach] live analysis failed, using built-in walkthrough", err);
         setStatusMessage((prev) => prev ?? "Live analysis unavailable — playing the built-in walkthrough.");
         setSteps([]);
+        setInterpretedPolicy(null);
         setActiveStep(-1);
         setSequence((current) => current.map((step) => ({ ...step, status: "pending" })));
         await runScripted();
@@ -264,8 +331,8 @@ export default function TeachPage() {
     const skill: Skill = {
       id: "skl-v2-precision-gripper",
       facility_id: "fac-production-001",
-      name: "Pick Bracket A",
-      description: "Learned from the precision gripper workflow",
+      name: "Warehouse multi-step task",
+      description: `Learned from ${DEMO_VIDEO_URL.split("/").at(-1) ?? "the selected demonstration video"}`,
       task_language: "en",
       confidence: 0.94,
       status: "ready",
@@ -274,7 +341,7 @@ export default function TeachPage() {
       created_by: "demo-user-0000-0000-0000-000000000000",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      mean_cycle_ms: 4200,
+      mean_cycle_ms: Math.round(policy.estimatedCycleSeconds * 1000),
       last_executed_at: new Date().toISOString(),
     };
     addSkill(skill);
@@ -307,7 +374,7 @@ export default function TeachPage() {
           {uploadMessage && <p className="mt-2 rounded-md bg-[rgb(var(--signal-amber)/0.1)] p-2 text-sm text-[rgb(var(--bone-2))]">{uploadMessage}</p>}
           <div className="mt-4 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] p-3">
             <div className="flex items-center justify-between gap-3">
-              <div><p className="font-semibold">Aurevix found {sequence.length} task stages</p><p className="text-sm text-[rgb(var(--bone-2))]">The guided workflow hides robot logic until you need to edit it.</p></div>
+              <div><p className="font-semibold">Aurevix found {displaySequence.length} task stages</p><p className="text-sm text-[rgb(var(--bone-2))]">Stages now come from the interpreted video policy, not the old scripted demo.</p></div>
               <Button variant="outline" size="sm" onClick={() => setShowAdvanced((value) => !value)}>{showAdvanced ? "Hide advanced controls" : "Edit advanced logic"}</Button>
             </div>
           </div>
@@ -341,11 +408,11 @@ export default function TeachPage() {
               {ROBOT_OPTIONS.map((robot) => <option key={robot.value} value={robot.value}>{robot.label}</option>)}
             </select>
           </label>
-          <SequenceProgress sequence={sequence} activeIndex={activeSequenceIndex} completedMotionSteps={activeStep + 1} totalMotionSteps={totalMotionSteps} />
+          <SequenceProgress sequence={displaySequence} activeIndex={displayActiveSequenceIndex} completedMotionSteps={completedMotionSteps} totalMotionSteps={totalMotionSteps} />
           <RobotViewport
             robotType={robotType}
             gripperType={workcellConfig.gripperType}
-            policy={steps.length ? policy : FALLBACK_POLICY}
+            policy={policy}
             playbackState={done || started ? "playing" : "paused"}
             className="min-h-[520px]"
           />
@@ -377,7 +444,7 @@ export default function TeachPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-2xl font-semibold"><CheckCircle2 className="h-6 w-6 text-[rgb(var(--signal-green))]" /> {t("teach.result")}</h2>
-              <p className="mt-2 font-mono text-sm text-[rgb(var(--bone-2))]">Estimated cycle time: 4.2s • {steps.length} interpreted motions • {sequence.length} task stages • {gripperMode} gripper</p>
+              <p className="mt-2 font-mono text-sm text-[rgb(var(--bone-2))]">Estimated cycle time: {formatSeconds(policy.estimatedCycleSeconds)} • {steps.length} interpreted motions • {displaySequence.length} task stages • {gripperMode} gripper</p>
               <div className="mt-3"><DeployReadiness confidence={0.94} /></div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -400,7 +467,7 @@ export default function TeachPage() {
         </Modal>
       )}
 
-      {modal === "export" && <ExportModal policy={policy} sequence={sequence} workcellConfig={workcellConfig} toolChangerConfig={toolChangerConfig} robotLabel={selectedRobot.codeLabel} onClose={() => setModal(null)} />}
+      {modal === "export" && <ExportModal policy={policy} sequence={displaySequence} workcellConfig={workcellConfig} toolChangerConfig={toolChangerConfig} robotLabel={selectedRobot.codeLabel} onClose={() => setModal(null)} />}
       {modal === "roi" && <Modal title="Calculate ROI" wide onClose={() => setModal(null)}><RoiCalculator /></Modal>}
     </div>
   );
@@ -580,14 +647,14 @@ function downloadText(filename: string, code: string, type: string) {
 function ExportModal({ policy, sequence, workcellConfig, toolChangerConfig, robotLabel, onClose }: { policy: TaskPolicy; sequence: SequenceStep[]; workcellConfig: WorkcellConfig; toolChangerConfig: ToolChangerConfig; robotLabel: string; onClose: () => void }) {
   const ur = generateUr(policy, sequence, workcellConfig, toolChangerConfig, robotLabel);
   const ros = generateRos(policy, sequence, workcellConfig, toolChangerConfig, robotLabel);
-  const rapid = toRapid(policy, "Pick Bracket A");
-  const karel = toFanucKarel(policy, "Pick Bracket A");
+  const rapid = toRapid(policy, "Warehouse Multi-Step Task");
+  const karel = toFanucKarel(policy, "Warehouse Multi-Step Task");
   const downloadPdf = () => {
     const pdf = new jsPDF();
     pdf.setFontSize(20);
     pdf.text("Aurevix Skill Summary", 18, 20);
     pdf.setFontSize(12);
-    pdf.text(`Task: Pick Bracket A`, 18, 34);
+    pdf.text(`Task: Warehouse multi-step task`, 18, 34);
     pdf.text(`Confidence: 94%`, 18, 42);
     policy.steps.forEach((step, index) => pdf.text(`${index + 1}. ${step.description}`, 18, 58 + index * 8, { maxWidth: 170 }));
     pdf.save("aurevix-policy-summary.pdf");

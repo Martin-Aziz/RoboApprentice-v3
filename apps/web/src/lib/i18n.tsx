@@ -32,7 +32,7 @@ const translations: Record<DemoLocale, Messages> = {
     "teach.banner": "",
     "teach.autoplay": "Run workflow",
     "teach.title": "Multi-task Robot",
-    "teach.result": "Pick Bracket A learned in 18 seconds",
+    "teach.result": "Task policy learned from video",
     "roi.title": "Robot Automation ROI Analysis",
   },
   "en-GB": {
@@ -59,7 +59,7 @@ const translations: Record<DemoLocale, Messages> = {
     "teach.banner": "",
     "teach.autoplay": "Run workflow",
     "teach.title": "Multi-task Robot",
-    "teach.result": "Pick Bracket A learned in 18 seconds",
+    "teach.result": "Task policy learned from video",
     "roi.title": "Robot Automation ROI Analysis",
   },
   "de-DE": {
@@ -86,7 +86,7 @@ const translations: Record<DemoLocale, Messages> = {
     "teach.banner": "",
     "teach.autoplay": "Workflow starten",
     "teach.title": "Präzisionsgreifer",
-    "teach.result": "Pick Bracket A in 18 Sekunden gelernt",
+    "teach.result": "Aufgabenpolicy aus Video gelernt",
     "roi.title": "ROI-Analyse für Roboterautomatisierung",
   },
   "es-ES": {
@@ -113,7 +113,7 @@ const translations: Record<DemoLocale, Messages> = {
     "teach.banner": "",
     "teach.autoplay": "Ejecutar flujo",
     "teach.title": "Pinza de precisión",
-    "teach.result": "Pick Bracket A aprendido en 18 segundos",
+    "teach.result": "Política de tarea aprendida del video",
     "roi.title": "Análisis ROI de automatización robótica",
   },
   "zh-CN": {
@@ -140,7 +140,7 @@ const translations: Record<DemoLocale, Messages> = {
     "teach.banner": "",
     "teach.autoplay": "自动播放演示",
     "teach.title": "精密夹爪",
-    "teach.result": "18秒学会 Pick Bracket A",
+    "teach.result": "已从视频学习任务策略",
     "roi.title": "机器人自动化投资回报分析",
   },
   "ja-JP": {
@@ -167,7 +167,7 @@ const translations: Record<DemoLocale, Messages> = {
     "teach.banner": "",
     "teach.autoplay": "フローを再生",
     "teach.title": "精密グリッパー",
-    "teach.result": "Pick Bracket Aを18秒で学習",
+    "teach.result": "動画からタスクポリシーを学習",
     "roi.title": "ロボット自動化ROI分析",
   },
 };

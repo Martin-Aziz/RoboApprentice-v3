@@ -633,8 +633,7 @@ export async function POST(
             await finalizeAndRespond(session);
             return;
           } catch (error) {
-            const reason = error instanceof Error ? error.message : "Claude API request failed";
-            send({ type: "warning", message: `Claude API unavailable, trying local Ollama. ${reason}` });
+            send({ type: "warning", message: "Primary vision analysis was unavailable, switching to the local fallback." });
           }
         }
 
@@ -645,8 +644,8 @@ export async function POST(
             send({
               type: "status",
               message: extracted.frames.length
-                ? `Sending ${extracted.samples.length} timestamped frames to Claude Code for analysis…`
-                : "Interpreting with Claude Code…",
+                ? `Analyzing ${extracted.samples.length} timestamped video frames and motion cues…`
+                : "Interpreting the demonstration workflow…",
             });
             const resultText = await runClaudeCodeCli({
               systemPrompt: SYSTEM_PROMPT,
@@ -661,8 +660,7 @@ export async function POST(
             await finalizeAndRespond(session);
             return;
           } catch (error) {
-            const reason = error instanceof Error ? error.message : "Claude Code CLI request failed";
-            send({ type: "warning", message: `Claude Code CLI unavailable, trying local Ollama. ${reason}` });
+            send({ type: "warning", message: "Enhanced video interpretation was unavailable, switching to the local fallback." });
           }
         }
 

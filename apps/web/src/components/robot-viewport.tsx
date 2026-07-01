@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { solveCcdIk, type IKJoint } from "@/lib/ik-solver";
 import type { GripperType } from "@/lib/workcell-config";
 import type { Pose } from "@/lib/robot-viewport-types";
-import type { GripperState, TaskPolicy } from "@/lib/types";
+import type { GripperState, TaskPolicy, TaskStep } from "@/lib/types";
 import {
   createBrushedMetalTexture,
   createContactShadow,
@@ -315,6 +315,7 @@ interface CarrySlot {
   pickIndex: number;
   placeIndex: number;
   propIndex: number;
+  destinationKind: DestinationKind;
   home: THREE.Vector3;
   place: THREE.Vector3;
   carrying: boolean;
@@ -327,6 +328,7 @@ const CARRY_PROP_COLORS = [0x0284c7, 0xd97706, 0x7c3aed];
 const WORKPIECE_HEIGHT = 0.07;
 /** Height of a fixture block's base, so the part can be dropped to rest in its cradle. */
 const FIXTURE_BASE_HEIGHT = 0.028;
+type DestinationKind = "fixture" | "tote" | "inspection" | "station";
 
 /**
  * A small machined workpiece: a brushed-metal block with a coloured locating
@@ -391,6 +393,118 @@ function buildFixtureBlock(accent: number, metalTexture: THREE.Texture): THREE.G
   inlay.receiveShadow = true;
   fixture.add(inlay);
   return fixture;
+}
+
+function buildToteBin(accent: number): THREE.Group {
+  const tote = new THREE.Group();
+  const plastic = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.05, roughness: 0.62 });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.012, 0.13), plastic);
+  base.position.y = 0.006;
+  base.castShadow = true;
+  base.receiveShadow = true;
+  tote.add(base);
+
+  const wallGeometry = new THREE.BoxGeometry(0.17, 0.055, 0.012);
+  for (const sign of [-1, 1]) {
+    const wall = new THREE.Mesh(wallGeometry, plastic);
+    wall.position.set(0, 0.035, sign * 0.065);
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    tote.add(wall);
+  }
+
+  const endWallGeometry = new THREE.BoxGeometry(0.012, 0.055, 0.13);
+  for (const sign of [-1, 1]) {
+    const wall = new THREE.Mesh(endWallGeometry, plastic);
+    wall.position.set(sign * 0.085, 0.035, 0);
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    tote.add(wall);
+  }
+
+  const label = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, 0.003, 0.026),
+    new THREE.MeshStandardMaterial({ color: accent, metalness: 0.1, roughness: 0.42, emissive: accent, emissiveIntensity: 0.12 }),
+  );
+  label.position.set(0, 0.064, -0.071);
+  tote.add(label);
+  return tote;
+}
+
+function buildInspectionPad(accent: number): THREE.Group {
+  const pad = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.18, roughness: 0.55 });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.01, 0.13), mat);
+  base.position.y = 0.005;
+  base.castShadow = true;
+  base.receiveShadow = true;
+  pad.add(base);
+
+  const lineMat = new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0.7 });
+  for (const z of [-0.035, 0, 0.035]) {
+    const line = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.002, 0.003), lineMat);
+    line.position.set(0, 0.012, z);
+    pad.add(line);
+  }
+  return pad;
+}
+
+function buildPlacementStation(accent: number, metalTexture: THREE.Texture): THREE.Group {
+  const station = new THREE.Group();
+  const steel = new THREE.MeshStandardMaterial({ color: 0x8b95a1, metalness: 0.7, roughness: 0.35, roughnessMap: metalTexture, envMapIntensity: 1 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.075, 0.018, 36), steel);
+  base.position.y = 0.009;
+  base.castShadow = true;
+  base.receiveShadow = true;
+  station.add(base);
+
+  const pegMat = new THREE.MeshStandardMaterial({ color: accent, metalness: 0.28, roughness: 0.42, emissive: accent, emissiveIntensity: 0.12 });
+  for (const x of [-0.035, 0.035]) {
+    const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.055, 18), pegMat);
+    peg.position.set(x, 0.045, 0);
+    peg.castShadow = true;
+    station.add(peg);
+  }
+  return station;
+}
+
+function buildDestinationProp(accent: number, metalTexture: THREE.Texture): THREE.Group {
+  const root = new THREE.Group();
+  const variants: Record<DestinationKind, THREE.Group> = {
+    fixture: buildFixtureBlock(accent, metalTexture),
+    tote: buildToteBin(accent),
+    inspection: buildInspectionPad(accent),
+    station: buildPlacementStation(accent, metalTexture),
+  };
+  Object.entries(variants).forEach(([kind, object]) => {
+    object.name = `destination-${kind}`;
+    object.visible = kind === "fixture";
+    root.add(object);
+  });
+  root.userData.destinationKind = "fixture";
+  return root;
+}
+
+function destinationKindForStep(step?: TaskStep): DestinationKind {
+  const text = `${step?.description ?? ""} ${step?.action ?? ""}`.toLowerCase();
+  if (/\b(tote|bin|container|tray)\b/.test(text)) return "tote";
+  if (/\b(inspect|inspection|camera|scan|table|surface)\b/.test(text)) return "inspection";
+  if (/\b(final|station|assembly|cell|nest)\b/.test(text)) return "station";
+  return "fixture";
+}
+
+function restHeightForDestination(kind: DestinationKind, tableTop: number) {
+  if (kind === "tote") return tableTop + 0.012 + WORKPIECE_HEIGHT / 2 + 0.001;
+  if (kind === "inspection") return tableTop + 0.01 + WORKPIECE_HEIGHT / 2 + 0.001;
+  if (kind === "station") return tableTop + 0.018 + WORKPIECE_HEIGHT / 2 + 0.001;
+  return tableTop + FIXTURE_BASE_HEIGHT + WORKPIECE_HEIGHT / 2 + 0.001;
+}
+
+function setDestinationKind(object: THREE.Object3D, kind: DestinationKind) {
+  object.userData.destinationKind = kind;
+  object.children.forEach((child) => {
+    child.visible = child.name === `destination-${kind}`;
+  });
 }
 
 function buildRobotArm(robotType: RobotType): THREE.Group {
@@ -1080,11 +1194,10 @@ export function RobotViewport({
         scene.add(prop);
       });
 
-      // A matching pool of slotted fixture blocks -- the destination each part
-      // is set into. A later effect parks one on the table under each pair's
-      // drop-off point, so the placement visibly "lands" into a cradle that
-      // resembles the fixture in the demonstration rather than into thin air.
-      fixtures = CARRY_PROP_COLORS.map((color) => buildFixtureBlock(color, aluminumTexture));
+      // A matching pool of semantic destination props. A later effect chooses
+      // the visible shape per drop-off step: tote/bin, inspection pad, final
+      // station, or generic slotted fixture.
+      fixtures = CARRY_PROP_COLORS.map((color) => buildDestinationProp(color, aluminumTexture));
       fixtures.forEach((fixture) => {
         fixture.visible = false;
         scene.add(fixture);
@@ -1181,19 +1294,19 @@ export function RobotViewport({
     if (!state || state.props.length === 0) return;
 
     const tableTop = state.workcell.tableTop;
-    // Height at which a placed part rests inside a fixture cradle, and the
-    // height of a part sitting directly on the table before pickup.
-    const cradleRestY = tableTop + FIXTURE_BASE_HEIGHT + WORKPIECE_HEIGHT / 2 + 0.001;
+    // Height at which a placed part rests on the inferred destination prop, and
+    // the height of a part sitting directly on the table before pickup.
     const tableRestY = tableTop + WORKPIECE_HEIGHT / 2;
 
     const pairs = extractCarryPairs(policy);
     const signatureToProp = new Map<string, number>();
     const slots: CarrySlot[] = pairs.map((pair) => {
+      const destinationKind = destinationKindForStep(policy?.steps[pair.placeIndex]);
       const home = sceneVector(waypointToPose(policy, pair.pickIndex));
       const place = sceneVector(waypointToPose(policy, pair.placeIndex));
-      // Land the part to rest inside its fixture cradle rather than at the bare
-      // drop-off waypoint height (which is just where the gripper releases).
-      place.y = cradleRestY;
+      // Land the part on the inferred destination surface rather than at the
+      // bare drop-off waypoint height, which is where the gripper releases.
+      place.y = restHeightForDestination(destinationKind, tableTop);
       const signature = `${home.toArray().map((n) => n.toFixed(3)).join(",")}|${place.toArray().map((n) => n.toFixed(3)).join(",")}`;
       let propIndex = signatureToProp.get(signature);
       if (propIndex === undefined) {
@@ -1201,7 +1314,7 @@ export function RobotViewport({
         signatureToProp.set(signature, propIndex);
       }
       const previous = state.carrySlots.find((s) => s.propIndex === propIndex && s.carrying);
-      return { pickIndex: pair.pickIndex, placeIndex: pair.placeIndex, propIndex, home, place, carrying: Boolean(previous) };
+      return { pickIndex: pair.pickIndex, placeIndex: pair.placeIndex, propIndex, destinationKind, home, place, carrying: Boolean(previous) };
     });
     state.carrySlots = slots;
 
@@ -1231,6 +1344,7 @@ export function RobotViewport({
       }
       fixture.visible = true;
       fixture.position.set(slot.place.x, tableTop, slot.place.z);
+      setDestinationKind(fixture, slot.destinationKind);
     });
   }, [policy, robotType, showWorkcell]);
 
