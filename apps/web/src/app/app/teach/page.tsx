@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import jsPDF from "jspdf";
-import { ArrowDown, ArrowUp, Check, CheckCircle2, Code2, Download, Plus, Play, Rocket, Trash2, TrendingUp, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, CheckCircle2, Code2, Download, Plus, Play, Rocket, Trash2, TrendingUp, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RobotViewport } from "@/components/robot-viewport";
+import { SceneUnderstandingPanel } from "@/components/scene-understanding-panel";
 import { DeployReadiness } from "@/components/deploy-readiness";
 import { RoiCalculator } from "@/components/roi-calculator";
 import { DEMO_VIDEO_URL, FALLBACK_POLICY, FALLBACK_STEPS } from "@/lib/demo-seed";
@@ -133,6 +134,9 @@ export default function TeachPage() {
   const [deployed, setDeployed] = useState(false);
   const [robotType, setRobotType] = useState<DemoRobot>("ur5e");
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState(DEMO_VIDEO_URL);
+  const [selectedVideoLabel, setSelectedVideoLabel] = useState("Warehouse multi-step workcell demonstration");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [interpretedPolicy, setInterpretedPolicy] = useState<TaskPolicy | null>(null);
   const [sequence, setSequence] = useState<SequenceStep[]>(DEFAULT_SEQUENCE);
@@ -187,7 +191,7 @@ export default function TeachPage() {
       const createRes = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "Warehouse multi-step workcell demonstration", videoUrl: DEMO_VIDEO_URL }),
+        body: JSON.stringify({ title: selectedVideoLabel, videoUrl: selectedVideoUrl }),
       });
       if (!createRes.ok) throw new Error(`task create failed: ${createRes.status}`);
       const task = (await createRes.json()) as { id: string };
@@ -293,11 +297,39 @@ export default function TeachPage() {
     return () => {
       cancelled = true;
     };
-  }, [started, sequence.length]);
+  }, [selectedVideoLabel, selectedVideoUrl, sequence.length, started]);
 
   const runWorkflow = () => {
     setStarted(false);
     window.setTimeout(() => setStarted(true), 0);
+  };
+
+  const handleVideoUpload = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadingVideo(true);
+    setUploadMessage("Uploading video so the server can extract real frames...");
+    try {
+      const form = new FormData();
+      form.append("video", file);
+      const res = await fetch("/api/uploads/demo-video", { method: "POST", body: form });
+      const payload = (await res.json().catch(() => null)) as { videoUrl?: string; originalName?: string; error?: string } | null;
+      if (!res.ok || !payload?.videoUrl) {
+        throw new Error(payload?.error ?? `upload failed: ${res.status}`);
+      }
+      setSelectedVideoUrl(payload.videoUrl);
+      setSelectedVideoLabel(payload.originalName ? `Operator demo: ${payload.originalName}` : "Operator uploaded demonstration");
+      setUploadMessage("Video uploaded. Press auto-play to analyze this file with timestamped frame extraction.");
+      setStarted(false);
+      setSteps([]);
+      setInterpretedPolicy(null);
+      setActiveStep(-1);
+      setDone(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Upload failed";
+      setUploadMessage(`Could not upload video: ${message}`);
+    } finally {
+      setUploadingVideo(false);
+    }
   };
 
   const updateSequence = (id: string, patch: Partial<SequenceStep>) => {
@@ -363,14 +395,29 @@ export default function TeachPage() {
               <Button data-testid="auto-play-demo" onClick={runWorkflow} className="gap-2"><Play className="h-4 w-4" /> {t("teach.autoplay")}</Button>
             </div>
           </div>
-          <video src={DEMO_VIDEO_URL} controls muted loop className="mt-4 aspect-video w-full rounded-md bg-[rgb(var(--ink-3))] object-cover" />
-          <Button
-            variant="outline"
-            className="mt-4 w-full"
-            onClick={() => setUploadMessage("Demo-safe mode uses the bundled 38s MP4 so the live flow remains fully offline and repeatable.")}
-          >
-            Try your own video
-          </Button>
+          <video src={selectedVideoUrl} controls muted loop className="mt-4 aspect-video w-full rounded-md bg-[rgb(var(--ink-3))] object-cover" />
+          <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+            <div className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-3 py-2">
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[rgb(var(--bone-2))]">Analysis source</p>
+              <p className="mt-1 truncate text-sm font-medium">{selectedVideoLabel}</p>
+            </div>
+            <Button asChild variant="outline" className="gap-2">
+              <label>
+                <Upload className="h-4 w-4" />
+                {uploadingVideo ? "Uploading..." : "Upload video"}
+                <input
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/webm,video/x-m4v"
+                  className="sr-only"
+                  disabled={uploadingVideo}
+                  onChange={(event) => {
+                    void handleVideoUpload(event.target.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </Button>
+          </div>
           {uploadMessage && <p className="mt-2 rounded-md bg-[rgb(var(--signal-amber)/0.1)] p-2 text-sm text-[rgb(var(--bone-2))]">{uploadMessage}</p>}
           <div className="mt-4 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] p-3">
             <div className="flex items-center justify-between gap-3">
@@ -416,6 +463,7 @@ export default function TeachPage() {
             playbackState={done || started ? "playing" : "paused"}
             className="min-h-[520px]"
           />
+          {steps.length > 0 && <SceneUnderstandingPanel policy={policy} className="mt-3" />}
         </section>
       </div>
 

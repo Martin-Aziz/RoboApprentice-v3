@@ -17,10 +17,12 @@
  */
 
 import type {
+  SceneGeometrySource,
   SceneMaterialHint,
   SceneObject,
   SceneObjectCategory,
   SceneObjectRole,
+  SceneVisualFidelity,
   TaskStep,
   WorkcellScene,
 } from "./types";
@@ -55,6 +57,12 @@ const CATEGORIES: SceneObjectCategory[] = [
 
 const MATERIALS: SceneMaterialHint[] = ["metal", "plastic", "rubber", "wood", "cardboard", "unknown"];
 
+const GEOMETRY_SOURCES: SceneGeometrySource[] = ["model", "depth", "primitive", "derived"];
+const VISUAL_FIDELITIES: SceneVisualFidelity[] = ["proxy", "depth_estimated", "cad_matched"];
+
+/** Below this pose confidence an object is flagged for human review. */
+export const LOW_POSE_CONFIDENCE = 0.5;
+
 /** Roles that mark an object as a drop-off surface/receptacle for a carried part. */
 export const DESTINATION_ROLES: ReadonlySet<SceneObjectRole> = new Set([
   "destination",
@@ -86,6 +94,24 @@ export interface RawSceneObject {
   related_step_orders?: unknown;
   relatedStepOrders?: unknown;
   confidence?: unknown;
+  detection_label?: unknown;
+  detectionLabel?: unknown;
+  detection_score?: unknown;
+  detectionScore?: unknown;
+  mask_id?: unknown;
+  maskId?: unknown;
+  track_id?: unknown;
+  trackId?: unknown;
+  depth_hint?: unknown;
+  depthHint?: unknown;
+  pose_confidence?: unknown;
+  poseConfidence?: unknown;
+  geometry_source?: unknown;
+  geometrySource?: unknown;
+  visual_fidelity?: unknown;
+  visualFidelity?: unknown;
+  review_required_reason?: unknown;
+  reviewRequiredReason?: unknown;
 }
 
 export interface RawWorkcellScene {
@@ -233,7 +259,20 @@ export function normalizeSceneObject(
   const materialRaw = (raw.material_hint ?? raw.materialHint) as SceneMaterialHint;
   const materialHint = MATERIALS.includes(materialRaw) ? materialRaw : undefined;
   const idRaw = asString(raw.id, 48).trim();
-  return {
+
+  const optionalUnit = (value: unknown): number | undefined => {
+    if (value === undefined || value === null) return undefined;
+    const num = clampNumber(value, 0, 1, NaN);
+    return Number.isNaN(num) ? undefined : num;
+  };
+  const optionalString = (value: unknown, maxLength: number): string | undefined => {
+    const str = asString(value, maxLength).trim();
+    return str || undefined;
+  };
+  const geometryRaw = (raw.geometry_source ?? raw.geometrySource) as SceneGeometrySource;
+  const fidelityRaw = (raw.visual_fidelity ?? raw.visualFidelity) as SceneVisualFidelity;
+
+  const object: SceneObject = {
     id: idRaw || `scene-obj-${index + 1}`,
     role,
     category,
@@ -244,7 +283,38 @@ export function normalizeSceneObject(
     poseHint: normalizePose(raw.pose_hint ?? raw.poseHint),
     relatedStepIds: normalizeRelatedSteps(raw, steps),
     confidence: clampNumber(raw.confidence, 0, 1, 0.3),
+    detectionLabel: optionalString(raw.detection_label ?? raw.detectionLabel, 80),
+    detectionScore: optionalUnit(raw.detection_score ?? raw.detectionScore),
+    maskId: optionalString(raw.mask_id ?? raw.maskId, 48),
+    trackId: optionalString(raw.track_id ?? raw.trackId, 48),
+    depthHint: optionalUnit(raw.depth_hint ?? raw.depthHint),
+    poseConfidence: optionalUnit(raw.pose_confidence ?? raw.poseConfidence),
+    geometrySource: GEOMETRY_SOURCES.includes(geometryRaw) ? geometryRaw : undefined,
+    visualFidelity: VISUAL_FIDELITIES.includes(fidelityRaw) ? fidelityRaw : undefined,
+    reviewRequiredReason: optionalString(raw.review_required_reason ?? raw.reviewRequiredReason, 200),
   };
+
+  // Honesty guard: geometry that isn't grounded in detection/track/depth
+  // evidence can only be a primitive proxy, whatever the model claimed.
+  const grounded = Boolean(object.detectionLabel || object.trackId || object.maskId || object.depthHint !== undefined);
+  if (!grounded) {
+    if (object.visualFidelity === "cad_matched" || object.visualFidelity === "depth_estimated") {
+      object.visualFidelity = "proxy";
+    }
+    if (object.geometrySource === "model" || object.geometrySource === "depth") {
+      object.geometrySource = "primitive";
+    }
+  }
+  if (!object.visualFidelity) object.visualFidelity = "proxy";
+  if (!object.geometrySource) object.geometrySource = grounded ? "primitive" : "derived";
+
+  // Low pose confidence means the placement is a guess — flag for review.
+  const effectivePoseConfidence = object.poseConfidence ?? object.confidence;
+  if (!object.reviewRequiredReason && effectivePoseConfidence < LOW_POSE_CONFIDENCE) {
+    object.reviewRequiredReason = "Pose/size is low-confidence; verify position against the source video before deployment.";
+  }
+
+  return object;
 }
 
 /**
@@ -286,6 +356,11 @@ export function validateWorkcellScene(raw: RawWorkcellScene | null, steps: TaskS
   );
   if (confidence < 0.35) {
     warnings.push("Low scene confidence — rendered objects are approximate proxies; review against the source video.");
+  }
+
+  const reviewCount = objects.filter((o) => o.reviewRequiredReason).length;
+  if (reviewCount > 0) {
+    warnings.push(`${reviewCount} object(s) have low-confidence pose/geometry and need human review before deployment.`);
   }
 
   return {
@@ -418,6 +493,9 @@ export function deriveSceneFromSteps(steps: TaskStep[]): WorkcellScene {
       relatedStepIds: [pick.id],
       poseHint: { x: pick.target.x, y: pick.target.y, z: 0 },
       confidence: 0.45,
+      geometrySource: "derived",
+      visualFidelity: "proxy",
+      reviewRequiredReason: "Inferred from step text, not video evidence.",
     });
 
     const destination = classifyDestination(placeText);
@@ -430,6 +508,9 @@ export function deriveSceneFromSteps(steps: TaskStep[]): WorkcellScene {
       relatedStepIds: [place.id],
       poseHint: { x: place.target.x, y: place.target.y, z: 0 },
       confidence: 0.4,
+      geometrySource: "derived",
+      visualFidelity: "proxy",
+      reviewRequiredReason: "Inferred from step text, not video evidence.",
     });
   });
 
@@ -451,6 +532,9 @@ export function deriveSceneFromSteps(steps: TaskStep[]): WorkcellScene {
       relatedStepIds: [step.id],
       poseHint: { x: step.target.x, y: step.target.y, z: 0 },
       confidence: 0.4,
+      geometrySource: "derived",
+      visualFidelity: "proxy",
+      reviewRequiredReason: "Inferred from step text, not video evidence.",
     });
   }
 

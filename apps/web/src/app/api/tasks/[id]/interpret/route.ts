@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getTask, updateTask } from "@/lib/task-store-db";
 import { processPolicyPipeline } from "@/lib/policy-pipeline";
 import { extractVideoFrames, type FrameSample } from "@/lib/video-frames";
+import { buildLocalPerceptionEvidence, summarisePerceptionEvidence } from "@/lib/perception-evidence";
 import {
   deriveSceneFromSteps,
   extractFirstJsonArray,
@@ -340,7 +341,15 @@ Immediately after the closing "]" of the steps array, output exactly one JSON ob
     "size_hint": { "x": <meters>, "y": <meters>, "z": <meters, vertical height> },
     "pose_hint": { "x": <meters>, "y": <meters>, "z": <meters> },
     "related_step_orders": [<step order numbers this object participates in>],
-    "confidence": <0..1>
+    "confidence": <0..1>,
+    "track_id": "<perception track id this object corresponds to, omit if none>",
+    "detection_label": "<detection phrase grounding this object, omit if none>",
+    "detection_score": <0..1, omit if no detection>,
+    "depth_hint": <0..1 relative nearness, omit if no depth evidence>,
+    "pose_confidence": <0..1, how sure you are of pose_hint specifically>,
+    "geometry_source": "model" | "depth" | "primitive" | "derived",
+    "visual_fidelity": "proxy" | "depth_estimated" | "cad_matched",
+    "review_required_reason": "<why a human should verify this object, omit if confident>"
   }
 ], "confidence": <0..1 overall>, "warnings": ["<anything ambiguous about the scene>"]}}
 
@@ -352,6 +361,11 @@ Scene-model rules:
 - Approximate sizes honestly in meters; a tote is typically 0.2–0.6m wide, a small machined part 0.03–0.15m.
 - When unsure of what an object is, use category "unknown" with a descriptive label and lower confidence — never invent a specific object class.
 - If the video shows no identifiable objects, output {"scene": {"objects": [], "confidence": 0, "warnings": ["No distinct objects identified"]}}.
+
+Evidence-grounding rules (mandatory):
+- A "Perception evidence" section may list object tracks, detections, depth hints, and motion events. Ground every scene object in that evidence when it exists: set track_id to the matching track, detection_label/detection_score when a detection supports it, and depth_hint when depth evidence exists. Never invent track/detection/mask IDs that are not listed in the evidence.
+- Monocular video cannot yield robot-grade geometry. Do NOT claim exact geometry: use visual_fidelity "proxy" and geometry_source "primitive" unless real depth or CAD evidence is listed. When pose or size is uncertain, say so via pose_confidence and review_required_reason instead of pretending precision.
+- Objects with no supporting evidence at all must carry a review_required_reason and lower confidence.
 
 ## COORDINATE SYSTEM
 Robot base frame. Origin at robot base center.
@@ -549,6 +563,12 @@ export async function POST(
           send({ type: "status", message: `Vision analysis skipped — interpreting from text. ${extracted.note}` });
         }
 
+        // Layered perception evidence: today the deterministic local bundle
+        // (motion tracks/events + frame plan); later, detector/tracker/depth
+        // providers fill the same contract.
+        const evidence = buildLocalPerceptionEvidence(task.videoUrl, extracted, extracted.motion);
+        const evidenceSummary = summarisePerceptionEvidence(evidence);
+
         const frameTimeline = extracted.samples.length
           ? extracted.samples
               .map((sample) => `- ${sample.label}`)
@@ -565,6 +585,7 @@ export async function POST(
           extracted.motionSummary
             ? `\n## Motion analysis\n${extracted.motionSummary}\n\nUse this motion timeline to order stages, distinguish descents (approach) from lifts (retract), and place grip/release at the activity peaks. The image evidence overrides this summary where they disagree.`
             : "",
+          `\n## Perception evidence\n${evidenceSummary}\n\nGround every scene object in this evidence: reference the matching track_id, and use detection/depth fields only when the evidence above actually provides them. Where evidence is missing or weak, mark the object visual_fidelity "proxy" with a review_required_reason — do not present guessed geometry as exact.`,
           task.transcript
             ? `\n## Operator description\n"${task.transcript}"\n\nUse this narration alongside the frames to resolve any ambiguity in contact points and spatial positions.`
             : extracted.samples.length > 0

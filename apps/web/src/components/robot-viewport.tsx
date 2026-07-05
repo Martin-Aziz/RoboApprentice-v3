@@ -561,6 +561,232 @@ function buildMachinedPartMesh(w: number, d: number, h: number, mat: THREE.Mater
   return group;
 }
 
+/** V-block fixture: base plate with two angled cheeks forming a V cradle. */
+function buildVBlockMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const baseH = Math.min(0.02, h * 0.35);
+  const base = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w, baseH, d), mat));
+  base.position.y = baseH / 2;
+  group.add(base);
+  const cheekH = Math.max(h - baseH, 0.03);
+  for (const sign of [-1, 1]) {
+    const cheek = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w, cheekH, d * 0.42), mat));
+    cheek.position.set(0, baseH + cheekH / 2 - (cheekH / 2) * 0.3, sign * d * 0.26);
+    cheek.rotation.x = sign * -Math.PI / 5;
+    group.add(cheek);
+  }
+  const inlay = new THREE.Mesh(new THREE.BoxGeometry(w * 0.8, 0.003, 0.006), accentMaterial(accent));
+  inlay.position.y = baseH + 0.002;
+  group.add(inlay);
+  group.userData.surfaceY = baseH + cheekH * 0.25;
+  return group;
+}
+
+/** Linear rail fixture: base plate, two guide rails, end stops. */
+function buildRailFixtureMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const baseH = Math.min(0.014, h * 0.3);
+  const base = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w, baseH, d), mat));
+  base.position.y = baseH / 2;
+  group.add(base);
+  const railH = Math.max(h - baseH, 0.015);
+  for (const sign of [-1, 1]) {
+    const rail = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w * 0.96, railH, Math.min(0.012, d * 0.14)), mat));
+    rail.position.set(0, baseH + railH / 2, sign * d * 0.3);
+    group.add(rail);
+  }
+  for (const sign of [-1, 1]) {
+    const stop = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.012, railH * 1.3, d * 0.72), accentMaterial(accent)));
+    stop.position.set(sign * (w / 2 - 0.008), baseH + railH * 0.65, 0);
+    group.add(stop);
+  }
+  group.userData.surfaceY = baseH;
+  return group;
+}
+
+/** Peg fixture: base plate with a grid of locating pegs. */
+function buildPegFixtureMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const baseH = Math.min(0.016, h * 0.35);
+  const base = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, baseH, d, 2, 0.003), mat));
+  base.position.y = baseH / 2;
+  group.add(base);
+  const pegH = Math.max(h - baseH, 0.025);
+  const pegMat = accentMaterial(accent);
+  for (const fx of [-0.3, 0, 0.3]) {
+    for (const fz of [-0.28, 0.28]) {
+      const peg = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.006, pegH, 12), fx === 0 ? pegMat : mat));
+      peg.position.set(fx * w, baseH + pegH / 2, fz * d);
+      group.add(peg);
+    }
+  }
+  group.userData.surfaceY = baseH;
+  return group;
+}
+
+/** Short conveyor segment: side frames, rollers, and legs. */
+function buildConveyorMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const frameH = Math.min(0.02, h * 0.4);
+  const bedY = Math.max(h - frameH, 0.02);
+  for (const sign of [-1, 1]) {
+    const frame = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w, frameH, Math.min(0.014, d * 0.12)), mat));
+    frame.position.set(0, bedY + frameH / 2, sign * (d / 2 - 0.007));
+    group.add(frame);
+    const leg = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.014, bedY, 0.014), mat));
+    leg.position.set(sign * (w / 2 - 0.02), bedY / 2, sign * (d / 2 - 0.014));
+    group.add(leg);
+  }
+  const rollerCount = Math.max(3, Math.floor(w / 0.035));
+  const rollerMat = accentMaterial(accent);
+  for (let i = 0; i < rollerCount; i += 1) {
+    const roller = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, d * 0.82, 12), i === 0 ? rollerMat : mat));
+    roller.rotation.x = Math.PI / 2;
+    roller.position.set(-w / 2 + (w / (rollerCount - 1)) * i, bedY + frameH * 0.6, 0);
+    group.add(roller);
+  }
+  group.userData.surfaceY = bedY + frameH * 0.6 + 0.008;
+  return group;
+}
+
+/** Miniature pallet: deck boards over stringers. */
+function buildPalletMesh(w: number, d: number, h: number, mat: THREE.Material): THREE.Group {
+  const group = new THREE.Group();
+  const stringerH = Math.min(h * 0.55, 0.03);
+  const deckH = Math.min(h - stringerH, 0.008);
+  for (const fz of [-0.4, 0, 0.4]) {
+    const stringer = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w, stringerH, Math.min(0.016, d * 0.14)), mat));
+    stringer.position.set(0, stringerH / 2, fz * d);
+    group.add(stringer);
+  }
+  const boardCount = 5;
+  for (let i = 0; i < boardCount; i += 1) {
+    const board = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w / boardCount * 0.82, deckH, d), mat));
+    board.position.set(-w / 2 + (w / boardCount) * (i + 0.5), stringerH + deckH / 2, 0);
+    group.add(board);
+  }
+  group.userData.surfaceY = stringerH + deckH;
+  return group;
+}
+
+/** Stack of two/three offset closed boxes. */
+function buildBoxStackMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const layers = h > 0.12 ? 3 : 2;
+  const layerH = h / layers;
+  for (let i = 0; i < layers; i += 1) {
+    const shrink = 1 - i * 0.08;
+    const box = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w * shrink, layerH * 0.94, d * shrink, 2, 0.004), mat));
+    box.position.set((i % 2 ? -1 : 1) * w * 0.03, layerH * (i + 0.5), (i % 2 ? 1 : -1) * d * 0.02);
+    group.add(box);
+  }
+  const tape = new THREE.Mesh(new THREE.BoxGeometry(Math.min(0.024, w * 0.25), 0.002, d * (1 - (layers - 1) * 0.08)), accentMaterial(accent));
+  tape.position.y = h + 0.001;
+  group.add(tape);
+  group.userData.surfaceY = h;
+  return group;
+}
+
+/** Cylinder lying on its side (shaft/tube/roller at rest). */
+function buildHorizontalCylinderMesh(w: number, d: number, h: number, mat: THREE.Material): THREE.Group {
+  const group = new THREE.Group();
+  const radius = Math.max(Math.min(d, h) / 2, 0.008);
+  const length = Math.max(w, radius * 2.5);
+  const body = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 24), mat));
+  body.rotation.z = Math.PI / 2;
+  body.position.y = radius;
+  group.add(body);
+  group.userData.surfaceY = radius * 2;
+  return group;
+}
+
+/** Flat sheet/panel with slightly raised edge so it reads as a plate, not a decal. */
+function buildFlatPanelMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const thickness = Math.min(h, 0.015);
+  const sheet = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, thickness, d, 2, thickness * 0.3), mat));
+  sheet.position.y = thickness / 2;
+  group.add(sheet);
+  const corner = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.002, 0.012), accentMaterial(accent));
+  corner.position.set(w / 2 - 0.012, thickness + 0.001, d / 2 - 0.012);
+  group.add(corner);
+  group.userData.surfaceY = thickness;
+  return group;
+}
+
+/** Irregular unknown part: three intersecting offset blocks, deliberately asymmetric. */
+function buildIrregularPartMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
+  const group = new THREE.Group();
+  const main = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w * 0.8, h * 0.7, d * 0.9, 2, 0.004), mat));
+  main.position.set(-w * 0.06, h * 0.35, 0);
+  group.add(main);
+  const lobe = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w * 0.45, h * 0.95, d * 0.5, 2, 0.004), mat));
+  lobe.position.set(w * 0.24, h * 0.48, -d * 0.14);
+  lobe.rotation.y = 0.35;
+  group.add(lobe);
+  const nub = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(Math.min(w, d) * 0.14, Math.min(w, d) * 0.16, h * 0.4, 14), accentMaterial(accent)));
+  nub.position.set(-w * 0.2, h * 0.85, d * 0.18);
+  group.add(nub);
+  group.userData.surfaceY = h;
+  return group;
+}
+
+// Fidelity/confidence overlay colours for the 3D scene (Three.js material
+// colours, not UI CSS): confirmed evidence, proxy geometry, needs-review.
+const FIDELITY_RING_COLORS = { confirmed: 0x059669, proxy: 0x94a3b8, review: 0xd97706 } as const;
+
+type FidelityState = keyof typeof FIDELITY_RING_COLORS;
+
+/** Visual trust state of an object: drives the subtle base-ring overlay. */
+function fidelityStateFor(object: SceneObject): FidelityState {
+  if (object.reviewRequiredReason || object.confidence < 0.45) return "review";
+  const grounded = Boolean(object.detectionLabel || object.trackId || object.maskId);
+  if (grounded && object.confidence >= 0.6 && object.visualFidelity !== "proxy") return "confirmed";
+  return "proxy";
+}
+
+/** Subtle flat ring under an object's footprint indicating evidence fidelity. */
+function buildFidelityRing(object: SceneObject, w: number, d: number): THREE.Mesh {
+  const state = fidelityStateFor(object);
+  const radius = Math.max(w, d) * 0.62;
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(radius * 0.9, radius, 36),
+    new THREE.MeshBasicMaterial({
+      color: FIDELITY_RING_COLORS[state],
+      transparent: true,
+      opacity: state === "confirmed" ? 0.4 : state === "review" ? 0.5 : 0.22,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.0015;
+  ring.name = "fidelityRing";
+  return ring;
+}
+
+/**
+ * Refined shape family for an object, chosen from its label text and size
+ * proportions when the coarse category is ambiguous. Returns null to use the
+ * category's default recipe.
+ */
+function detectShapeFamily(object: SceneObject, size: { w: number; d: number; h: number }):
+  | "v_block" | "rail" | "peg" | "conveyor" | "pallet" | "box_stack"
+  | "horizontal_cylinder" | "flat_panel" | "irregular" | null {
+  const text = `${object.label} ${object.detectionLabel ?? ""}`.toLowerCase();
+  if (/\bv[- ]?block\b/.test(text)) return "v_block";
+  if (/\brail\b/.test(text)) return "rail";
+  if (/\bpeg\b/.test(text)) return "peg";
+  if (/\b(conveyor|belt)\b/.test(text)) return "conveyor";
+  if (/\bpallet\b/.test(text)) return "pallet";
+  if (/\bstack\b/.test(text)) return "box_stack";
+  if (/\b(sheet|panel|plate|pcb|board)\b/.test(text)) return "flat_panel";
+  if (object.category === "cylinder" && size.w > size.h * 1.6) return "horizontal_cylinder";
+  if (object.category === "unknown" && /\b(part|casting|housing|component)\b/.test(text)) return "irregular";
+  if (object.category === "box" && size.h > Math.max(size.w, size.d) * 1.5) return "box_stack";
+  return null;
+}
+
 /** Neutral proxy for unclassified objects: rounded block plus accent ring. */
 function buildUnknownMesh(w: number, d: number, h: number, mat: THREE.Material, accent: number): THREE.Group {
   const group = new THREE.Group();
@@ -592,31 +818,55 @@ function buildSceneObjectMesh(object: SceneObject, accent: number, metalTexture:
   const { w, d, h } = resolveObjectSize(object, { min: 0.05, max: 0.4, hMin: 0.008, hMax: 0.3 });
   const mat = sceneObjectMaterial(color, materialHint, metalTexture);
 
+  const withRing = (group: THREE.Group, surfaceY: number): BuiltSceneMesh => {
+    group.add(buildFidelityRing(object, w, d));
+    return { group, surfaceY };
+  };
+
+  // Refined shape families (v-block, rail, conveyor, pallet, ...) override the
+  // coarse category recipe when the label/proportions identify one.
+  const family = detectShapeFamily(object, { w, d, h });
+  if (family) {
+    const builders: Record<NonNullable<typeof family>, () => THREE.Group> = {
+      v_block: () => buildVBlockMesh(w, d, h, mat, accent),
+      rail: () => buildRailFixtureMesh(w, d, h, mat, accent),
+      peg: () => buildPegFixtureMesh(w, d, h, mat, accent),
+      conveyor: () => buildConveyorMesh(w, d, Math.max(h, 0.05), mat, accent),
+      pallet: () => buildPalletMesh(w, d, Math.min(h, 0.05), mat),
+      box_stack: () => buildBoxStackMesh(w, d, h, mat, accent),
+      horizontal_cylinder: () => buildHorizontalCylinderMesh(w, d, h, mat),
+      flat_panel: () => buildFlatPanelMesh(w, d, h, mat, accent),
+      irregular: () => buildIrregularPartMesh(w, d, h, mat, accent),
+    };
+    const group = builders[family]();
+    return withRing(group, (group.userData.surfaceY as number | undefined) ?? h);
+  }
+
   switch (object.category) {
     case "tote":
     case "bin":
     case "tray": {
       const group = buildContainerMesh(w, d, h, mat, accent);
-      return { group, surfaceY: Math.min(0.012, h * 0.3) };
+      return withRing(group, Math.min(0.012, h * 0.3));
     }
     case "surface":
-      return { group: buildInspectionSurfaceMesh(w, d, h, mat, accent), surfaceY: h };
+      return withRing(buildInspectionSurfaceMesh(w, d, h, mat, accent), h);
     case "fixture": {
       const group = buildFixtureMesh(w, d, h, mat, accent);
-      return { group, surfaceY: (group.userData.surfaceY as number) ?? h * 0.4 };
+      return withRing(group, (group.userData.surfaceY as number) ?? h * 0.4);
     }
     case "station":
-      return { group: buildStationMesh(w, d, Math.min(h, 0.03), mat, accent), surfaceY: Math.min(h, 0.03) };
+      return withRing(buildStationMesh(w, d, Math.min(h, 0.03), mat, accent), Math.min(h, 0.03));
     case "box":
-      return { group: buildBoxMesh(w, d, h, mat, accent), surfaceY: h };
+      return withRing(buildBoxMesh(w, d, h, mat, accent), h);
     case "cylinder":
-      return { group: buildCylinderMesh(w, d, h, mat), surfaceY: h };
+      return withRing(buildCylinderMesh(w, d, h, mat), h);
     case "bracket":
-      return { group: buildBracketMesh(w, d, h, mat, accent), surfaceY: Math.min(0.016, h * 0.35) };
+      return withRing(buildBracketMesh(w, d, h, mat, accent), Math.min(0.016, h * 0.35));
     case "machined_part":
-      return { group: buildMachinedPartMesh(w, d, h, mat, accent), surfaceY: h };
+      return withRing(buildMachinedPartMesh(w, d, h, mat, accent), h);
     default:
-      return { group: buildUnknownMesh(w, d, h, mat, accent), surfaceY: h };
+      return withRing(buildUnknownMesh(w, d, h, mat, accent), h);
   }
 }
 
@@ -1497,7 +1747,7 @@ export function RobotViewport({
 
     const signature = JSON.stringify({
       pairs: pairs.map((pair) => [steps[pair.pickIndex]?.target, steps[pair.placeIndex]?.target, steps[pair.placeIndex]?.description]),
-      objects: scene.objects.map((o) => [o.id, o.role, o.category, o.colorHint, o.materialHint, o.sizeHint, o.poseHint, o.relatedStepIds]),
+      objects: scene.objects.map((o) => [o.id, o.role, o.category, o.colorHint, o.materialHint, o.sizeHint, o.poseHint, o.relatedStepIds, o.visualFidelity, o.confidence, o.trackId, o.reviewRequiredReason]),
     });
     if (signature === state.sceneSignature) return;
     state.sceneSignature = signature;

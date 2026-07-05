@@ -514,6 +514,12 @@ export type SceneObjectCategory =
 
 export type SceneMaterialHint = "metal" | "plastic" | "rubber" | "wood" | "cardboard" | "unknown";
 
+/** Where an object's geometry came from, most to least trustworthy. */
+export type SceneGeometrySource = "model" | "depth" | "primitive" | "derived";
+
+/** How faithful the rendered proxy is to the real object. */
+export type SceneVisualFidelity = "proxy" | "depth_estimated" | "cad_matched";
+
 /**
  * One physical object interpreted from the demonstration video. Sizes are in
  * meters; poses are in the robot base frame (x forward, y left, z up), matching
@@ -534,6 +540,25 @@ export interface SceneObject {
   /** IDs of the policy steps this object participates in (pick/place/inspect). */
   relatedStepIds: string[];
   confidence: number; // 0–1
+  // -- Perception evidence grounding (all optional; absent = ungrounded guess) --
+  /** Detector label this object was grounded in (e.g. Grounding DINO phrase). */
+  detectionLabel?: string;
+  /** Detector confidence for that label, 0–1. */
+  detectionScore?: number;
+  /** Segmentation mask backing the object's extent (SAM 2). */
+  maskId?: string;
+  /** Object track backing the object's persistence (CoTracker / motion cluster). */
+  trackId?: string;
+  /** Relative nearness from monocular depth, 0 (far) – 1 (near). Never metric. */
+  depthHint?: number;
+  /** Confidence in the estimated pose specifically, 0–1. */
+  poseConfidence?: number;
+  /** Where the geometry came from. */
+  geometrySource?: SceneGeometrySource;
+  /** How faithful the rendered shape is to the real object. */
+  visualFidelity?: SceneVisualFidelity;
+  /** Set when a human should verify this object before deployment. */
+  reviewRequiredReason?: string;
 }
 
 /** Structured scene understanding derived from the demonstration video. */

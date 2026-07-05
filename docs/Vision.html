@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aurevix Vision Ladder — From Video-to-Task to Robot Infrastructure</title>
+  <style>
+    :root {
+      --bg: #f4f8fb;
+      --paper: rgba(255,255,255,.78);
+      --paper-solid: #ffffff;
+      --ink: #0b1720;
+      --muted: #597081;
+      --line: rgba(24, 71, 94, .13);
+      --cyan: #00a7c8;
+      --cyan-2: #6ee7f7;
+      --blue: #2563eb;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --navy: #0b1f33;
+      --shadow: 0 24px 70px rgba(15, 45, 70, .13);
+      --radius: 28px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 8%, rgba(110,231,247,.35), transparent 30%),
+        radial-gradient(circle at 92% 2%, rgba(37,99,235,.14), transparent 34%),
+        linear-gradient(180deg, #f9fcff 0%, var(--bg) 42%, #eef6fa 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(12,44,65,.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(12,44,65,.045) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.9), rgba(0,0,0,.08));
+      z-index: 0;
+    }
+
+    main, header, footer { position: relative; z-index: 1; }
+    .container { width: min(1180px, calc(100% - 34px)); margin: 0 auto; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(18px);
+      background: rgba(248,252,255,.72);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 800; letter-spacing: -.04em; }
+    .mark { width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; color: white; background: linear-gradient(135deg, var(--navy), var(--cyan)); box-shadow: 0 10px 24px rgba(0,167,200,.22); }
+    .navlinks { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .navlinks a, .pill-button {
+      text-decoration: none;
+      color: #19445b;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.62);
+    }
+    .pill-button { cursor: pointer; font-family: inherit; }
+    .pill-button:hover, .navlinks a:hover { border-color: rgba(0,167,200,.34); color: #006d83; }
+
+    .hero { padding: 74px 0 40px; }
+    .hero-grid { display: grid; grid-template-columns: 1.06fr .94fr; gap: 34px; align-items: center; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: #03687a; background: rgba(0,167,200,.10); border: 1px solid rgba(0,167,200,.18); padding: 9px 13px; border-radius: 999px; font-size: 13px; font-weight: 800; }
+    h1 { font-size: clamp(45px, 6.3vw, 86px); line-height: .93; letter-spacing: -.075em; margin: 20px 0 18px; max-width: 850px; }
+    .lead { font-size: clamp(18px, 2vw, 24px); line-height: 1.45; color: #345769; margin: 0 0 24px; max-width: 760px; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .primary, .secondary {
+      border: 0;
+      border-radius: 17px;
+      padding: 14px 18px;
+      font-weight: 850;
+      font-size: 14px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .primary { background: linear-gradient(135deg, #082032, #00a7c8); color: white; box-shadow: 0 18px 38px rgba(0,167,200,.24); }
+    .secondary { background: white; color: #0e3447; border: 1px solid var(--line); }
+    .primary:hover, .secondary:hover { transform: translateY(-1px); }
+
+    .vision-card {
+      position: relative;
+      min-height: 510px;
+      border: 1px solid rgba(255,255,255,.9);
+      background: linear-gradient(145deg, rgba(255,255,255,.86), rgba(236,249,253,.64));
+      border-radius: 34px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      padding: 28px;
+    }
+    .orb { position: absolute; border-radius: 999px; filter: blur(0px); opacity: .9; }
+    .orb.one { width: 150px; height: 150px; background: rgba(0,167,200,.13); right: -32px; top: -26px; }
+    .orb.two { width: 220px; height: 220px; background: rgba(37,99,235,.08); left: -80px; bottom: -90px; }
+    .mini-console { position: relative; z-index: 1; display: grid; gap: 14px; }
+    .console-header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .dots { display:flex; gap:6px; }
+    .dot { width:10px; height:10px; border-radius: 50%; background:#bdd7e3; }
+    .status { color: #03687a; font-weight: 850; font-size: 13px; background: rgba(0,167,200,.1); border: 1px solid rgba(0,167,200,.16); padding: 7px 10px; border-radius: 999px; }
+    .workflow { display: grid; gap: 10px; }
+    .step-row { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; background: rgba(255,255,255,.74); border: 1px solid var(--line); border-radius: 18px; padding: 13px; }
+    .num { width: 34px; height: 34px; display:grid; place-items:center; border-radius:12px; background:#e7f8fb; color:#047082; font-weight:900; }
+    .step-row strong { display:block; font-size: 14px; }
+    .step-row span { display:block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .tag { font-size: 11px; font-weight: 900; color:#096d2f; background:#e9fbf0; border:1px solid rgba(16,185,129,.2); padding:6px 8px; border-radius:999px; white-space: nowrap; }
+    .tag.warn { color:#8a5203; background:#fff8e8; border-color:rgba(245,158,11,.24); }
+    .tag.blue { color:#124db2; background:#eff6ff; border-color:rgba(37,99,235,.18); }
+    .passport-preview { margin-top: 10px; border-radius: 24px; background: linear-gradient(135deg, #0b1f33, #0d5267); color: white; padding: 18px; box-shadow: 0 18px 42px rgba(13,82,103,.22); }
+    .passport-preview h3 { margin: 0 0 10px; font-size: 19px; letter-spacing: -.03em; }
+    .passport-grid { display:grid; grid-template-columns: repeat(2,1fr); gap:9px; }
+    .passport-field { background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius: 14px; padding:10px; }
+    .passport-field small { display:block; color: rgba(255,255,255,.65); font-size:10px; text-transform: uppercase; letter-spacing: .08em; }
+    .passport-field b { display:block; font-size:13px; margin-top:3px; }
+
+    section { padding: 38px 0; }
+    .section-head { display:flex; justify-content:space-between; gap:20px; align-items:flex-end; margin-bottom: 20px; }
+    .section-head h2 { font-size: clamp(31px, 4vw, 54px); line-height: .98; letter-spacing: -.06em; margin: 0; max-width: 760px; }
+    .section-head p { color: var(--muted); max-width: 380px; margin: 0; line-height: 1.5; }
+
+    .plain-box { background: var(--paper); border: 1px solid rgba(255,255,255,.9); box-shadow: var(--shadow); border-radius: var(--radius); padding: 24px; }
+    .three { display:grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .simple-card { background: white; border: 1px solid var(--line); border-radius: 22px; padding: 20px; min-height: 170px; transition: .18s ease; }
+    .simple-card:hover { transform: translateY(-3px); box-shadow: 0 18px 36px rgba(11,31,51,.09); }
+    .simple-card .label { color: #037c91; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; font-weight: 900; }
+    .simple-card h3 { margin: 9px 0 8px; font-size: 22px; letter-spacing: -.04em; }
+    .simple-card p { margin: 0; color: #456678; line-height: 1.5; }
+
+    .ladder-wrap { display: grid; grid-template-columns: .92fr 1.08fr; gap: 20px; align-items: stretch; }
+    .phase-list { display:grid; gap: 12px; }
+    .phase-button {
+      width: 100%;
+      text-align: left;
+      background: rgba(255,255,255,.76);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 46px 1fr;
+      gap: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      color: inherit;
+      transition: .18s ease;
+    }
+    .phase-button:hover { transform: translateX(3px); border-color: rgba(0,167,200,.25); }
+    .phase-button.active { background: #082032; color: white; border-color: transparent; box-shadow: 0 22px 50px rgba(8,32,50,.22); }
+    .phase-badge { width:46px; height:46px; border-radius: 16px; background: #ecfbff; color:#047082; display:grid; place-items:center; font-weight: 950; }
+    .phase-button.active .phase-badge { background: rgba(255,255,255,.13); color:white; }
+    .phase-button small { display:block; color: #708797; font-weight: 850; margin-bottom: 3px; }
+    .phase-button.active small { color: rgba(255,255,255,.62); }
+    .phase-button strong { display:block; font-size: 17px; letter-spacing: -.02em; }
+
+    .phase-detail { background: white; border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 30px; padding: 25px; min-height: 710px; position: sticky; top: 84px; }
+    .phase-detail .kicker { display:inline-flex; gap:8px; align-items:center; color:#03687a; background:#e8fafe; border:1px solid rgba(0,167,200,.18); padding:8px 11px; border-radius:999px; font-weight:900; font-size:12px; }
+    .phase-detail h3 { font-size: clamp(31px, 3.5vw, 48px); letter-spacing: -.06em; line-height: 1; margin: 16px 0 10px; }
+    .phase-detail .big-promise { color:#27485a; font-size: 18px; line-height: 1.5; margin: 0 0 20px; }
+    .detail-grid { display:grid; grid-template-columns: repeat(2,1fr); gap: 12px; }
+    .detail-box { border:1px solid var(--line); background:#fbfdfe; border-radius: 19px; padding: 15px; }
+    .detail-box h4 { margin: 0 0 8px; font-size: 13px; color:#03687a; text-transform:uppercase; letter-spacing:.08em; }
+    .detail-box p, .detail-box li { color:#425f70; line-height:1.45; font-size:14px; }
+    .detail-box p { margin:0; }
+    .detail-box ul { margin:0; padding-left: 18px; }
+    .phase-meter { margin: 18px 0 0; padding: 18px; border-radius: 22px; background: linear-gradient(135deg, #f1fbfe, #f8fcff); border:1px solid var(--line); }
+    .meter-top { display:flex; justify-content:space-between; gap:10px; margin-bottom:10px; font-size: 13px; font-weight: 900; color:#285267; }
+    .meter-line { height:12px; border-radius:999px; background:#e2edf3; overflow:hidden; }
+    .meter-fill { height:100%; width:0; border-radius:999px; background: linear-gradient(90deg, var(--cyan), var(--green)); transition: width .4s ease; }
+
+    .flow-canvas { background: white; border: 1px solid var(--line); border-radius: 30px; box-shadow: var(--shadow); padding: 18px; overflow:hidden; }
+    .flow-svg { width:100%; height:auto; display:block; }
+    .node-card { fill: #ffffff; stroke: rgba(0,89,115,.16); stroke-width: 1.4; filter: drop-shadow(0 12px 18px rgba(20,70,90,.08)); }
+    .node-title { font-size: 16px; font-weight: 800; fill:#0b1720; letter-spacing:-.02em; }
+    .node-sub { font-size: 12px; fill:#5a7180; }
+    .arrow { stroke:#00a7c8; stroke-width:3; fill:none; marker-end:url(#arrow); opacity:.78; }
+    .circle-icon { fill:#e9fbff; stroke:#b9eef7; }
+
+    .passport-section { display:grid; grid-template-columns: .95fr 1.05fr; gap:20px; align-items:center; }
+    .passport-visual { min-height: 520px; background: linear-gradient(145deg, #071b2c, #0d5267); border-radius: 34px; box-shadow: 0 28px 80px rgba(8,32,50,.26); padding: 24px; color:white; position:relative; overflow:hidden; }
+    .passport-visual:before { content:""; position:absolute; inset:-80px -100px auto auto; width:260px; height:260px; border-radius:999px; background:rgba(110,231,247,.16); }
+    .passport-card-big { position:relative; z-index:1; height:100%; display:flex; flex-direction:column; gap:14px; }
+    .passport-card-big h3 { font-size: 36px; letter-spacing: -.06em; line-height: 1; margin: 0; }
+    .chip-row { display:flex; flex-wrap: wrap; gap:8px; }
+    .chip { border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.08); padding:8px 10px; border-radius:999px; font-weight:800; font-size:12px; color: rgba(255,255,255,.86); }
+    .passport-data { display:grid; gap:10px; margin-top:6px; }
+    .data-line { display:grid; grid-template-columns: 170px 1fr; gap:10px; align-items:center; padding:12px; border-radius:16px; background:rgba(255,255,255,.075); border:1px solid rgba(255,255,255,.11); }
+    .data-line small { color:rgba(255,255,255,.55); text-transform: uppercase; letter-spacing:.08em; font-size:10px; font-weight:900; }
+    .data-line b { font-size:14px; }
+    .glossary { display:grid; gap:12px; }
+    details { background: rgba(255,255,255,.86); border:1px solid var(--line); border-radius:19px; padding: 14px 16px; }
+    summary { cursor:pointer; font-weight:900; color:#0f3448; }
+    details p { margin: 10px 0 0; color:#4c6878; line-height:1.5; }
+
+    .do-dont { display:grid; grid-template-columns: repeat(2,1fr); gap:16px; }
+    .list-card { padding:23px; border-radius:28px; border:1px solid var(--line); background:white; box-shadow: var(--shadow); }
+    .list-card h3 { margin:0 0 12px; font-size:26px; letter-spacing:-.04em; }
+    .list-card ul { margin:0; padding-left: 20px; color:#415f70; line-height:1.7; }
+    .ok h3 { color:#047857; }
+    .no h3 { color:#b45309; }
+
+    .script-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; }
+    .script-card { background:white; border:1px solid var(--line); box-shadow:var(--shadow); border-radius:26px; padding:22px; }
+    .script-card h3 { margin:0 0 10px; font-size:22px; letter-spacing:-.04em; }
+    .script-card p { margin:0; color:#435f70; line-height:1.55; }
+    .script-card .use { margin-top: 14px; background:#f1fbfe; color:#03687a; border:1px solid rgba(0,167,200,.16); border-radius:16px; padding:12px; font-weight:800; font-size:13px; }
+
+    .agenda { display:grid; grid-template-columns: repeat(5,1fr); gap:10px; counter-reset: agenda; }
+    .agenda-card { background:white; border:1px solid var(--line); border-radius:22px; padding:17px; min-height: 150px; position:relative; overflow:hidden; }
+    .agenda-card:before { counter-increment: agenda; content: counter(agenda); position:absolute; right:14px; top:10px; font-size:44px; color:rgba(0,167,200,.10); font-weight:950; }
+    .agenda-card strong { display:block; font-size:15px; letter-spacing:-.02em; margin-bottom:8px; position:relative; z-index:1; }
+    .agenda-card p { margin:0; color:#567181; font-size:13px; line-height:1.45; position:relative; z-index:1; }
+
+    .footer-card { margin: 38px 0 50px; background:#081d2e; color:white; border-radius:32px; padding:28px; display:flex; justify-content:space-between; gap:20px; align-items:center; box-shadow: 0 28px 70px rgba(8,32,50,.24); }
+    .footer-card h2 { margin:0; font-size:32px; letter-spacing:-.05em; }
+    .footer-card p { margin:7px 0 0; color:rgba(255,255,255,.68); line-height:1.5; max-width: 700px; }
+    .footer-card .secondary { background:rgba(255,255,255,.1); color:white; border-color:rgba(255,255,255,.14); }
+
+    .print-note { display:none; }
+
+    @media (max-width: 980px) {
+      .hero-grid, .ladder-wrap, .passport-section { grid-template-columns: 1fr; }
+      .phase-detail { position: static; min-height:auto; }
+      .three, .script-grid { grid-template-columns: 1fr; }
+      .agenda { grid-template-columns: repeat(2,1fr); }
+      .section-head { display:block; }
+      .section-head p { margin-top: 10px; max-width: 700px; }
+      .do-dont { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .nav { align-items:flex-start; flex-direction:column; }
+      .vision-card { padding:18px; }
+      .detail-grid, .passport-grid, .agenda { grid-template-columns: 1fr; }
+      .data-line { grid-template-columns: 1fr; }
+      h1 { font-size: 46px; }
+      .footer-card { display:block; }
+      .footer-card button { margin-top: 14px; }
+    }
+    @media print {
+      body { background:white; }
+      .grid-bg, .topbar, .hero-actions, .footer-card button { display:none !important; }
+      .container { width: 100%; }
+      section, .hero { break-inside: avoid; padding: 18px 0; }
+      .phase-detail { position: static; box-shadow:none; }
+      .plain-box, .flow-canvas, .simple-card, .script-card, .list-card, .footer-card { box-shadow:none; }
+      .print-note { display:block; color:#555; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <header class="topbar">
+    <div class="container nav">
+      <div class="brand"><div class="mark">A</div><span>Aurevix Vision Ladder</span></div>
+      <nav class="navlinks" aria-label="Page navigation">
+        <a href="#simple">Simple Vision</a>
+        <a href="#ladder">Roadmap</a>
+        <a href="#passport">Passport</a>
+        <a href="#talktrack">Talk Track</a>
+        <button class="pill-button" onclick="window.print()">Print / Save PDF</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <div class="eyebrow">Use this internally: ladder, not pivot</div>
+          <h1>Today video‑to‑task. Tomorrow automation memory. Long term robot infrastructure.</h1>
+          <p class="lead">Aurevix should not jump straight to “Robot OS.” The believable path is to prove one trusted workflow first, then let every approved task become reusable memory for factories.</p>
+          <div class="hero-actions">
+            <button class="primary" onclick="document.getElementById('ladder').scrollIntoView({behavior:'smooth'})">Explore the ladder</button>
+            <button class="secondary" onclick="document.getElementById('talktrack').scrollIntoView({behavior:'smooth'})">Read the co-founder script</button>
+          </div>
+        </div>
+        <aside class="vision-card" aria-label="Core workflow preview">
+          <div class="orb one"></div><div class="orb two"></div>
+          <div class="mini-console">
+            <div class="console-header">
+              <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+              <div class="status">Human-gated workflow</div>
+            </div>
+            <div class="workflow">
+              <div class="step-row"><div class="num">1</div><div><strong>Operator shows the task</strong><span>A normal phone video captures how the work is done.</span></div><div class="tag blue">Video</div></div>
+              <div class="step-row"><div class="num">2</div><div><strong>Aurevix understands the intent</strong><span>It does not blindly copy motion; it extracts the job goal.</span></div><div class="tag">Intent</div></div>
+              <div class="step-row"><div class="num">3</div><div><strong>The task becomes reviewable</strong><span>Simulation, code export, evidence, blockers, and checklist.</span></div><div class="tag warn">Review</div></div>
+              <div class="step-row"><div class="num">4</div><div><strong>Human approves before motion</strong><span>Qualified review remains inside the loop.</span></div><div class="tag">Gate</div></div>
+            </div>
+            <div class="passport-preview">
+              <h3>Automation Passport</h3>
+              <div class="passport-grid">
+                <div class="passport-field"><small>Task</small><b>Pick → orient → place</b></div>
+                <div class="passport-field"><small>Robot</small><b>UR10e → ABB GoFa</b></div>
+                <div class="passport-field"><small>Evidence</small><b>Simulation reviewed</b></div>
+                <div class="passport-field"><small>Status</small><b>Reusable task record</b></div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="simple">
+      <div class="container">
+        <div class="section-head">
+          <h2>The whole company in three simple sentences.</h2>
+          <p>This is the version a non-technical co-founder, customer, or investor can repeat without needing robotics language.</p>
+        </div>
+        <div class="three">
+          <div class="simple-card">
+            <div class="label">Today</div>
+            <h3>Show a task once.</h3>
+            <p>A factory worker records a task. Aurevix turns it into a robot-ready task plan, simulation, code, and review checklist.</p>
+          </div>
+          <div class="simple-card">
+            <div class="label">Bridge</div>
+            <h3>Save the proof.</h3>
+            <p>Every task gets an Automation Passport: what was shown, what was generated, who reviewed it, and where it can be reused.</p>
+          </div>
+          <div class="simple-card">
+            <div class="label">Long term</div>
+            <h3>Factories remember automation.</h3>
+            <p>Over time, Aurevix becomes the place where factory tasks, approvals, versions, and robot deployments live across robots and sites.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="section-head">
+          <h2>The core workflow is the spine.</h2>
+          <p>Everything else should support this path. If a feature does not help this journey, it is probably later-stage or advanced mode.</p>
+        </div>
+        <div class="flow-canvas">
+          <svg class="flow-svg" viewBox="0 0 1120 390" role="img" aria-label="Aurevix workflow from video to Automation Passport">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L9,3 z" fill="#00a7c8" />
+              </marker>
+            </defs>
+            <path d="M142 194 C 204 194, 204 194, 266 194" class="arrow"/>
+            <path d="M390 194 C 452 194, 452 194, 514 194" class="arrow"/>
+            <path d="M638 194 C 700 194, 700 194, 762 194" class="arrow"/>
+            <path d="M886 194 C 948 194, 948 194, 1010 194" class="arrow"/>
+
+            <rect x="26" y="106" width="132" height="176" rx="25" class="node-card"/>
+            <circle cx="92" cy="156" r="28" class="circle-icon"/>
+            <text x="92" y="162" text-anchor="middle" font-size="26">🎥</text>
+            <text x="92" y="212" text-anchor="middle" class="node-title">Phone video</text>
+            <text x="92" y="236" text-anchor="middle" class="node-sub">Show the work</text>
+
+            <rect x="266" y="106" width="148" height="176" rx="25" class="node-card"/>
+            <circle cx="340" cy="156" r="28" class="circle-icon"/>
+            <text x="340" y="162" text-anchor="middle" font-size="24">🧠</text>
+            <text x="340" y="212" text-anchor="middle" class="node-title">Task intent</text>
+            <text x="340" y="236" text-anchor="middle" class="node-sub">What is the goal?</text>
+
+            <rect x="514" y="106" width="148" height="176" rx="25" class="node-card"/>
+            <circle cx="588" cy="156" r="28" class="circle-icon"/>
+            <text x="588" y="162" text-anchor="middle" font-size="24">🤖</text>
+            <text x="588" y="212" text-anchor="middle" class="node-title">Simulation</text>
+            <text x="588" y="236" text-anchor="middle" class="node-sub">Review before motion</text>
+
+            <rect x="762" y="106" width="148" height="176" rx="25" class="node-card"/>
+            <circle cx="836" cy="156" r="28" class="circle-icon"/>
+            <text x="836" y="162" text-anchor="middle" font-size="24">✅</text>
+            <text x="836" y="212" text-anchor="middle" class="node-title">Evidence gate</text>
+            <text x="836" y="236" text-anchor="middle" class="node-sub">Human approval</text>
+
+            <rect x="1010" y="106" width="84" height="176" rx="25" fill="#082032" opacity=".96"/>
+            <text x="1052" y="152" text-anchor="middle" font-size="28">🪪</text>
+            <text x="1052" y="201" text-anchor="middle" font-size="14" fill="#fff" font-weight="800">Passport</text>
+            <text x="1052" y="226" text-anchor="middle" font-size="11" fill="rgba(255,255,255,.7)">Reuse</text>
+
+            <path d="M92 300 C 250 355, 620 355, 1052 300" fill="none" stroke="rgba(0,167,200,.25)" stroke-width="2" stroke-dasharray="8 9"/>
+            <text x="560" y="365" text-anchor="middle" font-size="18" fill="#345769" font-weight="800">The task record, not only the generated code, becomes the product.</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section id="ladder">
+      <div class="container">
+        <div class="section-head">
+          <h2>Build the future as a ladder.</h2>
+          <p>Click each phase. The rule is simple: sell only what the market can believe today, but build artifacts that compound into the bigger platform.</p>
+        </div>
+        <div class="ladder-wrap">
+          <div class="phase-list" id="phaseList"></div>
+          <div class="phase-detail" id="phaseDetail" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="passport">
+      <div class="container passport-section">
+        <div>
+          <div class="section-head" style="display:block;margin-bottom:14px;">
+            <h2>Automation Passport is the bridge concept.</h2>
+            <p style="margin-top:12px;max-width:620px;">This is how “video-to-task” grows into “automation memory” without sounding like science fiction.</p>
+          </div>
+          <div class="glossary">
+            <details open>
+              <summary>What is an Automation Passport?</summary>
+              <p>It is like an ID card for a robot task. It stores what the human showed, what Aurevix understood, what robot/workcell was assumed, what code was created, what evidence was checked, who reviewed it, and whether it can be reused elsewhere.</p>
+            </details>
+            <details>
+              <summary>Why does it matter commercially?</summary>
+              <p>Because the customer is not only buying generated code. They are building a task library, approval history, and reusable automation memory. That creates trust, switching cost, and a reason to expand.</p>
+            </details>
+            <details>
+              <summary>Why not say “Robot OS” now?</summary>
+              <p>Because customers and investors need proof first. Start with one narrow, trusted task workflow. Once many passports exist, the bigger infrastructure story becomes natural.</p>
+            </details>
+            <details>
+              <summary>What should the first design partner prove?</summary>
+              <p>One real task should move from demonstration to task intent, simulation, generated code, evidence checklist, qualified human review, and exportable task record. That is the proof that Aurevix is not only a beautiful demo.</p>
+            </details>
+          </div>
+        </div>
+        <div class="passport-visual">
+          <div class="passport-card-big">
+            <div class="chip-row"><span class="chip">Reusable</span><span class="chip">Reviewable</span><span class="chip">Robot-neutral</span><span class="chip">Versioned</span></div>
+            <h3>Task Passport<br/>#AVX‑001</h3>
+            <div class="passport-data">
+              <div class="data-line"><small>Human showed</small><b>Pick part, rotate, place into fixture</b></div>
+              <div class="data-line"><small>AI inferred</small><b>Structured task intent + motion steps</b></div>
+              <div class="data-line"><small>Robot context</small><b>UR10e, vacuum gripper, safe workcell bounds</b></div>
+              <div class="data-line"><small>Evidence</small><b>Simulation reviewed, risk draft created, blockers visible</b></div>
+              <div class="data-line"><small>Human gate</small><b>Qualified reviewer approves this exact version</b></div>
+              <div class="data-line"><small>Reuse</small><b>Re-check for ABB GoFa or another site before deployment</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="section-head">
+          <h2>Words to use now vs. words to avoid now.</h2>
+          <p>This keeps the company ambitious but credible in front of design partners, investors, and safety-conscious buyers.</p>
+        </div>
+        <div class="do-dont">
+          <div class="list-card ok">
+            <h3>Use now</h3>
+            <ul>
+              <li>Robot task teaching</li>
+              <li>Show a task once</li>
+              <li>Review before motion</li>
+              <li>Deployment evidence</li>
+              <li>Automation Passport</li>
+              <li>Automation memory</li>
+              <li>Human-gated deployment</li>
+              <li>Cross-vendor task portability</li>
+            </ul>
+          </div>
+          <div class="list-card no">
+            <h3>Avoid now</h3>
+            <ul>
+              <li>Fully autonomous robot programming</li>
+              <li>Robot OS</li>
+              <li>Works for every robot and every task</li>
+              <li>No safety review needed</li>
+              <li>Video directly becomes production motion</li>
+              <li>Replaces integrators</li>
+              <li>Certified safe by AI</li>
+              <li>Universal robot cloud today</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="talktrack">
+      <div class="container">
+        <div class="section-head">
+          <h2>Three reusable talk tracks.</h2>
+          <p>Use these in co-founder alignment, customer calls, and investor conversations.</p>
+        </div>
+        <div class="script-grid">
+          <div class="script-card">
+            <h3>For your co-founder</h3>
+            <p>We are not changing direction. We are sequencing the vision. First, we help factories teach one robot task from video. Then every approved task becomes a reusable record. Over time, those records become the factory’s automation memory.</p>
+            <div class="use">Best use: internal alignment.</div>
+          </div>
+          <div class="script-card">
+            <h3>For customers</h3>
+            <p>Show the task once. Aurevix turns it into a robot-specific task plan, simulation, controller code, and evidence package. Your team reviews it before anything moves, then saves it for reuse later.</p>
+            <div class="use">Best use: website and demo calls.</div>
+          </div>
+          <div class="script-card">
+            <h3>For investors</h3>
+            <p>The wedge is video-based robot retasking. The larger company is the neutral automation memory layer for factories: every task taught, simulated, reviewed, versioned, approved, reused, and eventually deployed across robot brands.</p>
+            <div class="use">Best use: pitch narrative.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="section-head">
+          <h2>Next design partner call: five questions.</h2>
+          <p>Keep the meeting narrow. The goal is not to show the whole platform. The goal is to prove one valuable task through the trust loop.</p>
+        </div>
+        <div class="agenda">
+          <div class="agenda-card"><strong>What exact task should we test?</strong><p>Pick one constrained, real, repeatable task. Avoid broad demos.</p></div>
+          <div class="agenda-card"><strong>What robot and workcell are involved?</strong><p>Robot, gripper, fixture, safety setup, payload, and constraints.</p></div>
+          <div class="agenda-card"><strong>What is the baseline today?</strong><p>How long, how expensive, and how annoying is retasking now?</p></div>
+          <div class="agenda-card"><strong>Who needs to review it?</strong><p>Engineer, safety owner, integrator, or operations lead.</p></div>
+          <div class="agenda-card"><strong>What evidence proves value?</strong><p>Define what makes them say: “This is useful enough to continue.”</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container footer-card">
+        <div>
+          <h2>The sentence to keep repeating</h2>
+          <p>Aurevix starts by turning a demonstrated task into a trusted, reviewable, reusable automation record. If we own enough of those records, we become the automation memory layer for factories.</p>
+          <p class="print-note">Printed from the standalone Aurevix Vision Ladder HTML.</p>
+        </div>
+        <button class="secondary" onclick="window.print()">Print / Save PDF</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const phases = [
+      {
+        n: 1,
+        time: 'Now · 30–90 days',
+        title: 'Robot task teaching',
+        promise: 'From operator demonstration to robot-ready task plan.',
+        plain: 'A worker shows the task once. Aurevix helps turn that demonstration into simple robot steps, a simulation, and controller code that an expert can review.',
+        sell: 'Reduce robot retasking from weeks to hours for one constrained task family.',
+        features: ['Video demonstration', 'Task intent extraction', 'Simple task steps', '3D simulation', 'Controller code export', 'Deploy-readiness score'],
+        proof: 'One task that normally needs engineer or integrator work can be prepared faster with Aurevix.',
+        avoid: 'Do not sell Robot OS. Do not promise every task or direct production motion.',
+        maturity: 12
+      },
+      {
+        n: 2,
+        time: 'Next · 3–6 months',
+        title: 'Deployment evidence layer',
+        promise: 'Review before motion.',
+        plain: 'Aurevix does not only create code. It shows what was checked, what is missing, what is risky, and who must approve before the robot moves.',
+        sell: 'Not just generated code — a reviewable deployment record.',
+        features: ['Trust checklist', 'Risk assessment draft', 'Policy hash', 'Approval/rejection', 'Version history', 'Evidence export'],
+        proof: 'Plant engineers and safety owners actually use the evidence package in the review conversation.',
+        avoid: 'Do not imply Aurevix certifies safety or replaces qualified review.',
+        maturity: 25
+      },
+      {
+        n: 3,
+        time: 'Bridge · 6–12 months',
+        title: 'Automation Passport',
+        promise: 'Every approved task becomes reusable automation memory.',
+        plain: 'The passport is the task’s ID card. It stores the original demonstration, robot assumptions, generated code, evidence, approval, and reuse rules.',
+        sell: 'Reuse the task across robots, workcells, or sites after feasibility checks.',
+        features: ['Task passport export', 'Import into another workcell', 'Reachability check', 'Re-planning', 'Blocked deployment if infeasible', 'Task provenance'],
+        proof: 'A task record can be re-evaluated for another robot or workcell without starting from zero.',
+        avoid: 'Do not sell a full passport network before source task records are trusted.',
+        maturity: 42
+      },
+      {
+        n: 4,
+        time: 'Platform · 12–24 months',
+        title: 'Automation memory layer',
+        promise: 'A factory remembers how automation was taught, validated, changed, and reused.',
+        plain: 'The factory now has a living library of approved tasks, versions, failures, reviews, and reuse patterns. Knowledge stops disappearing in meetings, PDFs, or old code files.',
+        sell: 'The system of record for high-mix automation.',
+        features: ['Task library', 'Approved skill versions', 'Execution history', 'Failure reasons', 'Reviewer patterns', 'Integrator handoff records'],
+        proof: 'Customers return to Aurevix as the default place to understand, update, and reuse automation work.',
+        avoid: 'Do not overload the product with dashboards before task records become valuable.',
+        maturity: 58
+      },
+      {
+        n: 5,
+        time: 'Expansion · 2–3 years',
+        title: 'Robot deployment platform',
+        promise: 'Deploy and manage robot workflows across brands.',
+        plain: 'Aurevix starts to manage which robot runs which approved task, what version is active, who has permission, what changed, and whether rollback is needed.',
+        sell: 'Deploy and manage robot workflows across brands.',
+        features: ['Robot identity', 'Skill assignment', 'Execution telemetry', 'Task rollback', 'Deployment permissions', 'Health status', 'Version control'],
+        proof: 'Aurevix is connected to real customer deployments and can show history, changes, outcomes, and fleet-level control.',
+        avoid: 'Do not fight OEM runtimes directly; stay above them as the task and governance layer.',
+        maturity: 76
+      },
+      {
+        n: 6,
+        time: 'Long term · 3–5+ years',
+        title: 'Robot Cloud / Physical AI infrastructure',
+        promise: 'Cloud infrastructure for physical AI.',
+        plain: 'Robots, skills, task memory, permissions, updates, policies, and learning live in one neutral layer across factories and robot brands.',
+        sell: 'A neutral cloud layer for robot skills, memory, permissions, updates, and operational learning.',
+        features: ['Robot identity', 'Private skill registry', 'Fleet observability', 'Cross-site learning', 'Data rights management', 'Policy enforcement', 'Deployment governance'],
+        proof: 'Many trusted task passports and deployments exist, giving Aurevix the credibility to become infrastructure.',
+        avoid: 'Only use “Robot OS” language after the market already believes the task-memory platform.',
+        maturity: 100
+      }
+    ];
+
+    const phaseList = document.getElementById('phaseList');
+    const detail = document.getElementById('phaseDetail');
+
+    function renderButtons(active = 0) {
+      phaseList.innerHTML = phases.map((p, i) => `
+        <button class="phase-button ${i === active ? 'active' : ''}" onclick="selectPhase(${i})">
+          <span class="phase-badge">${p.n}</span>
+          <span><small>${p.time}</small><strong>${p.title}</strong></span>
+        </button>
+      `).join('');
+    }
+
+    function selectPhase(index) {
+      const p = phases[index];
+      renderButtons(index);
+      detail.innerHTML = `
+        <span class="kicker">Phase ${p.n} · ${p.time}</span>
+        <h3>${p.title}</h3>
+        <p class="big-promise"><strong>Promise:</strong> ${p.promise}</p>
+        <div class="detail-grid">
+          <div class="detail-box"><h4>Plain English</h4><p>${p.plain}</p></div>
+          <div class="detail-box"><h4>What we sell</h4><p>${p.sell}</p></div>
+          <div class="detail-box"><h4>Core features</h4><ul>${p.features.map(f => `<li>${f}</li>`).join('')}</ul></div>
+          <div class="detail-box"><h4>Proof needed</h4><p>${p.proof}</p></div>
+          <div class="detail-box" style="grid-column:1 / -1;"><h4>Credibility guardrail</h4><p>${p.avoid}</p></div>
+        </div>
+        <div class="phase-meter">
+          <div class="meter-top"><span>How much of the big vision is believable externally?</span><span>${p.maturity}%</span></div>
+          <div class="meter-line"><div class="meter-fill" style="width:${p.maturity}%"></div></div>
+        </div>
+      `;
+    }
+
+    renderButtons(0);
+    selectPhase(0);
+  </script>
+</body>
+</html>

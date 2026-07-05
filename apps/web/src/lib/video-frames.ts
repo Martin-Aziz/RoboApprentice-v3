@@ -36,6 +36,8 @@ export interface ExtractedFrames {
   sceneChanges: number[];
   /** Plain-language motion timeline derived from inter-frame optical difference. */
   motionSummary: string;
+  /** Full motion profile from the CV pass, for perception-evidence building. */
+  motion: MotionProfile | null;
   /** Human-readable explanation, surfaced to the operator when frames are absent. */
   note: string;
 }
@@ -416,6 +418,7 @@ export async function extractVideoFrames(
       durationSeconds: null,
       sceneChanges: [],
       motionSummary: "",
+      motion: null,
       note,
     };
   }
@@ -453,6 +456,7 @@ export async function extractVideoFrames(
         durationSeconds: duration,
         sceneChanges,
         motionSummary,
+        motion: motion?.ok ? motion : null,
         note: "ffmpeg produced no frames from the video.",
       };
     }
@@ -464,6 +468,7 @@ export async function extractVideoFrames(
       durationSeconds: duration,
       sceneChanges,
       motionSummary,
+      motion: motion?.ok ? motion : null,
       note: "",
     };
   } catch (error) {
@@ -476,6 +481,7 @@ export async function extractVideoFrames(
       durationSeconds: duration,
       sceneChanges,
       motionSummary: "",
+      motion: motion?.ok ? motion : null,
       note: `Could not extract frames (is ffmpeg installed?): ${reason}`,
     };
   } finally {
