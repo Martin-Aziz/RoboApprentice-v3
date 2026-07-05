@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { AlertTriangle, Eye, ScanSearch } from "lucide-react";
-import { resolveSceneForPolicy } from "@/lib/scene-model";
+import { isEvidenceGrounded, resolveSceneForPolicy, sceneObjectDisplayName } from "@/lib/scene-model";
 import type { SceneObject, TaskPolicy } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +19,7 @@ export function SceneUnderstandingPanel({ policy, className }: { policy?: TaskPo
   const proxyObjects = scene.objects.filter((o) => (o.visualFidelity ?? "proxy") === "proxy");
   const lowConfidence = scene.objects.filter((o) => o.confidence < 0.45);
   const reviewRequired = scene.objects.filter((o) => o.reviewRequiredReason);
-  const grounded = scene.objects.filter((o) => o.detectionLabel || o.trackId || o.maskId);
+  const grounded = scene.objects.filter(isEvidenceGrounded);
 
   if (scene.objects.length === 0) return null;
 
@@ -52,14 +52,14 @@ export function SceneUnderstandingPanel({ policy, className }: { policy?: TaskPo
       </div>
 
       <ul className="mt-3 space-y-1">
-        {scene.objects.map((object) => (
+        {scene.objects.map((object, index) => (
           <li
             key={object.id}
             className="flex items-center gap-2 text-xs"
             title={objectTooltip(object)}
           >
             <FidelityDot object={object} />
-            <span className="truncate font-medium">{object.label}</span>
+            <span className="truncate font-medium">{sceneObjectDisplayName(object, index)}</span>
             <span className="font-mono text-[10px] uppercase text-[rgb(var(--bone-2))]">{object.role}</span>
             <span className="ml-auto font-mono text-[10px] tabular text-[rgb(var(--bone-2))]">
               {(object.visualFidelity ?? "proxy").replace("_", " ")} · {Math.round(object.confidence * 100)}%
@@ -112,7 +112,7 @@ function objectTooltip(object: SceneObject): string {
 
 function FidelityDot({ object }: { object: SceneObject }) {
   const needsReview = Boolean(object.reviewRequiredReason) || object.confidence < 0.45;
-  const grounded = Boolean(object.detectionLabel || object.trackId || object.maskId);
+  const grounded = isEvidenceGrounded(object);
   const confirmed = grounded && object.confidence >= 0.6 && object.visualFidelity !== "proxy";
   return (
     <span

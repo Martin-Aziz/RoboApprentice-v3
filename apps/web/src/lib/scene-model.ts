@@ -431,7 +431,12 @@ export function classifyDestination(text: string): DestinationClassification {
   if (/\btote\b/.test(lower)) return { role: "container", category: "tote", label: "tote" };
   if (/\bbin\b/.test(lower)) return { role: "container", category: "bin", label: "bin" };
   if (/\btray\b/.test(lower)) return { role: "container", category: "tray", label: "tray" };
-  if (/\b(carton|package|parcel)\b/.test(lower)) return { role: "container", category: "box", label: "carton" };
+  if (/\b(carton|package|parcel|case)\b/.test(lower)) return { role: "container", category: "box", label: "carton" };
+  if (/\b(pallet|skid)\b/.test(lower)) return { role: "destination", category: "station", label: "pallet" };
+  if (/\b(conveyor|belt|roller bed)\b/.test(lower)) return { role: "destination", category: "station", label: "conveyor" };
+  if (/\b(stack|stacked)\b/.test(lower)) return { role: "destination", category: "box", label: "box stack" };
+  if (/\bv[- ]?block\b/.test(lower)) return { role: "fixture", category: "fixture", label: "V-block fixture" };
+  if (/\bpeg\b/.test(lower)) return { role: "fixture", category: "fixture", label: "peg fixture" };
   if (/\b(inspect|inspection|scan|scanner|camera|vision|measure|gauge|qc|quality)\b/.test(lower)) {
     return { role: "inspection_surface", category: "surface", label: "inspection surface" };
   }
@@ -456,9 +461,12 @@ export interface WorkpieceClassification {
 export function classifyWorkpiece(text: string): WorkpieceClassification {
   const lower = text.toLowerCase();
   if (/\bbracket\b/.test(lower)) return { category: "bracket", label: "bracket" };
-  if (/\b(cylinder|shaft|tube|pipe|roller|can|bottle|vial)\b/.test(lower)) return { category: "cylinder", label: "cylindrical part" };
+  if (/\b(shaft|tube|pipe|roller)\b/.test(lower)) return { category: "cylinder", label: "horizontal shaft" };
+  if (/\b(cylinder|can|bottle|vial)\b/.test(lower)) return { category: "cylinder", label: "cylindrical part" };
+  if (/\b(stack|stacked)\b/.test(lower)) return { category: "box", label: "box stack" };
   if (/\b(box|carton|package|parcel|case)\b/.test(lower)) return { category: "box", label: "box" };
   if (/\b(plate|panel|sheet|board|pcb)\b/.test(lower)) return { category: "tray", label: "flat panel" };
+  if (/\b(irregular|casting|housing)\b/.test(lower)) return { category: "unknown", label: "irregular part" };
   if (/\b(part|component|workpiece|casting|housing|block)\b/.test(lower)) return { category: "machined_part", label: "machined part" };
   return { category: "machined_part", label: "workpiece" };
 }
@@ -546,6 +554,22 @@ export function deriveSceneFromSteps(steps: TaskStep[]): WorkcellScene {
       : ["No scene objects could be inferred from the policy steps."],
     source: "derived",
   };
+}
+
+/**
+ * Stable numbered display name for a scene object: "Object 2 · gray tote".
+ * The scene is deliberately narrated in numbered-object terms — the operator
+ * verifies "gripper closes on Object 1" against the video, without the UI
+ * pretending the proxy shape itself is accurate.
+ */
+export function sceneObjectDisplayName(object: SceneObject, index: number): string {
+  const label = object.label.trim();
+  return label ? `Object ${index + 1} · ${label}` : `Object ${index + 1}`;
+}
+
+/** True when the object is backed by any perception evidence (track/detection/mask). */
+export function isEvidenceGrounded(object: SceneObject): boolean {
+  return Boolean(object.detectionLabel || object.trackId || object.maskId || object.depthHint !== undefined);
 }
 
 /** The scene attached to a policy, or a step-text-derived fallback. */

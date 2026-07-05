@@ -804,6 +804,20 @@ interface BuiltSceneMesh {
   group: THREE.Group;
   /** Local height (above the group's footprint origin) where a placed part rests. */
   surfaceY: number;
+  /** Whether a carried part may sit inside this object or must rest on top. */
+  supportMode: "inside" | "top";
+}
+
+function topSupportY(object: SceneObject, h: number, candidate: number): number {
+  const text = `${object.label} ${object.detectionLabel ?? ""}`.toLowerCase();
+  const isOpenContainer = object.category === "tote" || object.category === "bin" || object.category === "tray";
+  const explicitlyInside = /\b(in|into|inside|bin|tote|tray|container|receptacle)\b/.test(text);
+
+  if (isOpenContainer && explicitlyInside) {
+    return Math.max(0.006, candidate);
+  }
+
+  return h;
 }
 
 /**
@@ -818,14 +832,19 @@ function buildSceneObjectMesh(object: SceneObject, accent: number, metalTexture:
   const { w, d, h } = resolveObjectSize(object, { min: 0.05, max: 0.4, hMin: 0.008, hMax: 0.3 });
   const mat = sceneObjectMaterial(color, materialHint, metalTexture);
 
-  const withRing = (group: THREE.Group, surfaceY: number): BuiltSceneMesh => {
+  const withRing = (group: THREE.Group, surfaceY: number, supportMode: BuiltSceneMesh["supportMode"] = "top"): BuiltSceneMesh => {
     group.add(buildFidelityRing(object, w, d));
-    return { group, surfaceY };
+    group.userData.supportMode = supportMode;
+    return { group, surfaceY, supportMode };
   };
 
   // Refined shape families (v-block, rail, conveyor, pallet, ...) override the
-  // coarse category recipe when the label/proportions identify one.
-  const family = detectShapeFamily(object, { w, d, h });
+  // coarse category recipe only when the object is reasonably trusted — a
+  // low-confidence guess renders as a generic proxy rather than a specific
+  // machine we may have hallucinated.
+  const trustedEnough =
+    object.confidence >= 0.55 || Boolean(object.detectionLabel || object.trackId || object.maskId);
+  const family = trustedEnough ? detectShapeFamily(object, { w, d, h }) : null;
   if (family) {
     const builders: Record<NonNullable<typeof family>, () => THREE.Group> = {
       v_block: () => buildVBlockMesh(w, d, h, mat, accent),
@@ -839,7 +858,7 @@ function buildSceneObjectMesh(object: SceneObject, accent: number, metalTexture:
       irregular: () => buildIrregularPartMesh(w, d, h, mat, accent),
     };
     const group = builders[family]();
-    return withRing(group, (group.userData.surfaceY as number | undefined) ?? h);
+    return withRing(group, topSupportY(object, h, (group.userData.surfaceY as number | undefined) ?? h));
   }
 
   switch (object.category) {
@@ -847,13 +866,13 @@ function buildSceneObjectMesh(object: SceneObject, accent: number, metalTexture:
     case "bin":
     case "tray": {
       const group = buildContainerMesh(w, d, h, mat, accent);
-      return withRing(group, Math.min(0.012, h * 0.3));
+      return withRing(group, topSupportY(object, h, Math.min(0.012, h * 0.3)), "inside");
     }
     case "surface":
       return withRing(buildInspectionSurfaceMesh(w, d, h, mat, accent), h);
     case "fixture": {
       const group = buildFixtureMesh(w, d, h, mat, accent);
-      return withRing(group, (group.userData.surfaceY as number) ?? h * 0.4);
+      return withRing(group, h);
     }
     case "station":
       return withRing(buildStationMesh(w, d, Math.min(h, 0.03), mat, accent), Math.min(h, 0.03));
@@ -1487,6 +1506,7 @@ export function RobotViewport({
   const [pose, setPose] = useState<Pose>(() => waypointToPose(policy, 0));
   const [collision, setCollision] = useState<string | null>(null);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
+  const [showStepSummary, setShowStepSummary] = useState(false);
   const trajectory = useMemo(() => policy?.steps.map((_, index) => sceneVector(waypointToPose(policy, index))) ?? [], [policy]);
 
   // Mirrors of fast-changing props, read fresh inside the rAF loop below so the
@@ -1625,6 +1645,29 @@ export function RobotViewport({
       mountPlate.castShadow = true;
       mountPlate.receiveShadow = true;
       scene.add(mountPlate);
+      const pedestalMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.72, roughness: 0.36, roughnessMap: aluminumTexture, envMapIntensity: 1 });
+      const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.086, 0.108, 0.09, 36), pedestalMat);
+      pedestal.position.set(0, TABLE_TOP_Y + 0.018 + 0.045, 0);
+      pedestal.castShadow = true;
+      pedestal.receiveShadow = true;
+      scene.add(pedestal);
+      const topClamp = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.112, 0.1, 0.018, 36),
+        new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8, roughness: 0.28, roughnessMap: aluminumTexture, envMapIntensity: 1 }),
+      );
+      topClamp.position.set(0, TABLE_TOP_Y + 0.018 + 0.09 + 0.009, 0);
+      topClamp.castShadow = true;
+      topClamp.receiveShadow = true;
+      scene.add(topClamp);
+      const boltMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.86, roughness: 0.24, roughnessMap: aluminumTexture, envMapIntensity: 1 });
+      for (let i = 0; i < 6; i += 1) {
+        const angle = (i / 6) * Math.PI * 2;
+        const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.007, 0.006, 12), boltMat);
+        bolt.position.set(Math.cos(angle) * 0.104, TABLE_TOP_Y + 0.021, Math.sin(angle) * 0.104);
+        bolt.castShadow = true;
+        bolt.receiveShadow = true;
+        scene.add(bolt);
+      }
       const legMat = new THREE.MeshStandardMaterial({ color: 0x9aa6b5, metalness: 0.65, roughness: 0.35, roughnessMap: aluminumTexture, envMapIntensity: 1 });
       const legPositions = [
         [TABLE_CENTER.x - TABLE_SIZE.x / 2 + 0.06, TABLE_CENTER.z - TABLE_SIZE.z / 2 + 0.06],
@@ -2090,6 +2133,32 @@ export function RobotViewport({
     onJointChange?.(jointName, joint.value);
   };
 
+  const toggleFullscreen = () => {
+    const target = mountRef.current?.parentElement?.parentElement;
+    if (!target) return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void target.requestFullscreen?.();
+    }
+  };
+
+  const jumpToStep = (index: number) => {
+    const state = runtime.current;
+    const nextPose = waypointToPose(policy, index);
+    setActiveStepIndex(index);
+    setPose(nextPose);
+    if (!state) return;
+    state.step = index;
+    state.anim = null;
+    const vector = sceneVector(nextPose);
+    updateTargetDrivenArm(state.robot, nextPose, gripperOpenAmount(policy?.steps[index]?.gripper));
+    state.ee.position.copy(vector);
+    state.marker.position.copy(vector);
+    state.controls.target.lerp(vector, 0.35);
+    state.controls.update();
+  };
+
   return (
     <div className={cn("overflow-hidden rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))]", className)}>
       <div className="flex items-center justify-between border-b border-[rgb(var(--steel))] px-3 py-2">
@@ -2103,8 +2172,8 @@ export function RobotViewport({
           </div>
         </div>
         <div className="flex gap-1">
-          <Button variant="ghost" size="icon" title="Viewport settings"><Settings className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon" title="Fullscreen"><Maximize2 className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" title="Show step summary" onClick={() => setShowStepSummary((value) => !value)}><Settings className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" title="Fullscreen" onClick={toggleFullscreen}><Maximize2 className="h-4 w-4" /></Button>
           <Button variant="ghost" size="icon" title="Reset camera" onClick={() => setPreset("iso")}><RotateCcw className="h-4 w-4" /></Button>
         </div>
       </div>
@@ -2144,6 +2213,34 @@ export function RobotViewport({
             <span>Speed {playbackSpeed.toFixed(1)}x</span>
             {showCollisionGeometry && <Box className="ml-auto h-4 w-4 text-[rgb(var(--signal-amber))]" />}
           </div>
+          {showStepSummary && policy?.steps.length ? (
+            <div data-testid="viewport-step-summary" className="mb-4 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] p-2">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">Step summary</h3>
+                <span className="font-mono text-[10px] tabular text-[rgb(var(--bone-2))]">{policy.steps.length} moves</span>
+              </div>
+              <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
+                {policy.steps.map((step, index) => (
+                  <button
+                    key={step.id}
+                    type="button"
+                    className={cn(
+                      "w-full rounded border px-2 py-1.5 text-left text-xs transition",
+                      index === activeStepIndex
+                        ? "border-[rgb(var(--signal-cyan)/0.55)] bg-[rgb(var(--signal-cyan)/0.1)]"
+                        : "border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] hover:border-[rgb(var(--signal-cyan)/0.45)]",
+                    )}
+                    onClick={() => jumpToStep(index)}
+                  >
+                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[rgb(var(--bone-2))]">
+                      {index + 1}. {step.action}
+                    </span>
+                    <span className="mt-0.5 block line-clamp-2">{step.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <h3 className="font-semibold">Joints</h3>
           <div className="mt-3 space-y-3">
             {joints.map((joint) => {

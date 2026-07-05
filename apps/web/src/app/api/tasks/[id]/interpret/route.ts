@@ -302,6 +302,13 @@ A computer-vision motion pass may also be supplied:
 - If the final frames do not clearly show the robot still carrying a payload, end with gripper open at home.
 - Never claim the task is complete with a part held in the gripper unless the final frame visibly proves that state.
 
+## EVIDENCE CROSS-CHECK (intent accuracy)
+Before finalizing, verify the interpreted intent against the evidence:
+- Every "grip" and "release" step should align in time with a motion peak, grasp/release candidate event, or action frame from the evidence. If a grip/release has no supporting event, either move it to a supported timestamp or flag it in the step notes as unverified.
+- Steps that operate in different activity zones/tracks must use different waypoints; steps in the same zone should reuse consistent coordinates.
+- The number of pick/place cycles in the policy must match the number of distinct grasp-release patterns visible in the evidence — no more, no fewer.
+- Each step description should name the scene object it interacts with using the same label emitted in the scene model (e.g. "Grip gray tote handle side"), so the operator can match steps, scene objects, and video moments one-to-one.
+
 ## THINKING PROCESS
 Before generating output, reason through these questions mentally:
 1. How many distinct temporal stages are visible? Treat scene changes, long position changes, handoff moments, bin/tote moves, fixture moves, tool-change-looking moves, and final placement as separate stages.

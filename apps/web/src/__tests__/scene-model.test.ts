@@ -8,7 +8,9 @@ import {
   extractFirstJsonArray,
   extractSceneJson,
   findCarryPairs,
+  isEvidenceGrounded,
   normalizeSceneObject,
+  sceneObjectDisplayName,
   resolveSceneForPolicy,
   sceneObjectForStep,
   validateWorkcellScene,
@@ -218,5 +220,114 @@ describe("resolveSceneForPolicy / sceneObjectForStep", () => {
   it("skips claimed objects", () => {
     const claimed = new Set<string>(["wp"]);
     expect(sceneObjectForStep(videoScene, PICK_PLACE_STEPS[1], WORKPIECE_ROLES, claimed)).toBeUndefined();
+  });
+});
+
+describe("perception evidence fields", () => {
+  it("preserves and clamps evidence fields on normalization", () => {
+    const obj = normalizeSceneObject(
+      {
+        id: "obj-1",
+        role: "container",
+        category: "tote",
+        label: "gray tote",
+        detection_label: "gray plastic tote",
+        detection_score: 1.7,
+        track_id: "zone-track-2",
+        mask_id: "mask-9",
+        depth_hint: -0.5,
+        pose_confidence: 0.8,
+        geometry_source: "primitive",
+        visual_fidelity: "proxy",
+        review_required_reason: "glare on the tote wall",
+      },
+      0,
+      PICK_PLACE_STEPS,
+    );
+    expect(obj!.detectionLabel).toBe("gray plastic tote");
+    expect(obj!.detectionScore).toBe(1); // clamped to [0,1]
+    expect(obj!.trackId).toBe("zone-track-2");
+    expect(obj!.maskId).toBe("mask-9");
+    expect(obj!.depthHint).toBe(0); // clamped to [0,1]
+    expect(obj!.poseConfidence).toBe(0.8);
+    expect(obj!.geometrySource).toBe("primitive");
+    expect(obj!.visualFidelity).toBe("proxy");
+    expect(obj!.reviewRequiredReason).toBe("glare on the tote wall");
+  });
+
+  it("downgrades claimed fidelity when no evidence grounds the object", () => {
+    const obj = normalizeSceneObject(
+      {
+        role: "fixture",
+        category: "fixture",
+        label: "fixture",
+        confidence: 0.9,
+        geometry_source: "model",
+        visual_fidelity: "cad_matched",
+      },
+      0,
+      [],
+    );
+    expect(obj!.visualFidelity).toBe("proxy");
+    expect(obj!.geometrySource).toBe("primitive");
+  });
+
+  it("keeps depth-estimated fidelity when depth evidence exists", () => {
+    const obj = normalizeSceneObject(
+      {
+        role: "fixture",
+        category: "fixture",
+        label: "fixture",
+        confidence: 0.9,
+        depth_hint: 0.6,
+        geometry_source: "depth",
+        visual_fidelity: "depth_estimated",
+      },
+      0,
+      [],
+    );
+    expect(obj!.visualFidelity).toBe("depth_estimated");
+    expect(obj!.geometrySource).toBe("depth");
+  });
+
+  it("flags low pose confidence for review and warns at scene level", () => {
+    const obj = normalizeSceneObject(
+      { role: "fixture", category: "fixture", label: "fixture", confidence: 0.9, pose_confidence: 0.2 },
+      0,
+      [],
+    );
+    expect(obj!.reviewRequiredReason).toBeTruthy();
+
+    const scene = validateWorkcellScene(
+      { objects: [{ role: "fixture", category: "fixture", label: "f", confidence: 0.2 }], confidence: 0.8 },
+      [],
+    );
+    expect(scene!.warnings.some((w) => w.includes("need human review"))).toBe(true);
+  });
+
+  it("rejects invalid geometry_source/visual_fidelity values", () => {
+    const obj = normalizeSceneObject(
+      { role: "fixture", category: "fixture", label: "f", confidence: 0.9, geometry_source: "lidar", visual_fidelity: "photoreal" },
+      0,
+      [],
+    );
+    expect(obj!.geometrySource).toBe("derived");
+    expect(obj!.visualFidelity).toBe("proxy");
+  });
+
+  it("marks derived-scene objects as proxy geometry needing review", () => {
+    const scene = deriveSceneFromSteps(PICK_PLACE_STEPS);
+    expect(scene.objects.length).toBeGreaterThan(0);
+    for (const object of scene.objects) {
+      expect(object.geometrySource).toBe("derived");
+      expect(object.visualFidelity).toBe("proxy");
+      expect(object.reviewRequiredReason).toBeTruthy();
+    }
+  });
+
+  it("builds numbered display names", () => {
+    const scene = deriveSceneFromSteps(PICK_PLACE_STEPS);
+    expect(sceneObjectDisplayName(scene.objects[0], 0)).toMatch(/^Object 1 · /);
+    expect(isEvidenceGrounded(scene.objects[0])).toBe(false);
   });
 });
