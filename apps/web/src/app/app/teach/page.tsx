@@ -274,7 +274,12 @@ export default function TeachPage() {
       setSequence((current) => current.map((step) => ({ ...step, status: "pending" })));
 
       try {
-        await runReal();
+        if (safeDemoMode) {
+          setStatusMessage("Safe demo mode — playing the built-in walkthrough.");
+          await runScripted();
+        } else {
+          await runReal();
+        }
       } catch (err) {
         if (cancelled) return;
         console.warn("[teach] live analysis failed, using built-in walkthrough", err);
@@ -297,7 +302,7 @@ export default function TeachPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedVideoLabel, selectedVideoUrl, sequence.length, started]);
+  }, [safeDemoMode, selectedVideoLabel, selectedVideoUrl, sequence.length, started]);
 
   const runWorkflow = () => {
     setStarted(false);

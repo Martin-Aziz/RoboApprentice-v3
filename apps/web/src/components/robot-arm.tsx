@@ -505,13 +505,16 @@ export function RobotArm({
     );
 
     if (pathPoints.length > 1) {
+      // Display smoothing only: the Catmull-Rom tube eases the eye between
+      // waypoints but implies no planned arc or clearance — the planned path
+      // is the straight per-step segments drawn below, and the HUD says so.
       const curve = new THREE.CatmullRomCurve3(pathPoints, false, "centripetal", 0.18);
       const tube = new THREE.Mesh(
         new THREE.TubeGeometry(curve, Math.max(24, steps.length * 14), 0.007, 8, false),
         new THREE.MeshBasicMaterial({
           color: cssColor("--signal-cyan", "2 132 199"),
           transparent: true,
-          opacity: 0.28,
+          opacity: 0.14,
         }),
       );
       trailGroup.add(tube);
@@ -739,6 +742,9 @@ export function RobotArm({
             {metrics.unreachableSteps > 0
               ? `${metrics.unreachableSteps} reach flag${metrics.unreachableSteps === 1 ? "" : "s"}`
               : "reach verified"}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded border border-[rgb(var(--ink-2)/0.12)] bg-[rgb(var(--bone)/0.74)] px-2 py-1 font-mono text-[10px] text-[rgb(var(--ink-2)/0.62)] backdrop-blur">
+            solid lines = planned segments · faint tube = display smoothing
           </span>
         </div>
       )}

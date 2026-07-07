@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { spawn } from "child_process";
 import Anthropic from "@anthropic-ai/sdk";
 import { getTask, updateTask } from "@/lib/task-store-db";
-import { processPolicyPipeline } from "@/lib/policy-pipeline";
+import { crossCheckCycleCount, processPolicyPipeline } from "@/lib/policy-pipeline";
 import { extractVideoFrames, type FrameSample } from "@/lib/video-frames";
 import { buildLocalPerceptionEvidence, summarisePerceptionEvidence } from "@/lib/perception-evidence";
 import {
@@ -656,15 +656,23 @@ export async function POST(
           }
 
           const rawPolicy = buildPolicy(finalSteps);
-          const { policy, warnings, errors } = processPolicyPipeline(rawPolicy);
 
-          // Structured scene understanding: prefer the model's scene (validated
-          // and clamped); degrade to a scene derived from step text so the
-          // simulator always has role-appropriate objects to render.
-          const modelScene = validateWorkcellScene(extractSceneJson(session.fullText), policy.steps);
-          const scene: WorkcellScene = modelScene ?? deriveSceneFromSteps(policy.steps);
+          // Structured scene understanding first: the pipeline uses the
+          // validated scene for shape-aware approach heights and clearance
+          // screening. Step IDs are stable through the pipeline, so linking
+          // the scene against pre-pipeline steps is safe.
+          const modelScene = validateWorkcellScene(extractSceneJson(session.fullText), finalSteps);
+          const { policy, warnings, errors } = processPolicyPipeline(rawPolicy, modelScene ?? undefined);
+
+          // Degrade to a scene derived from step text so the simulator always
+          // has role-appropriate objects to render.
+          const scene: WorkcellScene = policy.scene ?? deriveSceneFromSteps(policy.steps);
           policy.scene = scene;
           warnings.push(...scene.warnings);
+
+          // Algorithmic cross-check: pick/place cycle count in the policy
+          // versus grasp/release events in the motion evidence.
+          warnings.push(...crossCheckCycleCount(policy.steps, evidence.events));
           if (scene.objects.length > 0) {
             send({
               type: "status",

@@ -17,6 +17,7 @@ import type {
   WorkcellScene,
 } from "./types";
 import { resolveSceneForPolicy } from "./scene-model";
+import { findLowClearanceSegments, type ClearanceFinding } from "./clearance";
 
 export const PLANNING_MANIFEST_VERSION = "1.0";
 
@@ -83,6 +84,8 @@ export interface PlanningManifest {
   }>;
   sceneObjects: PlanningManifestObject[];
   collisionPrimitives: CollisionPrimitive[];
+  /** Waypoint-segment clearance screening against the scene proxies. */
+  clearanceFindings: ClearanceFinding[];
   approachRetractConstraints: ApproachRetractConstraint[];
   gripperTransitions: GripperTransition[];
   workspaceBounds?: TaskPolicy["workspaceBounds"];
@@ -202,6 +205,19 @@ export function buildPlanningManifest(
     warnings.push("Scene geometry was derived from step text, not video perception — treat all collision primitives as placeholders.");
   }
 
+  // Waypoint-segment clearance screening. Always accompanied by the honesty
+  // caveat: this manifest describes straight waypoint segments, not a
+  // collision-planned trajectory — that is the downstream planner's job.
+  const clearanceFindings = scene.source === "derived" ? [] : findLowClearanceSegments(steps, scene.objects);
+  for (const finding of clearanceFindings.slice(0, 5)) {
+    warnings.push(
+      `Segment into step ${finding.toStepOrder} passes ${(finding.clearanceMeters * 100).toFixed(1)}cm from "${finding.objectLabel}" — flag for planner-level collision checking.`,
+    );
+  }
+  warnings.push(
+    "Steps describe straight waypoint segments validated per-waypoint only; no collision-planned trajectory exists yet. A motion planner must plan the actual path.",
+  );
+
   return {
     version: PLANNING_MANIFEST_VERSION,
     generatedAt: opts.generatedAt ?? new Date().toISOString(),
@@ -231,6 +247,7 @@ export function buildPlanningManifest(
       trackId: object.trackId,
     })),
     collisionPrimitives,
+    clearanceFindings,
     approachRetractConstraints,
     gripperTransitions,
     workspaceBounds: policy.workspaceBounds,

@@ -1,230 +1,303 @@
-# Claude Fable Upgrade Prompt: Video Understanding and Realistic Robot Simulation
+# Claude Fable Upgrade Prompt: Accuracy, Algorithms, and Simulation Fidelity
 
-Use this file as a copy-paste prompt for Claude Fable / Claude Code when improving Aurevix. It is intentionally focused so the model does not need to rediscover the entire repository.
+Use this as the main copy-paste prompt for Claude Fable / Claude Code when you want maximum effort on Aurevix's teaching intelligence, motion accuracy, and 3D simulation quality.
+
+It is grounded in the current codebase at `/Users/martin/Documents/RoboApprentice-v3`, so the agent should improve the real weak points instead of doing a vague redesign.
 
 ## Copy-Paste Prompt
 
 You are working in `/Users/martin/Documents/RoboApprentice-v3`.
 
-This project is Aurevix, an AI-powered robot teaching platform. Operators upload or run a video demonstration of a manual factory/warehouse task. The system must interpret the video into a precise multi-step robot policy, generate robot code, and show a realistic 3D simulation of the learned workflow.
+This is Aurevix, an AI robot-teaching platform. A factory operator demonstrates a manual task with video, and the system interprets it into a robot policy, generates executable robot code, validates feasibility, and renders a convincing 3D simulation.
 
-Your mission is to take the video-understanding algorithm and the 3D robot simulation to the next level. Prioritize real factory videos with multiple objects, containers, fixtures, inspection steps, tool changes, and repeated pick/place operations. The output must be production-quality TypeScript/Next.js code with tests and browser verification.
+Your mission is to upgrade the product with maximum seriousness and depth, especially in:
 
-### Product Goal
+- algorithmic accuracy
+- motion interpretation accuracy
+- scene understanding accuracy
+- kinematic plausibility
+- collision honesty
+- simulation fidelity
+- shape diversity and workcell realism
 
-Make Aurevix feel like it can watch a real workcell demonstration and generate a believable robot simulation from it.
+Do not give a lightweight polish pass. Treat this like an applied robotics + simulation improvement sprint inside the existing architecture.
 
-The current app already:
-- Extracts sampled video frames and motion cues.
-- Interprets steps through the SSE route.
-- Builds a `TaskPolicy`.
-- Plays the policy in a Three.js robot viewport.
-- Infers simple destination props such as tote, inspection pad, final station, or fixture from step text.
+## What The Current Repo Already Has
 
-Now improve it so the simulation becomes more accurate, more realistic, and more adaptive to whatever objects appear in the video.
+The current app is not empty. It already has:
 
-### Primary Workstreams
+- a real interpretation route in `apps/web/src/app/api/tasks/[id]/interpret/route.ts`
+- a strong provider prompt that emits both motion steps and a scene object model
+- post-processing in `apps/web/src/lib/policy-pipeline.ts`
+- reachability and simple kinematics in `apps/web/src/lib/robot-kinematics.ts`
+- a separate simplified IK helper in `apps/web/src/lib/ik-solver.ts`
+- a planning manifest adapter in `apps/web/src/lib/planning-manifest.ts`
+- a basic simulation manifest + matplotlib simulator in `apps/web/src/lib/simulation.ts`
+- a Three.js teaching replay in `apps/web/src/components/robot-arm.tsx`
+- fallback scene derivation from step text in `apps/web/src/lib/scene-model.ts`
 
-1. Advanced video interpretation algorithm
-   - Improve frame selection, temporal segmentation, motion reasoning, object persistence, and multi-stage task understanding.
-   - Detect and preserve each meaningful warehouse/factory stage instead of collapsing repeated operations.
-   - Track handled objects across pick, carry, place, inspection, and final station steps.
-   - Distinguish source object, carried object, destination container, fixture, inspection surface, and final placement station.
-   - Improve confidence/warnings when the video is ambiguous.
-   - Keep provider-facing prompts strong, but keep user-visible UI language provider-neutral.
+So this is an upgrade task, not a greenfield task.
 
-2. Scene understanding contract
-   - Add a structured scene model if needed, for example `WorkcellScene`, `SceneObject`, `ObjectGeometryHint`, or similar.
-   - The scene model should be derived from interpreted video evidence and attached to the policy or returned beside the policy.
-   - It should include object category, approximate size, color/material hints, role, pickup/drop-off association, and confidence.
-   - It must degrade gracefully: when uncertain, render a good proxy shape and expose a warning rather than hallucinating certainty.
+## Real Weaknesses You Must Address
 
-3. Realistic Three.js simulation
-   - Improve `RobotViewport` so it renders realistic workcell objects from the interpreted scene model.
-   - Use procedural geometry proxies: totes, trays, bins, flat inspection pads, fixtures, rails, stations, cylinders, boxes, brackets, small machined parts, and generic unknown objects.
-   - Use better materials, lighting, shadows, contact shadows, bevels/chamfers, labels/accents, and scale-appropriate placement.
-   - Keep the robot motion policy as the source of truth, but make the surrounding scene visually match the interpreted task.
-   - If the user uploads a different object, the simulator should render a plausible object of the right class, size, color, and role.
-   - Do not attempt unsafe deployment claims. This remains a simulation and review tool.
+These are repo-grounded limitations visible in the current implementation:
 
-4. Code quality and validation
-   - Keep changes scoped to the files below unless a better structure clearly emerges.
-   - Add or update tests for new algorithmic behavior.
-   - Run typecheck and focused tests.
-   - Run the local app in the browser and verify the teaching workflow with `warehouse-multistep.mp4`.
+1. The standalone IK approximation is too crude.
+   - `apps/web/src/lib/ik-solver.ts` currently guesses joint angles from planar heuristics and a fixed reach constant.
+   - It is not a true iterative solver and does not meaningfully use chain geometry beyond joint limits.
+   - Improve it into a real iterative or analytic approximation with better convergence, orientation handling, and error reporting.
 
-### Critical Files
+2. The policy pipeline is safe but still simplistic.
+   - `apps/web/src/lib/policy-pipeline.ts` inserts vertical approach/retract moves and applies basic retiming.
+   - It does not reason about scene-object geometry, lateral clearances, obstacle avoidance, object-specific contact offsets, or shape-aware approach vectors.
+   - Upgrade it without breaking determinism.
 
-Start here:
-- `apps/web/src/lib/types.ts`  
-  Defines `TaskStep`, `TaskPolicy`, and shared data shapes. Add scene-model types here if needed.
+3. Scene derivation still falls back to semantic guesses.
+   - `apps/web/src/lib/scene-model.ts` does a good job staying honest, but fallback scene creation is still text-driven and approximate.
+   - Improve the evidence-grounded path and strengthen validation, object association, and object geometry estimation.
 
-- `apps/web/src/app/api/tasks/[id]/interpret/route.ts`  
-  Main SSE AI interpretation route. It builds prompts, sends video frames, parses streamed steps, returns policy/warnings/status.
+4. The 3D replay is visually strong but kinematically simplified.
+   - `apps/web/src/components/robot-arm.tsx` renders a smoothed Catmull-Rom trajectory through waypoints.
+   - That is visually pleasing, but not equivalent to a physically planned robot path and can imply arcs or clearances the real policy never proved.
+   - Improve the visualization so it is both readable and honest about what is planned versus inferred.
 
-- `apps/web/src/lib/video-frames.ts`  
-  Server-side video frame extraction, adaptive keyframe selection, scene-cut/keyframe logic.
+5. The exported Python simulator is very basic.
+   - `apps/web/src/lib/simulation.ts` currently linearly interpolates points and plots waypoints.
+   - It does not represent scene objects, carried payload state, tool orientation evolution, contact phases, collision envelopes, or timing realism.
+   - Make it a much better review artifact.
 
-- `apps/web/src/lib/video-motion.ts`  
-  Motion analysis from inter-frame differences. Improve segmentation, dominant motion, bounding boxes, object activity zones, and temporal summaries here.
+6. Shape diversity is still limited by proxy assumptions.
+   - The product needs to handle boxes, trays, bins, totes, cylinders, brackets, machined parts, fixtures, surfaces, rails, and ambiguous unknown objects with believable procedural geometry.
+   - The simulator should visibly improve when different object classes are inferred.
 
-- `apps/web/src/lib/policy-pipeline.ts`  
-  Post-processing after AI output: approach/retract insertion, validation, normalization, retiming. Extend carefully if scene/objects should influence policy quality.
+## Non-Negotiable Product Goals
 
-- `apps/web/src/components/robot-viewport.tsx`  
-  Three.js simulation viewport. Improve procedural workcell/object generation, material realism, shape selection, object carry/drop behavior, and visual clarity here.
+The upgraded system should:
 
-- `apps/web/src/app/app/teach/page.tsx`  
-  Main teaching workflow UI. Keep user-facing language professional and provider-neutral.
+- infer task stages more accurately from video evidence
+- preserve distinct stages instead of collapsing them
+- produce more believable waypoints and contact sequencing
+- render more diverse and more realistic workcell objects
+- remain honest when evidence is weak
+- improve collision and reachability review value
+- stay usable even when no perfect reconstruction is possible
 
-Useful tests:
-- `apps/web/src/__tests__/video-frames.test.ts`
+The user should feel: "this is much closer to a real robot teaching and simulation system."
+
+## Files You Must Read First
+
+Read these before editing:
+
+- `apps/web/src/lib/types.ts`
+- `apps/web/src/app/api/tasks/[id]/interpret/route.ts`
+- `apps/web/src/lib/scene-model.ts`
+- `apps/web/src/lib/policy-pipeline.ts`
+- `apps/web/src/lib/robot-kinematics.ts`
+- `apps/web/src/lib/ik-solver.ts`
+- `apps/web/src/lib/planning-manifest.ts`
+- `apps/web/src/lib/simulation.ts`
+- `apps/web/src/components/robot-arm.tsx`
+- `apps/web/src/app/app/teach/page.tsx`
+
+Also inspect relevant tests in:
+
 - `apps/web/src/__tests__/policy-pipeline.test.ts`
-- `apps/web/src/__tests__/teach-codegen.test.ts`
+- `apps/web/src/__tests__/robot-kinematics.test.ts`
+- `apps/web/src/__tests__/scene-model.test.ts`
+- `apps/web/src/__tests__/planning-manifest.test.ts`
 
-Current demo asset:
-- `apps/web/public/demos/warehouse-multistep.mp4`
-- Root copy: `warehouse-multistep.mp4`
+## Upgrade Directions
 
-### Current Architecture Summary
+### 1. Interpretation and Evidence Fusion
 
-The teach workflow is:
+Improve the video-to-policy path in `interpret/route.ts` and related evidence utilities.
 
-1. `apps/web/src/app/app/teach/page.tsx`
-   - Runs the demo workflow.
-   - Creates a task through `POST /api/tasks`.
-   - Streams interpretation through `POST /api/tasks/[id]/interpret`.
-   - Stores streamed steps and final policy in state.
-   - Sends the policy into `RobotViewport`.
+Goals:
 
-2. `apps/web/src/app/api/tasks/[id]/interpret/route.ts`
-   - Extracts video frames via `extractVideoFrames`.
-   - Builds motion summaries from `video-motion`.
-   - Sends frames/text/motion evidence to the model.
-   - Parses the returned JSON steps.
-   - Finalizes a `TaskPolicy`.
+- better multi-stage temporal segmentation
+- better association between motion events and grip/release steps
+- better object persistence across frames
+- stronger use of motion zones and frame-to-frame evidence
+- stronger consistency between step descriptions and scene-object labels
+- better confidence and warning output
 
-3. `apps/web/src/components/robot-viewport.tsx`
-   - Converts policy waypoints into Three.js robot motion.
-   - Infers carry pairs from gripper closed/open transitions.
-   - Renders carried workpieces and destination props.
-   - Currently supports semantic destination proxies for fixture, tote/bin, inspection pad, and final station.
+Important:
 
-4. Code generation and exports:
-   - `apps/web/src/lib/codegen.ts`
-   - `apps/web/src/lib/teach-codegen.ts`
-   - API route: `apps/web/src/app/api/tasks/[id]/codegen/route.ts`
+- do not simply make the prompt longer
+- improve the algorithmic post-checks too
+- validate that the number of pick/place cycles matches the evidence
+- preserve separate stages when objects, destinations, or action contexts change
 
-### Desired Implementation Direction
+### 2. Better Scene Geometry and Shape Modeling
 
-Prefer a structured scene-understanding layer instead of only parsing natural-language step descriptions inside the renderer.
+Improve the scene model so it can drive better rendering and planning.
 
-Suggested model:
+The scene layer should support:
 
-```ts
-export interface WorkcellScene {
-  objects: SceneObject[];
-  confidence: number;
-  warnings: string[];
-}
+- object role
+- object category
+- approximate size
+- approximate pose
+- object confidence
+- evidence grounding metadata
+- geometry fidelity metadata
+- enough information to produce distinct procedural geometry
 
-export interface SceneObject {
-  id: string;
-  role: "source" | "workpiece" | "destination" | "fixture" | "container" | "inspection_surface" | "tool" | "unknown";
-  category: "box" | "bin" | "tote" | "tray" | "cylinder" | "bracket" | "machined_part" | "fixture" | "station" | "surface" | "unknown";
-  label: string;
-  colorHint?: string;
-  materialHint?: "metal" | "plastic" | "rubber" | "wood" | "unknown";
-  sizeHint?: { x: number; y: number; z: number };
-  poseHint?: { x: number; y: number; z: number; yaw?: number };
-  relatedStepIds: string[];
-  confidence: number;
-}
-```
+Add or refine shape-aware fields if needed, for example:
 
-You may adjust this shape if a better TypeScript model fits the repo, but keep it compact and useful.
+- symmetry hints
+- open-top container hints
+- cavity depth
+- handle or flange hints
+- fixture support type
+- flatness / cylindricality / aspect ratio hints
 
-Renderer direction:
-- Add a small procedural factory such as `buildSceneObjectMesh(object, materials)`.
-- Use rounded boxes/chamfers where possible.
-- Add object-specific proxies:
-  - tote/bin: open container with walls and inner floor
-  - tray: shallow open container
-  - inspection surface: dark pad with scan/measurement marks
-  - fixture: rails, pins, cradle, inlay
-  - station: base plate with pegs or nest
-  - machined part/bracket: metal block with notch/hole/boss
-  - unknown: neutral proxy with label/accent
-- Use object colors/material hints from scene model when available.
-- Keep the scene stable during playback; do not rebuild expensive meshes every frame.
+But keep the data model compact and practical.
 
-Algorithm direction:
-- Improve `video-motion.ts` with more useful motion segments and object activity zones.
-- Improve `video-frames.ts` to sample before/at/after motion peaks and scene cuts.
-- Improve the interpretation prompt so the model outputs object/scene hints as well as robot steps.
-- Validate the scene model: clamp sizes, reject impossible coordinates, cap object count, and warn on low confidence.
-- Preserve multi-step tasks. Repeated pick/place operations should become separate steps unless they are obviously the same repeated cycle.
+### 3. Shape-Aware Procedural Simulation
 
-### Acceptance Criteria
+Upgrade the Three.js workcell rendering so the app can create many different believable objects instead of only generic proxies.
 
-The implementation is not done until:
+The simulator should be able to render plausible variants of:
 
-- `warehouse-multistep.mp4` still runs through the browser teach workflow.
-- The visible UI says provider-neutral professional messages only.
-- The interpreter returns a policy with multiple distinct stages for the warehouse demo.
-- The simulator renders differentiated objects for at least:
-  - source/handled workpiece
-  - tote/bin/container
-  - inspection surface
-  - final station or fixture
-- The robot visibly carries objects between inferred locations.
-- The simulator still works when scene hints are missing.
-- TypeScript passes: `COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm --filter @forge-mind/web-v3 typecheck`
-- Focused tests pass: `COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm --filter @forge-mind/web-v3 exec vitest run src/__tests__/video-frames.test.ts src/__tests__/policy-pipeline.test.ts src/__tests__/teach-codegen.test.ts`
-- Add new tests if new pure functions are introduced.
+- open tote
+- deep bin
+- shallow tray
+- cardboard box
+- cylindrical can or shaft
+- bracket / L-bracket
+- machined block with cutout or hole
+- fixture nest
+- V-block or rail support
+- inspection surface
+- generic station
+- unknown object proxy
 
-### Guardrails
+Use procedural geometry, grouped primitives, bevel/chamfer tricks, layered materials, and stable transforms.
 
-- Do not hardcode this only for `warehouse-multistep.mp4`.
-- Do not make claims like "99% accurate" unless there is an evaluation dataset proving it.
-- Do not expose provider names such as Claude Code in visible UI status messages.
-- Do not break existing code generation exports.
-- Do not replace the app architecture or introduce a large new framework.
-- Keep the app usable even if the AI provider is unavailable.
-- Avoid raw hardcoded CSS hex colors in UI components; use existing design variables where applicable.
-- Three.js material colors are acceptable for 3D scene geometry.
+Important:
 
-### Browser Validation
+- do not make the scene noisy or game-like
+- do make it feel premium, precise, and industrial
+- keep rendering efficient
+- avoid rebuilding heavy geometry every frame
 
-After implementation:
+### 4. Motion, IK, and Kinematic Plausibility
 
-1. Start the app:
+Improve the motion pipeline so it is more believable and more useful for review.
 
-```bash
-COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm --filter @forge-mind/web-v3 dev
-```
+Specifically:
 
-2. Open:
+- replace or substantially improve the crude IK approximation in `ik-solver.ts`
+- improve error metrics and reachability explanations
+- keep a distinction between reachable-with-confidence and clamped-for-preview
+- account for orientation more carefully
+- improve transition smoothing without visually inventing unsafe clearance
+- if using interpolation, annotate or separate:
+  - planned waypoint path
+  - display smoothing path
+  - inferred carry arc
 
-```text
-http://localhost:3000/app/teach
-```
+Do not silently fake physically valid paths where none were planned.
 
-3. Click `Run workflow`.
+### 5. Better Collision and Clearance Review
 
-4. Verify:
-   - The video source is `/demos/warehouse-multistep.mp4`.
-   - Analysis status is provider-neutral.
-   - The result reaches a multi-stage policy.
-   - The simulator shows differentiated objects, not one generic old fixture.
-   - The result text still says `Task policy learned from video`.
+Improve collision-related usefulness across:
 
-### Final Response Required
+- `policy-pipeline.ts`
+- `planning-manifest.ts`
+- `simulation.ts`
+- Three.js visualization
 
-When finished, report:
-- What algorithmic changes were made.
-- What scene/simulation changes were made.
-- Which files changed.
-- Typecheck/test/browser results.
-- Any remaining limitations or next steps for true video-to-3D reconstruction.
+Goals:
 
+- shape-aware contact offsets
+- better approach/retract generation
+- clearance checks against scene-object proxies
+- explicit warnings when the path is only waypoint-valid, not collision-planned
+- better display of risk areas, low-clearance segments, and low-confidence object geometry
+
+### 6. Better Exported Simulation Artifact
+
+Upgrade `apps/web/src/lib/simulation.ts` so the exported simulator becomes a stronger review artifact.
+
+It should ideally include:
+
+- scene objects
+- object classes and dimensions
+- carried-object state across grip/release windows
+- richer timing
+- different motion colors or phases
+- explicit caution labels when geometry is approximate
+- optional orientation / yaw display
+- contact event annotations
+
+It should still be easy to run locally.
+
+## Engineering Constraints
+
+- Keep the current Next.js / TypeScript architecture.
+- Do not introduce a giant new framework.
+- Do not break code generation routes.
+- Do not hardcode to one demo video.
+- Do not overclaim accuracy where the evidence is weak.
+- Prefer honest simulation over fake precision.
+- Preserve fallback behavior when AI or perception is incomplete.
+
+## Design Constraints
+
+- Use existing design variables for UI where appropriate.
+- Keep the Aurevix visual language precise, light, and industrial.
+- No random neon sci-fi redesign.
+- Improve realism through geometry, materials, lighting, and motion clarity.
+
+## Implementation Expectations
+
+You should:
+
+1. inspect the existing code carefully
+2. propose the smallest architecture changes that unlock major quality gains
+3. implement real code, not only notes
+4. add or update tests
+5. run typecheck
+6. run focused tests
+7. if practical, run the teaching flow locally and verify behavior
+
+## Acceptance Criteria
+
+The work is only done if the following become materially better:
+
+- policy stage segmentation
+- object-role consistency
+- scene-object diversity
+- simulation realism
+- honesty of confidence / warnings
+- kinematic plausibility
+- exported simulation usefulness
+
+And all of this must remain compatible with the existing teach workflow.
+
+## Concrete Review Targets
+
+When reviewing your own output, explicitly answer:
+
+1. Did I improve true algorithmic reasoning, or only the prompt text?
+2. Did I improve simulation fidelity, or only cosmetics?
+3. Can the system now represent more object shapes and workcell types?
+4. Did I reduce hallucinated certainty?
+5. Did I make the path preview more honest about what is planned versus inferred?
+6. Did I preserve app stability and existing exports?
+
+## Final Response Format
+
+When you finish, report:
+
+- what you changed in the interpreter
+- what you changed in scene modeling
+- what you changed in IK / kinematics / path logic
+- what you changed in 3D rendering and shapes
+- what tests you added or updated
+- typecheck/test/browser results
+- remaining limitations for true robot-grade planning
+
+Do not give a vague summary. Be precise and technical.

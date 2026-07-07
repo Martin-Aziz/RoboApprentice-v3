@@ -1,4 +1,4 @@
-import type { TaskPolicy, TaskStep, Waypoint } from "./types";
+import type { SceneObject, TaskPolicy, TaskStep, Waypoint, WorkcellScene } from "./types";
 import { randomUUID } from "crypto";
 import {
   HOME_WAYPOINT,
@@ -7,15 +7,47 @@ import {
   evaluateReachability,
   xyDistance,
 } from "./robot-kinematics";
+import { DEFAULT_PROXY_SIZE, findLowClearanceSegments } from "./clearance";
 
 /**
  * AUREVIX policy pipeline — post-processing for extracted task policies.
  * Validates, enriches, and optimizes the policy before code generation.
  */
 
-export function insertApproachRetract(steps: TaskStep[]): TaskStep[] {
+/** Categories whose contact point sits inside a cavity below a rim. */
+const OPEN_TOP_CATEGORIES = new Set<SceneObject["category"]>(["tote", "bin", "tray"]);
+
+/**
+ * Shape-aware approach clearance for a contact step: when the contact happens
+ * at/inside a known open-top container, the approach must clear the container
+ * rim (object top + margin), not just the generic contact clearance above the
+ * contact point. Falls back to the generic clearance when no scene evidence
+ * applies.
+ */
+export function approachHeightForContact(
+  contact: TaskStep,
+  scene: WorkcellScene | undefined,
+): number {
+  const generic = ROBOT_KINEMATICS.contactClearance;
+  if (!scene) return generic;
+  for (const object of scene.objects) {
+    if (!object.poseHint) continue;
+    const size = object.sizeHint ?? DEFAULT_PROXY_SIZE;
+    const related = object.relatedStepIds.includes(contact.id);
+    const overFootprint =
+      Math.hypot(contact.target.x - object.poseHint.x, contact.target.y - object.poseHint.y) <
+      Math.max(size.x, size.y) / 2 + 0.02;
+    if (!related && !overFootprint) continue;
+    if (!OPEN_TOP_CATEGORIES.has(object.category)) continue;
+    const rimZ = object.poseHint.z + size.z;
+    const required = rimZ + 0.03 - contact.target.z;
+    if (required > generic) return required;
+  }
+  return generic;
+}
+
+export function insertApproachRetract(steps: TaskStep[], scene?: WorkcellScene): TaskStep[] {
   const enriched: TaskStep[] = [];
-  const APPROACH_HEIGHT = ROBOT_KINEMATICS.contactClearance;
 
   const isContactStep = (step: TaskStep) =>
     step.action === "grip" || step.action === "release";
@@ -23,29 +55,34 @@ export function insertApproachRetract(steps: TaskStep[]): TaskStep[] {
   const hasSafeApproach = (
     previous: TaskStep | undefined,
     contact: TaskStep,
+    approachHeight: number,
   ) =>
     Boolean(
       previous &&
         previous.action === "approach" &&
         xyDistance(previous.target, contact.target) <= 0.035 &&
-        previous.target.z >= contact.target.z + APPROACH_HEIGHT * 0.65,
+        previous.target.z >= contact.target.z + approachHeight * 0.65,
     );
 
   const hasClearanceMove = (
     next: TaskStep | undefined,
     contact: TaskStep,
+    approachHeight: number,
   ) =>
     Boolean(
       next &&
-        next.target.z >= contact.target.z + APPROACH_HEIGHT * 0.65 &&
-        distance3d(next.target, contact.target) >= APPROACH_HEIGHT * 0.5,
+        next.target.z >= contact.target.z + approachHeight * 0.65 &&
+        distance3d(next.target, contact.target) >= approachHeight * 0.5,
     );
 
   steps.forEach((step, idx) => {
     const previous = steps[idx - 1];
     const next = steps[idx + 1];
+    const APPROACH_HEIGHT = isContactStep(step)
+      ? approachHeightForContact(step, scene)
+      : ROBOT_KINEMATICS.contactClearance;
 
-    if (isContactStep(step) && !hasSafeApproach(previous, step)) {
+    if (isContactStep(step) && !hasSafeApproach(previous, step, APPROACH_HEIGHT)) {
       const approachTarget: Waypoint = {
         x: step.target.x,
         y: step.target.y,
@@ -78,7 +115,7 @@ export function insertApproachRetract(steps: TaskStep[]): TaskStep[] {
 
     enriched.push(step);
 
-    if (isContactStep(step) && !hasClearanceMove(next, step)) {
+    if (isContactStep(step) && !hasClearanceMove(next, step, APPROACH_HEIGHT)) {
       const liftTarget: Waypoint = {
         x: step.target.x,
         y: step.target.y,
@@ -292,10 +329,46 @@ function computeWorkspaceBounds(steps: TaskStep[]): TaskPolicy["workspaceBounds"
 }
 
 /**
+ * Cross-checks the policy's pick/place cycle count against the perception
+ * events extracted from the video. A grip in the policy with no grasp-like
+ * event behind it (or vice versa) is exactly the hallucination/omission class
+ * the interpreter is most prone to, so mismatches surface as explicit
+ * warnings rather than being silently accepted.
+ */
+export function crossCheckCycleCount(
+  steps: TaskStep[],
+  events: Array<{ type: string }> | undefined,
+): string[] {
+  if (!events || events.length === 0) return [];
+  const graspEvents = events.filter((e) => e.type === "grasp_candidate").length;
+  const releaseEvents = events.filter((e) => e.type === "release_candidate").length;
+  if (graspEvents === 0 && releaseEvents === 0) return [];
+
+  const gripSteps = steps.filter((s) => s.action === "grip").length;
+  const releaseSteps = steps.filter((s) => s.action === "release").length;
+  const warnings: string[] = [];
+  if (gripSteps !== graspEvents) {
+    warnings.push(
+      `Policy has ${gripSteps} grip step(s) but motion evidence suggests ${graspEvents} grasp event(s) — verify no pick cycle was invented or dropped.`,
+    );
+  }
+  if (releaseSteps !== releaseEvents) {
+    warnings.push(
+      `Policy has ${releaseSteps} release step(s) but motion evidence suggests ${releaseEvents} release event(s) — verify placement count against the video.`,
+    );
+  }
+  return warnings;
+}
+
+/**
  * Full policy pipeline — orchestrates all validations and enrichments.
+ * When a validated scene is provided, approach heights become shape-aware
+ * (container rims) and every free-motion segment is screened against the
+ * scene-object proxies for low clearance.
  */
 export function processPolicyPipeline(
   policy: TaskPolicy,
+  scene?: WorkcellScene,
 ): {
   policy: TaskPolicy;
   warnings: string[];
@@ -306,7 +379,7 @@ export function processPolicyPipeline(
 
   // 1. Ensure terminal home poses, then insert approach/retract moves.
   let steps = ensureTerminalHomeSteps(policy.steps);
-  steps = insertApproachRetract(steps);
+  steps = insertApproachRetract(steps, scene);
 
   // 2. Validate gripper state
   const gripCheck = validateGripperState(steps);
@@ -348,7 +421,19 @@ export function processPolicyPipeline(
     }
   });
 
-  // 6. Retime with a conservative jerk-limited profile.
+  // 6. Screen free-motion segments against scene-object proxies. Honest by
+  // construction: these are waypoint-level checks against approximate
+  // geometry, and the warning text says so.
+  if (scene && scene.objects.length > 0) {
+    const findings = findLowClearanceSegments(steps, scene.objects);
+    for (const finding of findings.slice(0, 5)) {
+      warnings.push(
+        `Step ${finding.toStepOrder}: segment passes ${(finding.clearanceMeters * 100).toFixed(1)}cm from "${finding.objectLabel}"${finding.geometryApproximate ? " (approximate proxy geometry)" : ""} — review clearance; path is waypoint-valid only, not collision-planned.`,
+      );
+    }
+  }
+
+  // 7. Retime with a conservative jerk-limited profile.
   steps = retimeWithJerkLimitedProfile(steps);
 
   // Compute new cycle time
@@ -357,6 +442,7 @@ export function processPolicyPipeline(
   const enrichedPolicy: TaskPolicy = {
     ...policy,
     steps,
+    scene: scene ?? policy.scene,
     workspaceBounds: computeWorkspaceBounds(steps),
     estimatedCycleSeconds,
   };

@@ -1951,14 +1951,29 @@ export function RobotViewport({
         frameId = requestAnimationFrame(tick);
         return;
       }
+      if (state.step > length - 1) {
+        state.step = length - 1;
+        state.anim = null;
+      }
 
       // Lazily (re)establish the in-flight segment so resuming after a pause --
       // or `policy` simply changing reference mid-stream -- continues smoothly
-      // instead of snapping back to the start of the current segment.
+      // instead of snapping back to the start of the current segment. When the
+      // replay reaches the last known waypoint, hold there instead of wrapping
+      // back to the first step; streamed policies can still continue when more
+      // waypoints arrive.
       let anim = state.anim;
       if (!anim) {
+        if (state.step >= length - 1) {
+          const finalPose = waypointToPose(currentPolicy, length - 1);
+          setPose(finalPose);
+          setActiveStepIndex(length - 1);
+          onEndEffectorMoveRef.current?.(finalPose);
+          frameId = requestAnimationFrame(tick);
+          return;
+        }
         const fromPose = waypointToPose(currentPolicy, state.step);
-        const toIndex = (state.step + 1) % length;
+        const toIndex = state.step + 1;
         const toPose = waypointToPose(currentPolicy, toIndex);
         anim = {
           fromPose,
@@ -2052,15 +2067,19 @@ export function RobotViewport({
         state.step = anim.toIndex;
         const nextPolicy = policyRef.current;
         const nextLength = Math.max(nextPolicy?.steps.length ?? length, 1);
-        const nextToIndex = (state.step + 1) % nextLength;
-        const nextToPose = waypointToPose(nextPolicy, nextToIndex);
-        state.anim = {
-          fromPose: anim.toPose,
-          toPose: nextToPose,
-          toIndex: nextToIndex,
-          segmentSeconds: segmentDurationSeconds(anim.toPose, nextToPose, nextPolicy, nextToIndex, playbackSpeedRef.current),
-          segmentElapsed: 0,
-        };
+        if (state.step >= nextLength - 1) {
+          state.anim = null;
+        } else {
+          const nextToIndex = state.step + 1;
+          const nextToPose = waypointToPose(nextPolicy, nextToIndex);
+          state.anim = {
+            fromPose: anim.toPose,
+            toPose: nextToPose,
+            toIndex: nextToIndex,
+            segmentSeconds: segmentDurationSeconds(anim.toPose, nextToPose, nextPolicy, nextToIndex, playbackSpeedRef.current),
+            segmentElapsed: 0,
+          };
+        }
       }
 
       frameId = requestAnimationFrame(tick);
