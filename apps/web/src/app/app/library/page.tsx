@@ -7,14 +7,15 @@ import { DeployReadiness, ReadinessLegend } from "@/components/deploy-readiness"
 
 export default function LibraryPage() {
   const { skills } = useDemoData();
-  const ready = skills.filter((skill) => skill.status === "ready").slice(0, 4);
+  const ready = skills.slice(0, 4);
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-5 md:p-8">
       <div>
         <p className="font-mono text-xs uppercase tracking-[0.22em] text-[rgb(var(--signal-cyan))]">Proven templates</p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight">Skill Templates</h1>
-        <p className="mt-2 text-[rgb(var(--bone-2))]">Ready skills available for immediate validation and deployment.</p>
+        <p className="mt-2 text-[rgb(var(--bone-2))]">Reusable task records available for workcell-specific review.</p>
       </div>
+      <section className="grid gap-4 rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-5 md:grid-cols-2"><p className="text-sm leading-6"><strong>Supported task families.</strong> Pick and place · Machine tending with constrained part presentation · Kitting and tray packing · Simple inspection positioning · Repetitive fixture-based manipulation.</p><p className="text-sm leading-6 text-[rgb(var(--bone-2))]"><strong className="text-[rgb(var(--bone))]">Not supported.</strong> Welding · High-speed cutting · Deformable objects · Reflective or transparent parts without controlled sensing · Payloads near robot limits · Tasks requiring force feedback.</p></section>
       <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
         <ReadinessLegend />
         <p className="max-w-md text-xs text-[rgb(var(--bone-2))]">

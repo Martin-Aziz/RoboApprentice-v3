@@ -61,6 +61,8 @@ describe("simulation manifest", () => {
     const manifest = buildManifest(policy, "Test task");
     expect(manifest.format_version).toBe("1.1");
     expect(manifest.scene.source).toBe("video");
+    expect(manifest.review.headline).toBeTruthy();
+    expect(manifest.review.validation_scope).toContain("heuristic kinematic screening");
     expect(manifest.scene.objects).toHaveLength(2);
     expect(manifest.scene.objects[0]).toMatchObject({
       id: "tote-1",
@@ -95,6 +97,7 @@ describe("python simulator export", () => {
   it("carries an explicit honesty caution", () => {
     expect(py).toContain("not a collision-planned path");
     expect(py).toContain("PROXY_OBJECT_COUNT = 2");
+    expect(py).toContain("REVIEW_HEADLINE");
   });
 
   it("remains syntactically balanced python (no template artifacts)", () => {

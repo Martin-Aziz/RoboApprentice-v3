@@ -62,6 +62,9 @@ describe("policy pipeline", () => {
         .filter((s) => s.action === "grip" || s.action === "release")
         .every((s) => s.speed <= 0.1),
     ).toBe(true);
+    expect(policy.steps.every((s) => Array.isArray(s.preconditions) && s.preconditions.length > 0)).toBe(true);
+    expect(policy.steps.every((s) => typeof s.fallbackLabel === "string" && s.fallbackLabel.length > 0)).toBe(true);
+    expect(policy.reviewSummary?.headline).toBeTruthy();
     expect(policy.estimatedCycleSeconds).toBeGreaterThan(raw.estimatedCycleSeconds);
     expect(policy.workspaceBounds?.zMin).toBeCloseTo(0.08);
   });

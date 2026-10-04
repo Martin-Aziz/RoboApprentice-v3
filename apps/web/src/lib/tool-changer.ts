@@ -1,4 +1,4 @@
-export type ToolType = "gripper" | "vacuum" | "screwdriver" | "welding_torch" | "custom";
+export type ToolType = "gripper" | "vacuum" | "screwdriver" | "custom";
 
 export interface ToolStation {
   id: string;
@@ -21,7 +21,6 @@ export const TOOL_TYPES: Array<{ value: ToolType; label: string }> = [
   { value: "gripper", label: "Parallel gripper" },
   { value: "vacuum", label: "Vacuum cup" },
   { value: "screwdriver", label: "Screwdriver / fastening tool" },
-  { value: "welding_torch", label: "Welding torch" },
   { value: "custom", label: "Custom tool" },
 ];
 

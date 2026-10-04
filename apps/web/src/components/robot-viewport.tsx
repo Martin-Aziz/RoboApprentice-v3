@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
-import { Box, Maximize2, Pause, Play, RotateCcw, Settings } from "lucide-react";
+import { AlertTriangle, Box, CheckCircle2, Maximize2, Pause, Play, RotateCcw, Settings, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { solveCcdIk, type IKJoint } from "@/lib/ik-solver";
@@ -22,6 +22,7 @@ import {
   resolveSceneForPolicy,
   sceneObjectForStep,
 } from "@/lib/scene-model";
+import { summarizePolicyReview } from "@/lib/policy-review";
 import {
   createBrushedMetalTexture,
   createContactShadow,
@@ -1508,6 +1509,7 @@ export function RobotViewport({
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [showStepSummary, setShowStepSummary] = useState(false);
   const trajectory = useMemo(() => policy?.steps.map((_, index) => sceneVector(waypointToPose(policy, index))) ?? [], [policy]);
+  const reviewSummary = useMemo(() => (policy ? (policy.reviewSummary ?? summarizePolicyReview(policy)) : null), [policy]);
 
   // Mirrors of fast-changing props, read fresh inside the rAF loop below so the
   // playback effect doesn't need to depend on them (and tear down/restart every
@@ -1755,6 +1757,7 @@ export function RobotViewport({
       if (!live || !runtime.current) return;
       runtime.current.controls.update();
       composer.render();
+      (window as Window & { __robotViewportReady?: boolean }).__robotViewportReady = true;
       requestAnimationFrame(animate);
     };
     animate();
@@ -2179,7 +2182,7 @@ export function RobotViewport({
   };
 
   return (
-    <div className={cn("overflow-hidden rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))]", className)}>
+    <div data-robot-viewport className={cn("overflow-hidden rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))]", className)}>
       <div className="flex items-center justify-between border-b border-[rgb(var(--steel))] px-3 py-2">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[rgb(var(--signal-cyan))]">Robot viewport</p>
@@ -2199,6 +2202,24 @@ export function RobotViewport({
       <div className="grid min-h-[520px] lg:grid-cols-[1fr_280px]">
         <div className="relative min-h-[420px]">
           <div ref={mountRef} className="h-full min-h-[420px]" />
+          {reviewSummary && (
+            <div className="absolute left-3 top-3 max-w-[360px] rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2)/0.94)] p-3 shadow-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={reviewSummary.blockedSteps > 0 ? "red" : reviewSummary.reviewSteps > 0 ? "amber" : "green"}>
+                  {reviewSummary.blockedSteps > 0 ? <ShieldAlert className="h-3.5 w-3.5" /> : reviewSummary.reviewSteps > 0 ? <AlertTriangle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                  {reviewSummary.headline}
+                </Badge>
+                <Badge tone="neutral">{Math.round(reviewSummary.averageConfidence * 100)}% confidence</Badge>
+              </div>
+              <p className="mt-2 text-xs text-[rgb(var(--bone-2))]">{reviewSummary.recommendedAction}</p>
+              <div className="mt-2 flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[rgb(var(--bone-2))]">
+                <span>{reviewSummary.readySteps} ready</span>
+                <span>{reviewSummary.reviewSteps} review</span>
+                <span>{reviewSummary.blockedSteps} blocked</span>
+                <span>{reviewSummary.visionSteps} vision</span>
+              </div>
+            </div>
+          )}
           {webglUnavailable && (
             <div className="absolute inset-0 grid place-items-center bg-[rgb(var(--ink-3))] p-8 text-center">
               <div className="max-w-sm">
@@ -2255,6 +2276,11 @@ export function RobotViewport({
                       {index + 1}. {step.action}
                     </span>
                     <span className="mt-0.5 block line-clamp-2">{step.description}</span>
+                    <span className="mt-1 flex flex-wrap gap-1">
+                      {step.guard && <MiniBadge tone={step.guard.status === "blocked" ? "red" : step.guard.status === "review" ? "amber" : "green"}>{step.guard.status}</MiniBadge>}
+                      {step.requiresVision && <MiniBadge tone="cyan">vision</MiniBadge>}
+                      {step.fallbackLabel && <MiniBadge tone="neutral">fallback</MiniBadge>}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -2300,6 +2326,18 @@ export function RobotViewport({
                 <span className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em]">
                   {step.action}
                 </span>
+                {step.guard && (
+                  <span className={cn(
+                    "rounded-md border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em]",
+                    step.guard.status === "blocked"
+                      ? "border-[rgb(var(--signal-red)/0.35)] bg-[rgb(var(--signal-red)/0.08)] text-[rgb(var(--signal-red))]"
+                      : step.guard.status === "review"
+                        ? "border-[rgb(var(--signal-amber)/0.35)] bg-[rgb(var(--signal-amber)/0.08)] text-[rgb(var(--signal-amber))]"
+                        : "border-[rgb(var(--signal-green)/0.35)] bg-[rgb(var(--signal-green)/0.08)] text-[rgb(var(--signal-green))]",
+                  )}>
+                    {step.guard.status}
+                  </span>
+                )}
                 {step.gripper !== "unchanged" && (
                   <span className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em]">
                     gripper {step.gripper}
@@ -2315,17 +2353,56 @@ export function RobotViewport({
             <p data-testid="step-intent-description" className="mt-2 text-sm">
               {step.description}
             </p>
+            {step.guard && <p className="mt-1 text-xs text-[rgb(var(--bone-2))]">Guardrail: {step.guard.reason}</p>}
             {step.notes && <p className="mt-1 text-xs text-[rgb(var(--bone-2))]">Note: {step.notes}</p>}
+            {step.preconditions?.length ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {step.preconditions.map((condition) => (
+                  <MiniBadge key={condition} tone="neutral">{condition}</MiniBadge>
+                ))}
+              </div>
+            ) : null}
+            {step.fallbackLabel && <p className="mt-2 text-xs text-[rgb(var(--signal-cyan))]">Fallback: {step.fallbackLabel}</p>}
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] tabular text-[rgb(var(--bone-2))]">
               <span>target x {step.target.x.toFixed(3)} m</span>
               <span>y {step.target.y.toFixed(3)} m</span>
               <span>z {step.target.z.toFixed(3)} m</span>
               <span>speed {step.speed.toFixed(2)} m/s</span>
               <span>duration {step.duration}s</span>
+              <span>confidence {Math.round((step.confidence ?? 0.75) * 100)}%</span>
             </div>
           </div>
         );
       })()}
     </div>
+  );
+}
+
+function Badge({ children, tone }: { children: ReactNode; tone: "green" | "amber" | "red" | "neutral" }) {
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em]",
+      tone === "green" && "border-[rgb(var(--signal-green)/0.35)] bg-[rgb(var(--signal-green)/0.08)] text-[rgb(var(--signal-green))]",
+      tone === "amber" && "border-[rgb(var(--signal-amber)/0.35)] bg-[rgb(var(--signal-amber)/0.08)] text-[rgb(var(--signal-amber))]",
+      tone === "red" && "border-[rgb(var(--signal-red)/0.35)] bg-[rgb(var(--signal-red)/0.08)] text-[rgb(var(--signal-red))]",
+      tone === "neutral" && "border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] text-[rgb(var(--bone-2))]",
+    )}>
+      {children}
+    </span>
+  );
+}
+
+function MiniBadge({ children, tone }: { children: ReactNode; tone: "green" | "amber" | "red" | "neutral" | "cyan" }) {
+  return (
+    <span className={cn(
+      "rounded-md border px-1.5 py-0.5 font-mono text-[10px]",
+      tone === "green" && "border-[rgb(var(--signal-green)/0.3)] bg-[rgb(var(--signal-green)/0.08)] text-[rgb(var(--signal-green))]",
+      tone === "amber" && "border-[rgb(var(--signal-amber)/0.3)] bg-[rgb(var(--signal-amber)/0.08)] text-[rgb(var(--signal-amber))]",
+      tone === "red" && "border-[rgb(var(--signal-red)/0.3)] bg-[rgb(var(--signal-red)/0.08)] text-[rgb(var(--signal-red))]",
+      tone === "cyan" && "border-[rgb(var(--signal-cyan)/0.3)] bg-[rgb(var(--signal-cyan)/0.08)] text-[rgb(var(--signal-cyan))]",
+      tone === "neutral" && "border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] text-[rgb(var(--bone-2))]",
+    )}>
+      {children}
+    </span>
   );
 }

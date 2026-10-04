@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Bot, Calculator, Code2, Factory, GraduationCap, History, Library, RotateCcw, Settings, Wrench, X, Zap, BookOpen, Receipt } from "lucide-react";
+import { BarChart3, Bot, Calculator, Code2, Factory, GraduationCap, History, Library, RotateCcw, Wrench, X, Zap, BookOpen, Receipt, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -11,6 +11,9 @@ import { Wordmark } from "@/components/logo";
 import { resetDemoData } from "@/lib/use-demo-data";
 import { useLocale } from "@/lib/i18n";
 import { LanguageSelector } from "@/components/language-selector";
+import { useEffect, useState } from "react";
+
+const SALES_MODE_KEY = "aurevix.salesMode";
 
 const navGroups = [
   {
@@ -25,6 +28,7 @@ const navGroups = [
     items: [
       { href: "/app/skills", key: "nav.skills", icon: Zap },
       { href: "/app/tasks", key: "nav.tasks", icon: BookOpen },
+      { href: "/app/review", key: "Review & Approvals", icon: ShieldCheck },
       { href: "/app/library", key: "nav.library", icon: Library },
       { href: "/app/teach", key: "nav.teach", icon: GraduationCap },
     ],
@@ -57,6 +61,13 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
   const sessionId = useSessionStore((state) => state.session_id);
   const { t } = useLocale();
   const shortSession = sessionId ? sessionId.slice(0, 8).toUpperCase() : "LOCAL";
+  const [salesMode, setSalesMode] = useState(false);
+  useEffect(() => {
+    const sync = () => setSalesMode(localStorage.getItem(SALES_MODE_KEY) === "true");
+    sync();
+    window.addEventListener("aurevix-sales-mode", sync);
+    return () => window.removeEventListener("aurevix-sales-mode", sync);
+  }, []);
 
   return (
     <aside
@@ -85,7 +96,7 @@ export function AppSidebar({ open = false, onClose }: AppSidebarProps) {
           <div key={group.label}>
             <p className="px-3 pb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[rgb(var(--bone-3))]">{group.label}</p>
             <div className="space-y-1">
-              {group.items.map((item) => {
+              {group.items.filter((item) => salesMode || (item.href !== "/app/roi" && item.href !== "/app/billing")).map((item) => {
                 const isActive = item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
                 return (
                   <Link key={item.href} href={item.href} onClick={onClose}>

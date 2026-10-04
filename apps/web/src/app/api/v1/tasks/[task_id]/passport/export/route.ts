@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PassportExportService } from "@/lib/automation-passport";
 import type { PassportSharingScope } from "@/lib/types";
+import { getTask, getTaskVersions } from "@/lib/task-store-db";
+import { getTrustRecord } from "@/lib/trust-store-db";
+import { isExportable } from "@/lib/trust-layer";
 
 const SCOPES = new Set<PassportSharingScope>([
   "PRIVATE",
@@ -14,6 +17,13 @@ export async function POST(
 ) {
   try {
     const { task_id: taskId } = await params;
+    const task = await getTask(taskId);
+    if (!task) return NextResponse.json({ error: "Task not found." }, { status: 404 });
+    const versions = await getTaskVersions(taskId);
+    const trust = await getTrustRecord(task, versions.length || 1);
+    if (!isExportable(trust.readiness_score) || trust.approval.status !== "approved") {
+      return NextResponse.json({ code: "DEPLOY_READINESS_BLOCKED", reason: trust.approval.status !== "approved" ? "A task must be approved before its passport can be exported." : trust.gate_reason, readinessScore: trust.readiness_score }, { status: 409 });
+    }
     const body = await request.json().catch(() => null) as Record<string, unknown> | null;
     if (!body || !SCOPES.has(body.sharing_scope as PassportSharingScope)) {
       return NextResponse.json(

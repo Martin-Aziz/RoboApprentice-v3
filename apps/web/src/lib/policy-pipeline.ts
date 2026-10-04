@@ -8,6 +8,7 @@ import {
   xyDistance,
 } from "./robot-kinematics";
 import { DEFAULT_PROXY_SIZE, findLowClearanceSegments } from "./clearance";
+import { enrichStepReview, summarizePolicyReview } from "./policy-review";
 
 /**
  * AUREVIX policy pipeline — post-processing for extracted task policies.
@@ -435,6 +436,7 @@ export function processPolicyPipeline(
 
   // 7. Retime with a conservative jerk-limited profile.
   steps = retimeWithJerkLimitedProfile(steps);
+  steps = steps.map((step, index) => enrichStepReview(step, steps[index - 1]));
 
   // Compute new cycle time
   const estimatedCycleSeconds = steps.reduce((sum, s) => sum + s.duration, 0);
@@ -446,6 +448,7 @@ export function processPolicyPipeline(
     workspaceBounds: computeWorkspaceBounds(steps),
     estimatedCycleSeconds,
   };
+  enrichedPolicy.reviewSummary = summarizePolicyReview(enrichedPolicy);
 
   return { policy: enrichedPolicy, warnings, errors };
 }

@@ -9,6 +9,7 @@
     "typecheck": "pnpm --filter @forge-mind/web-v3 typecheck",
     "test": "pnpm --filter @forge-mind/web-v3 test",
     "test:unit": "pnpm --filter @forge-mind/web-v3 test:unit",
+    "screenshots": "pnpm --filter @forge-mind/web-v3 exec playwright install chromium && pnpm --filter @forge-mind/web-v3 exec tsx ../../scripts/capture-screenshots.ts",
     "db:migrate": "cd apps/api && cargo sqlx migrate run",
     "db:seed": "bash scripts/seed.sh",
     "docker:up": "docker compose up -d",
@@ -17,5 +18,6 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "devDependencies": { "tsx": "^4.20.3" }
 }

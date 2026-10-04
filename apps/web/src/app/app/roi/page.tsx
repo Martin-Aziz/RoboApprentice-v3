@@ -12,6 +12,7 @@ export default function RoiPage() {
         <h1 className="mt-3 text-4xl font-semibold tracking-tight">{t("roi.title")}</h1>
       </div>
       <RoiCalculator />
+      <p className="rounded-md bg-[rgb(var(--ink-3))] p-3 text-xs text-[rgb(var(--bone-2))]">Figures are derived from the inputs above. Defaults are illustrative assumptions, not measured design-partner results.</p>
     </div>
   );
 }

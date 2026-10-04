@@ -485,6 +485,26 @@ export interface TaskStep {
   duration: number; // seconds, integer 1–30
   requiresVision?: boolean;
   notes?: string;
+  confidence?: number;
+  preconditions?: string[];
+  fallbackLabel?: string;
+  guard?: TaskStepGuard;
+  reviewRequired?: boolean;
+}
+
+export type PolicyGuardType =
+  | "reachability"
+  | "clearance"
+  | "vision"
+  | "contact"
+  | "operator_review";
+
+export type PolicyGuardStatus = "ok" | "review" | "blocked";
+
+export interface TaskStepGuard {
+  type: PolicyGuardType;
+  status: PolicyGuardStatus;
+  reason: string;
 }
 
 /** What an interpreted workcell object does in the demonstrated task. */
@@ -577,6 +597,17 @@ export interface TaskPolicy {
   estimatedCycleSeconds: number;
   /** Optional structured scene model interpreted alongside the steps. */
   scene?: WorkcellScene;
+  reviewSummary?: PolicyReviewSummary;
+}
+
+export interface PolicyReviewSummary {
+  readySteps: number;
+  reviewSteps: number;
+  blockedSteps: number;
+  visionSteps: number;
+  averageConfidence: number;
+  headline: string;
+  recommendedAction: string;
 }
 
 export type FeedbackVerdict = "success" | "partial" | "failed";

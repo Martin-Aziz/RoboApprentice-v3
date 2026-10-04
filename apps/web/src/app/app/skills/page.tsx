@@ -4,7 +4,6 @@ import { AlertTriangle, CheckCircle2, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DeployReadiness, ReadinessLegend } from "@/components/deploy-readiness";
-import { StatusBadge } from "@/components/status-badge";
 import { useDemoData } from "@/lib/use-demo-data";
 import { formatDate, formatDuration, formatNumber } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
@@ -34,7 +33,7 @@ export default function SkillsPage() {
             </div>
             {skill.drift_alert && <p className="mt-4 flex gap-2 rounded-md bg-[rgb(var(--signal-amber)/0.1)] p-3 text-sm text-[rgb(var(--signal-amber))]"><AlertTriangle className="h-4 w-4" /> {skill.drift_alert}</p>}
             <div className="mt-5 grid grid-cols-4 gap-3">
-              <div><StatusBadge status={skill.status} /><p className="mt-1 text-xs text-[rgb(var(--bone-2))]">Status</p></div>
+              <div><span className="font-mono text-xs uppercase text-[rgb(var(--bone-2))]">Record active</span><p className="mt-1 text-xs text-[rgb(var(--bone-2))]">Lifecycle</p></div>
               <Small label="Runs" value={formatNumber(skill.run_count, locale)} />
               <Small label="Success" value={skill.run_count ? `${Math.round((skill.success_count / skill.run_count) * 100)}%` : "Not measured"} />
               <Small label="Cycle" value={skill.mean_cycle_ms ? formatDuration(skill.mean_cycle_ms, locale) : "Not measured"} />

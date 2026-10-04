@@ -5,12 +5,11 @@ import { ArrowRight, Bot, Gauge, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/logo";
 import { LanguageSelector } from "@/components/language-selector";
-import { useLocale, useRegionalCopy } from "@/lib/i18n";
+import { useLocale } from "@/lib/i18n";
 import { DEMO_VIDEO_URL } from "@/lib/demo-seed";
 
 export default function LandingPage() {
   const { t } = useLocale();
-  const regional = useRegionalCopy();
 
   return (
     <main className="min-h-screen bg-[rgb(var(--ink))]">
@@ -26,9 +25,9 @@ export default function LandingPage() {
 
       <section className="mx-auto grid min-h-[72vh] max-w-7xl items-center gap-10 px-5 py-10 lg:grid-cols-[1fr_0.9fr]">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-[rgb(var(--signal-cyan))]">Aurevix enterprise robot teaching</p>
-          <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">{regional.primary}</h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-[rgb(var(--bone-2))]">{t("landing.sub")}</p>
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-[rgb(var(--signal-cyan))]">Automation memory for high-mix manufacturing</p>
+          <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl">Your factory&apos;s task knowledge, captured once and reusable across robots</h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-[rgb(var(--bone-2))]">Demonstrate a task on video. Aurevix turns it into a reviewable plan, controller code, and a versioned record your engineers and safety owner can approve — portable across robot brands.</p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button asChild size="lg" className="gap-2">
               <Link href="/app/teach">{t("landing.cta")} <ArrowRight className="h-4 w-4" /></Link>
@@ -38,9 +37,9 @@ export default function LandingPage() {
             </Button>
           </div>
           <div className="mt-10 grid max-w-xl grid-cols-3 gap-4">
-            <MiniStat value="30s" label="wow moment" />
-            <MiniStat value="94%" label="confidence" />
-            <MiniStat value={regional.roiLabel} label={regional.secondary} />
+            <MiniStat value="Human-gated" label="No deployment without qualified review" />
+            <MiniStat value="Cross-vendor" label="UR, ABB, FANUC, KUKA, Techman, Yaskawa workflows" />
+            <MiniStat value="Versioned" label="Every task record bound to an approved policy hash" />
           </div>
         </div>
         <div className="rounded-lg border border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))] p-3 shadow-xl">
@@ -50,16 +49,6 @@ export default function LandingPage() {
             <Feature icon={<Bot />} title="Deploy" />
             <Feature icon={<Gauge />} title="Measure" />
           </div>
-        </div>
-      </section>
-
-      <section className="border-y border-[rgb(var(--steel))] bg-[rgb(var(--ink-2))]">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-5 px-5 py-6 text-sm text-[rgb(var(--bone-2))]">
-          <span>Trusted by manufacturers in</span>
-          <span className="font-mono">DE</span>
-          <span className="font-mono">US</span>
-          <span className="font-mono">UK</span>
-          <span className="font-mono">CN</span>
         </div>
       </section>
 

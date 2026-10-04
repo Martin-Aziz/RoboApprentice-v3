@@ -48,7 +48,7 @@ describe("api client", () => {
     vi.unstubAllGlobals();
   });
 
-  it("GET: adds Authorization header when token is in localStorage", async () => {
+  it("GET: ignores obsolete local auth tokens in the unauthenticated MVP", async () => {
     localStorage.setItem("forge_access_token", "test-token");
     const fetchMock = mockFetch([{ status: 200, body: {} }]);
     vi.stubGlobal("fetch", fetchMock);
@@ -58,9 +58,7 @@ describe("api client", () => {
 
     const calledWith = fetchMock.mock.calls[0];
     const init = calledWith[1] as RequestInit;
-    expect((init.headers as Record<string, string>)["Authorization"]).toBe(
-      "Bearer test-token"
-    );
+    expect((init.headers as Record<string, string>)["Authorization"]).toBeUndefined();
   });
 
   it("GET: does NOT add Authorization header without token", async () => {
@@ -107,34 +105,13 @@ describe("api client", () => {
     }
   });
 
-  it("auto-refreshes token on 401 and retries", async () => {
-    localStorage.setItem("forge_access_token", "expired-token");
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        statusText: "Unauthorized",
-        json: () => Promise.resolve({}),
-        text: () => Promise.resolve(""),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ access_token: "new-token" }),
-        text: () => Promise.resolve(""),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ data: "success" }),
-        text: () => Promise.resolve(""),
-      });
+  it("surfaces 401 responses without invoking a disabled login flow", async () => {
+    const fetchMock = mockFetch([{ status: 401, body: { error: "Unauthorized" } }]);
     vi.stubGlobal("fetch", fetchMock);
 
     const { api } = await import("@/lib/api");
-    const result = await api.get<{ data: string }>("/api/v1/protected");
-    expect(result.data).toBe("success");
-    expect(localStorage.getItem("forge_access_token")).toBe("new-token");
+    await expect(api.get("/api/v1/protected")).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("returns undefined on 204 No Content", async () => {

@@ -38,7 +38,8 @@ function task(patch: Partial<Task> = {}): Task {
 describe("deployment trust layer", () => {
   it("makes readiness an explainable weighted checklist", () => {
     const checklist = buildTrustChecklist(task());
-    expect(readinessScore(checklist)).toBe(30);
+    expect(readinessScore(checklist)).toBe(40);
+    expect(checklist.some((item) => item.id === "policy-guardrails")).toBe(true);
     expect(checklist.filter((item) => item.source === "system").every((item) => item.status === "passed")).toBe(true);
   });
 

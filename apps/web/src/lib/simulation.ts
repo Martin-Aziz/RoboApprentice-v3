@@ -1,6 +1,7 @@
-import type { SceneObject, TaskPolicy } from "./types";
+import type { PolicyReviewSummary, SceneObject, TaskPolicy } from "./types";
 import { resolveSceneForPolicy, findCarryPairs } from "./scene-model";
 import { createHash } from "crypto";
+import { summarizePolicyReview } from "./policy-review";
 
 export interface SimulationManifest {
   format_version: "1.1";
@@ -35,6 +36,15 @@ export interface SimulationManifest {
     }>;
     warnings: string[];
   };
+  review: {
+    headline: string;
+    recommended_action: string;
+    ready_steps: number;
+    review_steps: number;
+    blocked_steps: number;
+    average_confidence: number;
+    validation_scope: string;
+  };
 }
 
 function policyHash(policy: TaskPolicy): string {
@@ -44,6 +54,7 @@ function policyHash(policy: TaskPolicy): string {
 
 export function buildManifest(policy: TaskPolicy, taskTitle: string): SimulationManifest {
   const scene = resolveSceneForPolicy(policy);
+  const review = policy.reviewSummary ?? summarizePolicyReview(policy);
   return {
     format_version: "1.1",
     task_title: taskTitle,
@@ -77,6 +88,16 @@ export function buildManifest(policy: TaskPolicy, taskTitle: string): Simulation
       })),
       warnings: scene.warnings,
     },
+    review: {
+      headline: review.headline,
+      recommended_action: review.recommendedAction,
+      ready_steps: review.readySteps,
+      review_steps: review.reviewSteps,
+      blocked_steps: review.blockedSteps,
+      average_confidence: review.averageConfidence,
+      validation_scope:
+        "Visual review plus heuristic kinematic screening only. This manifest is not a collision-planned or physics-validated commissioning result.",
+    },
   };
 }
 
@@ -108,6 +129,7 @@ export function buildPythonSimulator(policy: TaskPolicy, taskTitle: string): str
   const policyId = policyHash(policy);
   const timestamp = new Date().toISOString();
   const scene = resolveSceneForPolicy(policy);
+  const review = policy.reviewSummary ?? summarizePolicyReview(policy);
   const carryPairs = findCarryPairs(policy.steps);
 
   const waypointLines = policy.steps
@@ -125,6 +147,7 @@ export function buildPythonSimulator(policy: TaskPolicy, taskTitle: string): str
 Generated: ${timestamp}
 Policy ID: ${policyId}
 Scene source: ${scene.source} (confidence ${scene.confidence.toFixed(2)})
+Policy review: ${review.headline}
 
 Run with:
     pip install matplotlib numpy
@@ -152,6 +175,10 @@ POLICY_ID = "${policyId}"
 TASK_TITLE = "${safeTitle}"
 SCENE_SOURCE = "${scene.source}"
 PROXY_OBJECT_COUNT = ${proxyCount}
+REVIEW_HEADLINE = "${review.headline.replace(/["\\]/g, "")}"
+REVIEW_RECOMMENDED_ACTION = "${review.recommendedAction.replace(/["\\]/g, "")}"
+REVIEW_BLOCKED_STEPS = ${review.blockedSteps}
+REVIEW_STEPS = ${review.reviewSteps}
 
 WAYPOINTS = [
 ${waypointLines}
@@ -300,6 +327,10 @@ def main():
     ax.set_ylabel("Y (m)")
     ax.set_zlabel("Z (m)")
     ax.set_title(f"AUREVIX simulation: {TASK_TITLE} [policy={POLICY_ID}]")
+    ax.text2D(0.02, 0.98, REVIEW_HEADLINE, transform=ax.transAxes, fontsize=9,
+              color="#d97706" if REVIEW_BLOCKED_STEPS or REVIEW_STEPS else "#059669", va="top")
+    ax.text2D(0.02, 0.94, REVIEW_RECOMMENDED_ACTION, transform=ax.transAxes, fontsize=8,
+              color="#475569", va="top")
     ax.set_xlim(-0.8, 0.8)
     ax.set_ylim(-0.8, 0.8)
     ax.set_zlim(0.0, 1.0)

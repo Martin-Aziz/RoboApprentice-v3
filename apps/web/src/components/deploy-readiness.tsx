@@ -1,11 +1,11 @@
 import { AlertTriangle, CheckCircle2, HelpCircle, ShieldCheck } from "lucide-react";
-
-export const DEPLOY_READY_THRESHOLD = 0.8;
+import { readinessState } from "@/lib/trust-layer";
 
 export function readinessFor(confidence: number) {
-  if (confidence >= 0.9) return { label: "Validated", tone: "green" as const, action: "Ready for supervised deployment" };
-  if (confidence >= DEPLOY_READY_THRESHOLD) return { label: "Review", tone: "amber" as const, action: "Review simulation before deployment" };
-  return { label: "Not ready", tone: "red" as const, action: "Re-demonstrate before deployment" };
+  const state = readinessState(Math.round(confidence * 100));
+  if (state === "supervised-ready") return { label: "REVIEW COMPLETE", tone: "green" as const, action: "Eligible for supervised deployment after qualified sign-off" };
+  if (state === "review-required") return { label: "REVIEW REQUIRED", tone: "amber" as const, action: "Simulation review before deployment" };
+  return { label: "BLOCKED", tone: "red" as const, action: "Cannot be exported or deployed. Re-demonstration required" };
 }
 
 export function DeployReadiness({ confidence, compact = false }: { confidence: number; compact?: boolean }) {
@@ -31,7 +31,7 @@ export function DeployReadiness({ confidence, compact = false }: { confidence: n
 export function ReadinessLegend() {
   return (
     <div className="rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] p-3 text-xs text-[rgb(var(--bone-2))]">
-      <strong className="text-[rgb(var(--bone))]">Deploy readiness</strong> combines observed success, task completeness, and validation history. Below 80% is blocked from deployment; 80–89% requires simulation review; 90%+ is ready for supervised deployment.
+      <strong className="text-[rgb(var(--bone))]">Deploy readiness</strong> combines observed success, task completeness, and validation history. Below 80% is blocked from deployment; 80–89% requires simulation review; 90%+ is eligible for supervised deployment after qualified sign-off.
     </div>
   );
 }

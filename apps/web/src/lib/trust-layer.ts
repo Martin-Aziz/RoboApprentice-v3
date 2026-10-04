@@ -5,8 +5,21 @@ import type {
   TaskTrustRecord,
   TrustChecklistItem,
 } from "@/lib/types";
+import { summarizePolicyReview } from "@/lib/policy-review";
 
 export const APPROVAL_READY_SCORE = 100;
+
+export type ReadinessState = "blocked" | "review-required" | "supervised-ready";
+
+export function readinessState(score: number): ReadinessState {
+  if (score < 80) return "blocked";
+  if (score < 90) return "review-required";
+  return "supervised-ready";
+}
+
+export function isExportable(score: number): boolean {
+  return readinessState(score) !== "blocked";
+}
 
 function systemCheck(
   id: string,
@@ -15,6 +28,7 @@ function systemCheck(
   passed: boolean,
   evidence: string,
   now: string,
+  weight = 15,
 ): TrustChecklistItem {
   return {
     id,
@@ -23,7 +37,7 @@ function systemCheck(
     status: passed ? "passed" : "failed",
     source: "system",
     required: true,
-    weight: 15,
+    weight,
     evidence,
     updated_at: now,
     updated_by: "Aurevix validation pipeline",
@@ -53,6 +67,8 @@ function reviewerCheck(
 export function buildTrustChecklist(task: Task, now = new Date().toISOString()): TrustChecklistItem[] {
   const hasMotion = task.status === "done" && task.steps.length > 0 && Boolean(task.policy);
   const hasRobot = Boolean(task.robotModel ?? task.targetRobotModels?.[0]);
+  const review = task.policy ? summarizePolicyReview(task.policy) : null;
+  const policyReady = review !== null && review.blockedSteps === 0;
 
   return [
     systemCheck(
@@ -64,6 +80,22 @@ export function buildTrustChecklist(task: Task, now = new Date().toISOString()):
         ? `${task.steps.length} processed motion steps are attached to the current task version.`
         : "A completed task and processed motion policy are required.",
       now,
+      15,
+    ),
+    systemCheck(
+      "policy-guardrails",
+      "Policy guardrails clear",
+      "Reachability, review flags, and operator guardrails were evaluated for every generated step.",
+      policyReady,
+      review === null
+        ? "Generate a processed policy so the system can evaluate step guardrails."
+        : review.blockedSteps === 0
+          ? review.reviewSteps > 0
+            ? `${review.reviewSteps} step(s) still require operator review before approval.`
+            : "No blocked steps were found in the current policy review summary."
+          : `${review.blockedSteps} step(s) are blocked and must be corrected before deployment.`,
+      now,
+      15,
     ),
     systemCheck(
       "deployment-target",
@@ -74,11 +106,12 @@ export function buildTrustChecklist(task: Task, now = new Date().toISOString()):
         ? `Target robot: ${task.robotModel ?? task.targetRobotModels?.[0]}.`
         : "Select and record the target robot model.",
       now,
+      10,
     ),
     reviewerCheck(
       "simulation-review",
       "Simulation reviewed",
-      "A qualified reviewer confirmed reachability, collisions, cycle assumptions, and recovery behaviour.",
+      "A qualified reviewer confirmed the visual replay, step guardrails, cycle assumptions, and recovery behaviour.",
       15,
       now,
     ),
@@ -93,14 +126,14 @@ export function buildTrustChecklist(task: Task, now = new Date().toISOString()):
       "workcell-safeguards",
       "Workcell safeguards verified",
       "Protective stops, interlocks, exclusion zones, tooling, payload, and emergency-stop behaviour were tested.",
-      20,
+      15,
       now,
     ),
     reviewerCheck(
       "supervised-trial",
       "Supervised trial passed",
       "The current task version completed a controlled supervised run with the expected quality outcome.",
-      15,
+      10,
       now,
     ),
   ];

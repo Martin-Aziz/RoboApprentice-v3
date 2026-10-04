@@ -92,6 +92,13 @@ export function FeasibilityResults({
           at 85% uptime.
         </p>
 
+        <div className="mt-5 rounded-md border border-[rgb(var(--steel))] bg-[rgb(var(--ink-3))] p-4 text-sm">
+          <p className="font-semibold">What this result validates</p>
+          <p className="mt-1 text-[rgb(var(--bone-2))]">
+            This screen is a conservative feasibility estimate based on interpreted waypoints, reach, payload, and timing heuristics. It is useful for investor demos and pilot screening, but it is not a physics simulation or final deployment approval.
+          </p>
+        </div>
+
         {result.blocking_reason && (
           <div className="mt-5 rounded-md border border-[rgb(var(--signal-red)/0.35)] bg-[rgb(var(--signal-red)/0.08)] p-4">
             <p className="font-semibold text-[rgb(var(--signal-red))]">What prevents this setup from working</p>

@@ -9,6 +9,7 @@ import { formatDate, formatDuration } from "@/lib/format";
 import { useLocale } from "@/lib/i18n";
 import { RobotViewport, robotTypeForModel } from "@/components/robot-viewport";
 import { FALLBACK_POLICY } from "@/lib/demo-seed";
+import { isExportable } from "@/lib/trust-layer";
 
 export default function RobotDetailPage() {
   const params = useParams<{ id: string }>();
@@ -32,7 +33,7 @@ export default function RobotDetailPage() {
   }
 
   const robotExecutions = executions.filter((item) => item.robot_id === robot.id);
-  const deployed = skills.filter((skill) => skill.id === robot.current_skill_id || skill.status === "ready").slice(0, 4);
+  const deployed = skills.filter((skill) => skill.id === robot.current_skill_id || isExportable(Math.round(skill.confidence * 100))).slice(0, 4);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-5 md:p-8">

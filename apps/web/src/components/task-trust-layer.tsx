@@ -98,7 +98,7 @@ export function TaskTrustLayer({ taskId }: { taskId: string }) {
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-[rgb(var(--signal-cyan))]">Deployment trust layer</p>
           <h2 className="mt-2 font-display text-3xl">Evidence before operation</h2>
           <p className="mt-2 max-w-3xl text-sm text-[rgb(var(--bone-2))]">
-            The gate is attached to the exact task version and policy fingerprint below. Any task change invalidates approval and requires review again.
+            The gate is attached to the exact task version and policy fingerprint below. Any task change invalidates approval and requires review again. Visual replay, step guardrails, and qualified evidence are tracked separately so the operator can see what is estimated versus what has been formally reviewed.
           </p>
         </div>
         <div className={`min-w-64 rounded-md border p-4 ${gateTone}`}>

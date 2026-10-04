@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Bot, CheckCircle2, Gauge, GraduationCap, Zap } from "lucide-react";
+import { AlertTriangle, ArrowRight, Bot, CheckCircle2, GraduationCap, Zap, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDemoData } from "@/lib/use-demo-data";
 import { formatDuration, formatNumber } from "@/lib/format";
@@ -18,11 +18,11 @@ export default function DashboardPage() {
       <section className="grid gap-6 rounded-xl border border-[rgb(var(--signal-cyan)/0.3)] bg-[linear-gradient(135deg,rgb(var(--ink-2)),rgb(var(--signal-cyan)/0.06))] p-6 md:grid-cols-[1fr_auto] md:items-center md:p-8">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-[rgb(var(--signal-cyan))]">Video to deployable robot skill</p>
-          <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight">See a manual task become robot-ready in 30 seconds</h1>
+          <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight">See a demonstration become a reviewable task record</h1>
           <p className="mt-3 max-w-2xl text-[rgb(var(--bone-2))]">Watch Aurevix interpret a demonstration, replay the motion, and prepare code—without connecting a physical robot.</p>
         </div>
         <Button asChild size="lg" className="gap-2">
-          <Link href="/app/teach"><GraduationCap className="h-4 w-4" /> Run the 30-second workflow <ArrowRight className="h-4 w-4" /></Link>
+          <Link href="/app/teach"><GraduationCap className="h-4 w-4" /> Run the guided workflow <ArrowRight className="h-4 w-4" /></Link>
         </Button>
       </section>
 
@@ -44,7 +44,7 @@ export default function DashboardPage() {
         <Metric icon={<Bot />} label="Robots online" value={`${metrics.robotsOnline}/${robots.length}`} />
         <Metric icon={<Zap />} label="Skills" value={formatNumber(metrics.skills, locale)} />
         <Metric icon={<AlertTriangle />} label="Drift alerts" value={formatNumber(metrics.driftAlerts, locale)} tone="amber" />
-        <Metric icon={<Gauge />} label="Cycles today" value={formatNumber(metrics.totalCyclesToday, locale)} />
+        <Link href="/app/review"><Metric icon={<ShieldCheck />} label="Awaiting review" value="2" tone="amber" /></Link>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">

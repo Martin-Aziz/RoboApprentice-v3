@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RobotViewport } from "@/components/robot-viewport";
 import { FALLBACK_POLICY } from "@/lib/demo-seed";
 import { useDemoData } from "@/lib/use-demo-data";
+import { isExportable } from "@/lib/trust-layer";
 import {
   DEFAULT_WORKCELL_CONFIG,
   GRIPPER_MODELS,
@@ -93,7 +94,7 @@ export default function WorkcellPage() {
           <h1 className="mt-3 text-4xl font-semibold tracking-tight">Workcell setup</h1>
           <p className="mt-2 max-w-2xl text-sm text-[rgb(var(--bone-2))]">Configure the robot cell once, then use the same gripper and I/O mapping in generated robot code.</p>
         </div>
-        <Button className="gap-2"><ShieldCheck className="h-4 w-4" /> Validate {skills.filter((skill) => skill.status === "ready").length} skills</Button>
+        <Button className="gap-2"><ShieldCheck className="h-4 w-4" /> Review {skills.filter((skill) => isExportable(Math.round(skill.confidence * 100))).length} eligible skills</Button>
       </div>
 
       <RobotViewport robotType="ur5e" gripperType={config.gripperType} policy={FALLBACK_POLICY} playbackState="paused" showCollisionGeometry />

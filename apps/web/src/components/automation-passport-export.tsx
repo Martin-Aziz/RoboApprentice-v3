@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Copy, Globe2, PackageOpen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PassportSharingScope, Task } from "@/lib/types";
@@ -16,6 +16,10 @@ export function AutomationPassportExport({ task }: { task: Task }) {
   const [sourceRobotModel, setSourceRobotModel] = useState(
     task.robotModel ?? task.targetRobotModels?.[0] ?? "UR5e",
   );
+  const [approved, setApproved] = useState(false);
+  useEffect(() => {
+    fetch(`/api/tasks/${task.id}/trust`).then((response) => response.ok ? response.json() : null).then((record: { approval?: { status?: string } } | null) => setApproved(record?.approval?.status === "approved")).catch(() => setApproved(false));
+  }, [task.id]);
 
   async function exportPassport() {
     setWorking(true);
@@ -50,9 +54,9 @@ export function AutomationPassportExport({ task }: { task: Task }) {
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)} className="gap-2">
+      <Button variant="outline" disabled={!approved} title={!approved ? "A task must be approved before its passport can be exported." : undefined} onClick={() => setOpen(true)} className="gap-2">
         <PackageOpen className="h-4 w-4" />
-        Export as Automation Passport
+        Export Automation Passport
       </Button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgb(var(--bone)/0.55)] p-4">

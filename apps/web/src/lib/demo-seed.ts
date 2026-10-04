@@ -1,4 +1,5 @@
 import type { Facility, LocaleCode, Robot, Skill, SkillExecution, TaskPolicy, TaskStep } from "@/lib/types";
+import { isExportable } from "@/lib/trust-layer";
 
 export type DemoLocale = LocaleCode;
 
@@ -37,14 +38,14 @@ export const DEMO_ROBOTS: Robot[] = [
   {
     id: "rbt-kuka-001",
     facility_id: "fac-production-001",
-    name: "Welding Station 3",
+    name: "CNC Tending Cell 3",
     brand: "KUKA",
     model: "KR 6 R900",
     status: "running",
     ip_address: "10.42.0.34",
     last_seen_at: new Date().toISOString(),
     created_at: "2025-10-02T14:30:00Z",
-    current_skill_id: "skl-weld-chassis",
+    current_skill_id: "skl-load-cnc-blanks",
     metrics: { uptime_24h: 99.4, cycles_today: 892, mean_cycle_ms: 5200 },
   },
   {
@@ -105,10 +106,10 @@ export const DEMO_SKILLS: Skill[] = [
     mean_cycle_ms: 3800,
   },
   {
-    id: "skl-weld-chassis",
+    id: "skl-load-cnc-blanks",
     facility_id: "fac-production-001",
-    name: "Spot Weld Chassis Bracket",
-    description: "Three-point spot weld on lower chassis bracket assembly",
+    name: "Load Blanks into CNC Fixture",
+    description: "Machine tending — load metal blanks from staging tray into CNC vise fixture",
     task_language: "en",
     confidence: 0.91,
     status: "ready",
@@ -169,7 +170,7 @@ export const DEMO_SKILLS: Skill[] = [
 
 export function generateExecutionHistory(): SkillExecution[] {
   const robots = DEMO_ROBOTS;
-  const readySkills = DEMO_SKILLS.filter((skill) => skill.status === "ready");
+  const readySkills = DEMO_SKILLS.filter((skill) => isExportable(Math.round(skill.confidence * 100)));
   return Array.from({ length: 50 }, (_, index) => {
     const skill = readySkills[index % readySkills.length];
     const robot = robots[index % robots.length];

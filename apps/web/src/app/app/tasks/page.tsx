@@ -57,9 +57,10 @@ export default function TaskLibraryPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-[rgb(var(--signal-cyan))]">
-            Automation records
+            Automation memory
           </p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight">Task Records</h1>
+          <p className="mt-2 max-w-3xl text-[rgb(var(--bone-2))]">Every task Aurevix learns becomes a versioned, portable record — what was demonstrated, what was inferred, what was reviewed, and who approved it.</p>
         </div>
         <Button asChild>
           <Link href="/app/teach">
